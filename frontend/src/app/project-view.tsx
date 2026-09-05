@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Health, Project } from "@/lib/types";
+import type { Health, Project, ReviewRequest } from "@/lib/types";
 
 type Fields = { quantity: string; unitPrice: string; description: string; clarification: string };
 type Props = {
@@ -15,11 +15,13 @@ type Props = {
   onLeave: () => void; onAnalyze: (event?: FormEvent) => void;
   onSave: (event: FormEvent) => void; onDownload: () => void;
   roomId: string | null; onRoom: () => void;
+  pendingReview: ReviewRequest | null; reviewStorageUnavailable: boolean;
+  onCheckReview: () => void; onRetryReview: () => void;
 };
 const rupees = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: paise % 100 ? 2 : 0 }).format(paise / 100);
 const date = (value: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 
-export function ProjectView({ project, health, busy, hasUnsavedChanges, draftChanged, fields, setters, onLeave, onAnalyze, onSave, onDownload, roomId, onRoom }: Props) {
+export function ProjectView({ project, health, busy, hasUnsavedChanges, draftChanged, fields, setters, onLeave, onAnalyze, onSave, onDownload, roomId, onRoom, pendingReview, reviewStorageUnavailable, onCheckReview, onRetryReview }: Props) {
   const { quantity, unitPrice, description, clarification } = fields;
   const draft = project.proposals.find((proposal) => proposal.status === "draft");
   const [workStep, setWorkStep] = useState<"review" | "draft">(draft ? "draft" : "review");
@@ -27,6 +29,11 @@ export function ProjectView({ project, health, busy, hasUnsavedChanges, draftCha
   const headingRef = useRef<HTMLHeadingElement>(null);
   const focusStepRef = useRef(false);
   const preview = Number(quantity) > 0 && Number(unitPrice) > 0 ? Math.round(Number(unitPrice) * 100) * Number(quantity) : null;
+  const reviewWaiting = busy === "analyze" || busy === "review-retry";
+  const reviewTitle = reviewWaiting ? "Review requested" : pendingReview?.status === "save_pending" ? "Finish saving your review"
+    : pendingReview?.status === "running" ? "Your review is still running"
+    : pendingReview?.status === "failed" ? "The review did not finish"
+    : pendingReview?.status === "stale" ? "The project changed during this review" : "Check what happened to your review";
 
   useEffect(() => { headingRef.current?.focus({ preventScroll: true }); }, []);
   useEffect(() => {
@@ -55,6 +62,24 @@ export function ProjectView({ project, health, busy, hasUnsavedChanges, draftCha
       <div className="project-identity"><Button variant="ghost" className="button back-button" disabled={!!busy} onClick={onLeave}><ArrowLeft size={17} />All projects</Button><h1 tabIndex={-1} ref={headingRef}>{project.name}</h1></div>
       <div className="project-actions"><span className={`saved-state ${hasUnsavedChanges ? "is-unsaved" : ""}`}><span className="status-dot" aria-hidden="true" />{busy ? "Working…" : hasUnsavedChanges ? "Changes not saved" : "Project saved"}</span><Button variant="outline" className="button secondary" onClick={onRoom} disabled={!!busy}><UsersRound size={16} aria-hidden="true" />{roomId ? "Back to room" : "Start shared room"}</Button></div>
     </section>
+    {pendingReview && <section className="review-context" aria-labelledby="review-recovery-title">
+      <h2 id="review-recovery-title" className="text-base font-semibold">{reviewTitle}</h2>
+      <p role="status">{reviewWaiting ? "Waiting for the review service. Your sources and previous saved work stay available."
+        : pendingReview.status === "save_pending" ? "The existing review result needs to be saved. Finish saving without making another model request."
+        : pendingReview.status === "running" ? "Check this request again without starting another review. Your sources and saved draft stay available."
+        : "Check this request before starting another review. Your source text, saved draft and pricing inputs are still here."}</p>
+      {pendingReview.retryAllowed && <div className="mt-3 max-w-2xl">
+        <label htmlFor="retry-clarification">Clarification for this retry (optional)</label>
+        <Textarea id="retry-clarification" value={clarification} onChange={(event) => setters.clarification(event.target.value)} rows={2} maxLength={1000} disabled={!!busy} aria-describedby="retry-clarification-help" />
+        <p id="retry-clarification-help" className="field-help">Correct the text if needed. Leave it blank to reuse the previous clarification.</p>
+      </div>}
+      {!reviewWaiting && <div className="form-actions flex-wrap">
+        <Button type="button" className="button secondary" disabled={!!busy || !health} onClick={onCheckReview}>{busy === "review-status" ? "Checking review…" : pendingReview.status === "save_pending" ? "Finish saving" : "Check review status"}</Button>
+        {pendingReview.retryAllowed && <Button type="button" className="button primary" disabled={!!busy || !health} onClick={onRetryReview}>Retry review<ArrowRight size={17} aria-hidden="true" /></Button>}
+      </div>}
+      {pendingReview.retryAllowed && <p className="fine-print">{health?.aiProvider === "fixture" ? "Retry review runs the sample review again." : "Retry review makes a new Gemini request and may incur usage. Checking status uses the existing request."}</p>}
+      {reviewStorageUnavailable && <p className="fine-print">Local recovery is unavailable in this browser. Keep this page open until the review is confirmed.</p>}
+    </section>}
     <Tabs value={workStep} onValueChange={(value) => setWorkStep(value as "review" | "draft")} className="project-tabs">
       <div className="workflow-navigation">
         <div className="workflow-steps">
@@ -88,7 +113,7 @@ export function ProjectView({ project, health, busy, hasUnsavedChanges, draftCha
               <h2 id="review-title" tabIndex={-1}>Let’s make the change clear.</h2>
               <p>Compare the client’s request with the agreement before you put a price on it.</p>
               <ul className="review-expectations"><li><Check size={16} aria-hidden="true" />See what is already included</li><li><Plus size={16} aria-hidden="true" />Separate proposed extras</li><li><CircleHelp size={16} aria-hidden="true" />Find details to clarify</li></ul>
-              <Button className="button primary" disabled={!!busy || !health} onClick={() => onAnalyze()}>{busy === "analyze" ? "Reviewing source material…" : "Review scope and messages"}<ArrowRight size={17} /></Button>
+              <Button className="button primary" disabled={!!busy || !health || !!pendingReview} onClick={() => onAnalyze()}>{busy === "analyze" ? "Reviewing source material…" : "Review scope and messages"}<ArrowRight size={17} /></Button>
               <p className="fine-print">{health?.aiProvider === "fixture" ? "This local example uses a deterministic sample review." : "Gemini suggests. You check the sources and decide."}</p>
             </section> : <section className="review-result" aria-labelledby="review-title">
               <div className="section-heading"><div><p className="step-caption">Step 2 of 3</p><h2 id="review-title" tabIndex={-1}>Review the change</h2></div><span className="badge">{project.analysis.provider === "fixture" ? "Sample review" : "Gemini review"}</span></div>
@@ -101,8 +126,9 @@ export function ProjectView({ project, health, busy, hasUnsavedChanges, draftCha
               </div>
               {!!project.analysis.questions.length && <div className="questions"><h3><CircleHelp size={17} aria-hidden="true" />Confirm before drafting</h3><ul>{project.analysis.questions.map((item, index) => <li key={index}>{item}</li>)}</ul></div>}
               <details className="clarification"><summary>Add a clarification<ChevronDown size={16} aria-hidden="true" /></summary>
-                <form onSubmit={onAnalyze}><label htmlFor="clarification">What should the review take into account?</label><Textarea id="clarification" value={clarification} onChange={(event) => setters.clarification(event.target.value)} rows={3} required maxLength={1000} disabled={!!busy} placeholder={project.analysis.provider === "fixture" ? "Quote 6 lights" : "For this draft, use… Include the quantity, finish or agreed rate you want considered."} />
-                  <div className="form-actions"><Button className="button secondary" disabled={!!busy || !clarification.trim()}>{busy === "analyze" ? "Updating review…" : "Update review"}</Button><span className="muted">{clarification.length}/1,000</span></div><p className="fine-print">Adds context to the review. It does not record client approval.</p>
+                <form onSubmit={onAnalyze}><label htmlFor="clarification">What should the review take into account?</label><Textarea id="clarification" value={clarification} onChange={(event) => setters.clarification(event.target.value)} rows={3} required maxLength={1000} disabled={!!busy || !!pendingReview} aria-describedby={pendingReview ? "clarification-review-pending" : undefined} placeholder={project.analysis.provider === "fixture" ? "Quote 6 lights" : "For this draft, use… Include the quantity, finish or agreed rate you want considered."} />
+                  <div className="form-actions"><Button className="button secondary" disabled={!!busy || !!pendingReview || !clarification.trim()}>{busy === "analyze" ? "Updating review…" : "Update review"}</Button><span className="muted">{clarification.length}/1,000</span></div><p className="fine-print">Adds context to the review. It does not record client approval.</p>
+                  {pendingReview && <p id="clarification-review-pending" className="fine-print">Check or finish the current review before adding another clarification.</p>}
                 </form>
               </details>
               <div className="next-step"><div><strong>You choose what to propose.</strong><p>Confirm the description, quantity and price in the next step.</p></div><Button className="button primary" disabled={!!busy} onClick={openDraft}>Continue to draft<ArrowRight size={17} /></Button></div>

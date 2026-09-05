@@ -15,6 +15,7 @@ for (const id of ["wardrobe", "finish"] as const) {
     await page.context().route(baseURL + "/api/**", async route => {
       const r = route.request();
       if (r.method() === "POST" && /\/analyze$/.test(r.url())) {
+        if (r.postDataJSON()?.resumeOnly === true) return route.continue();
         if (id === "wardrobe" && injectedFailures === 0) {
           injectedFailures++;
           return route.fulfill({ status: 502, json: { error: { code: "AI_UNAVAILABLE", message: "The review service could not complete this request. Your sources are saved; try again when you are ready." } } });
@@ -42,6 +43,12 @@ for (const id of ["wardrobe", "finish"] as const) {
       await review.click();
       expect((await failing).status()).toBe(502);
       await expect(page.getByRole("main").getByRole("alert")).toContainText("Your sources are saved");
+      const check = page.getByRole("button", { name: "Check review status", exact: true });
+      if (await check.isVisible()) {
+        const checking = page.waitForResponse(responseFor("/analyze"));
+        await check.click();
+        expect((await checking).status()).toBe(404);
+      }
       await expect(review).toBeEnabled();
       expect(modelCalls).toBe(0);
     }

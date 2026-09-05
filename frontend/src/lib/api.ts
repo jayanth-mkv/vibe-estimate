@@ -1,5 +1,5 @@
 import { clientAuth } from "./firebase";
-import type { Health, Project } from "./types";
+import type { Health, Project, ReviewInput } from "./types";
 import { serviceRequest, serviceUrl } from "./service-request";
 
 async function request(path: string, options?: RequestInit, plain = false) {
@@ -15,7 +15,7 @@ export const api = {
   list: (): Promise<{ projects: Project[] }> => request("/api/projects"),
   project: (id: string): Promise<{ project: Project }> => request(`/api/projects/${encodeURIComponent(id)}`),
   create: (body: { name: string; scope: string; messages: string }): Promise<{ project: Project }> => request("/api/projects", { method: "POST", body: JSON.stringify(body) }),
-  analyze: (id: string, clarification?: string): Promise<{ project: Project }> => request(`/api/projects/${encodeURIComponent(id)}/analyze`, { method: "POST", body: JSON.stringify({ clarification }) }),
+  analyze: (id: string, body: ReviewInput): Promise<{ project: Project }> => request(`/api/projects/${encodeURIComponent(id)}/analyze`, { method: "POST", body: JSON.stringify(body) }),
   propose: (id: string, body: { quantity: number; unitPricePaise: number; requestId: string; description?: string }): Promise<{ project: Project }> => request(`/api/projects/${encodeURIComponent(id)}/proposals`, { method: "POST", body: JSON.stringify(body) }),
   export: (id: string): Promise<string> => request(`/api/projects/${encodeURIComponent(id)}/export`, undefined, true),
 };

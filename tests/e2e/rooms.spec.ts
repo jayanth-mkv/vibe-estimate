@@ -3,8 +3,9 @@ import AxeBuilder from "@axe-core/playwright";
 import fs from "node:fs/promises";
 import { FIXTURE_SCOPE, FIXTURE_MESSAGES } from "../../backend/src/fixtures";
 import { decodedQr } from "./qr";
+import { apiOrigin, appOrigin } from "./target";
 
-const api = "http://127.0.0.1:8080";
+const api = apiOrigin;
 const authEmulator = "http://127.0.0.1:9099";
 const clientRequest = "Could we quote 6 display lights?";
 const designerReply = "I will prepare a draft for 6 display lights at ₹2,000 each.";
@@ -28,14 +29,16 @@ type Room = {
 };
 
 test.beforeAll(async ({ request }) => {
-  const response = await request.get(api + "/health");
-  expect(response.ok()).toBe(true);
-  expect(await response.json(), "Room regression must fail before any observer call on a live/non-emulator stack.")
-    .toMatchObject({ status: "ok", aiProvider: "fixture", auth: "emulator", storage: "firestore" });
+  for (const origin of new Set([apiOrigin, appOrigin])) {
+    const response = await request.get(origin + "/health");
+    expect(response.ok()).toBe(true);
+    expect(await response.json(), "Room regression must fail before any observer call on a live/non-emulator stack.")
+      .toMatchObject({ status: "ok", runtime: "local", aiProvider: "fixture", auth: "emulator", storage: "firestore", storageConnection: "emulator" });
+  }
 });
 
 const responseFor = (path: string, method: string) => (response: Response) =>
-  response.url() === api + path && response.request().method() === method;
+  response.url() === appOrigin + path && response.request().method() === method;
 
 async function account(request: APIRequestContext): Promise<Headers> {
   const response = await request.post(authEmulator + "/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key", {
@@ -100,16 +103,16 @@ async function sendMessage(page: Page, id: string, text: string) {
 
 async function sendMessageAfterLostResponse(page: Page, id: string, text: string) {
   await roomPanel(page, "Chat");
-  await page.route(api + "/api/rooms/" + id + "/messages", async route => {
+  await page.route(appOrigin + "/api/rooms/" + id + "/messages", async route => {
     const response = await route.fetch();
     expect(response.ok()).toBe(true);
     await route.abort("connectionfailed");
   }, { times: 1 });
-  const firstRequest = page.waitForRequest(request => request.url() === api + "/api/rooms/" + id + "/messages" && request.method() === "POST");
+  const firstRequest = page.waitForRequest(request => request.url() === appOrigin + "/api/rooms/" + id + "/messages" && request.method() === "POST");
   await page.getByLabel("Message the room", { exact: true }).fill(text);
   await page.getByRole("button", { name: "Send message", exact: true }).click();
   const firstBody = (await firstRequest).postDataJSON();
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("Your message is still here");
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("Your inputs are still here");
   await expect(page.getByLabel("Message the room", { exact: true })).toHaveValue(text);
   const saved = page.waitForResponse(responseFor("/api/rooms/" + id + "/messages", "POST"));
   await page.getByRole("button", { name: "Retry message", exact: true }).focus();
@@ -169,7 +172,7 @@ test("independent designer and client exchange messages, preserve shared revisio
   const inviteUrl = await inviteLink.getAttribute("href");
   expect(Boolean(inviteUrl)).toBe(true);
   const parsedInvite = new URL(inviteUrl!, page.url());
-  expect(parsedInvite.origin).toBe("http://127.0.0.1:3000");
+  expect(parsedInvite.origin).toBe(appOrigin);
   const inviteToken = new URLSearchParams(parsedInvite.hash.slice(1)).get("invite");
   expect(Boolean(inviteToken)).toBe(true);
   await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
@@ -480,7 +483,7 @@ test("guest room codes and scannable invitations support rotation, keyboard entr
     const input = clientPage.getByLabel("Room code", { exact: true });
     const submit = clientPage.getByRole("button", { name: "Join room", exact: true });
     let codeRequests = 0;
-    clientPage.on("request", request => { if (request.url() === api + "/api/rooms/join" && request.method() === "POST") codeRequests += 1; });
+    clientPage.on("request", request => { if (request.url() === appOrigin + "/api/rooms/join" && request.method() === "POST") codeRequests += 1; });
     for (const invalid of ["", "ABCD", "IIII-OOOO-LLLL"]) {
       await input.fill(invalid);
       await submit.focus();

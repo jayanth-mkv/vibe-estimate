@@ -2,13 +2,17 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import fs from "node:fs/promises";
 import { FIXTURE_SCOPE, FIXTURE_MESSAGES } from "../../backend/src/fixtures";
+import { apiOrigin, appOrigin } from "./target";
 
-const api = "http://127.0.0.1:8080";
+const api = appOrigin;
 
 test.beforeAll(async ({ request }) => {
-  const response = await request.get(api + "/health");
-  expect(response.ok()).toBe(true);
-  expect(await response.json(), "UI regression must never invoke a live model.").toMatchObject({ aiProvider: "fixture", auth: "emulator", storage: "firestore" });
+  for (const origin of new Set([apiOrigin, appOrigin])) {
+    const response = await request.get(origin + "/health");
+    expect(response.ok()).toBe(true);
+    expect(await response.json(), "UI regression must never invoke a live model.")
+      .toMatchObject({ status: "ok", runtime: "local", aiProvider: "fixture", auth: "emulator", storage: "firestore", storageConnection: "emulator" });
+  }
 });
 
 async function openExample(page: Page) {
@@ -113,6 +117,9 @@ test("review failure recovers and a lost save response retries without duplicate
   await page.getByRole("button", { name: "Review scope and messages" }).click();
   await expect(page.getByRole("main").getByRole("alert")).toContainText("temporarily unavailable");
   await expect(page.getByRole("heading", { name: "Prepare the draft" })).toHaveCount(0);
+  const checking = page.waitForResponse(response => response.url().endsWith("/analyze") && response.request().postDataJSON()?.resumeOnly === true);
+  await page.getByRole("button", { name: "Check review status", exact: true }).click();
+  expect((await checking).status()).toBe(404);
   await review(page);
   await openDraft(page);
   await price(page);
@@ -261,7 +268,7 @@ test("illustrated product tour preserves its imagery and keyboard flow without e
   await page.screenshot({ path: testInfo.outputPath("illustrated-tour.png"), fullPage: true });
 
   await page.getByRole("link", { name: "Open workspace", exact: true }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:3000/");
+  await expect(page).toHaveURL(appOrigin + "/");
   await expect(page.getByRole("heading", { name: "Turn client changes into clear drafts.", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Start a project", exact: true })).toBeInViewport();
   const header = await page.getByRole("banner").boundingBox();

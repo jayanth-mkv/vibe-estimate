@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, CheckCheck, CircleHelp } from "lucide-react";
@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { clientAuth, googleAuthEnabled, openGoogleWorkspace, saveAccessWithGoogle, startSession, usesEmulators, usesGuestAccess, usesAnonymousAuth } from "@/lib/firebase";
 import { workspaceStatus } from "@/lib/workspace-status";
+import { ServiceError } from "@/lib/service-request";
+import { forgetReview, readReviewRequest, rememberReview, restoreReview, resumeReviewInput, retryReview, reviewInput, startReview, withReviewMetadata, type PendingReview } from "@/lib/review-request";
 import type { Health, Project } from "@/lib/types";
 
 const emptySource = (): SourceInput => ({ name: "", scope: "", messages: "" });
@@ -53,6 +55,11 @@ export default function Workspace() {
   const [sourceRoomId, setSourceRoomId] = useState<string | null>(null);
   const [reloadProjects, setReloadProjects] = useState(0);
   const requestRef = useRef<{ key: string; id: string } | null>(null);
+  const [pendingReview, setPendingReview] = useState<PendingReview | null>(null);
+  const [reviewStorageUnavailable, setReviewStorageUnavailable] = useState(false);
+  const pendingReviewRef = useRef<PendingReview | null>(null);
+  const reviewWorkingRef = useRef(false);
+  const sessionUidRef = useRef<string | null>(null);
   const startingProjectRef = useRef(false);
   const helpRef = useRef<HTMLDetailsElement>(null);
   const currentDraft = selected?.proposals.find((proposal) => proposal.status === "draft");
@@ -63,12 +70,21 @@ export default function Workspace() {
     try { setHealth(await api.health()); } catch { setHealth(null); } finally { setServiceChecked(true); }
   };
 
-  const choose = (project: Project | null) => {
+  const keepReview = useCallback((projectId: string, review: PendingReview | null, uid?: string) => {
+    pendingReviewRef.current = review;
+    setPendingReview(review);
+    setReviewStorageUnavailable(Boolean(review && uid && !rememberReview(uid, projectId, review)));
+  }, []);
+
+  const choose = useCallback((project: Project | null) => {
     setSelected(project);
     setCreating(false);
     setError("");
     setNotice("");
-    setClarification("");
+    const uid = clientAuth().currentUser?.uid;
+    const recovery = project && uid ? restoreReview(uid, project.id, project.reviewRequest) : null;
+    keepReview(project?.id ?? "", recovery, uid);
+    setClarification(recovery?.clarification ?? "");
     const draft = project?.proposals.find((proposal) => proposal.status === "draft");
     setQuantity(draft ? String(draft.quantity) : "");
     setUnitPrice(draft ? String(draft.unitPricePaise / 100) : "");
@@ -79,7 +95,7 @@ export default function Workspace() {
     const roomId = candidate && /^[a-f0-9-]{36}$/i.test(candidate) ? candidate : null;
     setSourceRoomId(roomId);
     window.history.replaceState(null, "", project ? `?project=${encodeURIComponent(project.id)}${roomId ? `&room=${encodeURIComponent(roomId)}` : ""}` : "/");
-  };
+  }, [keepReview]);
 
   const acceptProject = (project: Project) => {
     setSelected(project);
@@ -99,12 +115,24 @@ export default function Workspace() {
       if (usesGuestAccess && !auth.currentUser) await startSession();
       if (!active) return;
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        const previousUid = sessionUidRef.current;
+        const nextUid = currentUser?.uid ?? null;
+        sessionUidRef.current = nextUid;
+        if (previousUid && previousUid !== nextUid) {
+          // Another identity must never inherit this owner's visible work or
+          // recovery note. The old note stays scoped to its original UID.
+          setProjects([]); setSelected(null); setCreating(false);
+          pendingReviewRef.current = null; setPendingReview(null); setReviewStorageUnavailable(false);
+          setClarification(""); setQuantity(""); setUnitPrice(""); setDescription(""); setNewProject(emptySource());
+          setSourceRoomId(null); setError(""); setNotice(""); requestRef.current = null;
+          window.history.replaceState(null, "", "/");
+        }
         setUser(currentUser);
         setAccessSaved(Boolean(currentUser && !currentUser.isAnonymous));
         setProjectsKnown(false);
         setAuthReady(true);
         setLoadingProjects(Boolean(currentUser));
-        if (!currentUser) { setProjects([]); setSelected(null); }
+        if (!currentUser) { setProjects([]); setSelected(null); pendingReviewRef.current = null; setPendingReview(null); }
       });
     }).catch((cause) => {
       if (active) { setError(describeError(cause)); setAuthReady(true); }
@@ -133,7 +161,7 @@ export default function Workspace() {
       finally { if (active) setLoadingProjects(false); }
     })();
     return () => { active = false; };
-  }, [user, reloadProjects]);
+  }, [user, reloadProjects, choose]);
 
   useEffect(() => {
     const closeHelp = (event: PointerEvent) => {
@@ -203,20 +231,64 @@ export default function Workspace() {
     else finishLeave(destination);
   };
 
+  const runReview = (mode: "start" | "check" | "retry") => {
+    if (!selected || busy || reviewWorkingRef.current) return;
+    const uid = clientAuth().currentUser?.uid;
+    if (!uid) { setError("Your session has ended. Reconnect to continue. Your inputs are still here."); return; }
+    let attempt: PendingReview;
+    try {
+      const current = pendingReviewRef.current;
+      if (mode === "start") attempt = startReview(clarification, current);
+      else {
+        if (!current) return;
+        attempt = mode === "retry" ? retryReview(current, undefined, clarification) : current;
+      }
+    } catch (cause) { setError(describeError(cause)); return; }
+    // Record before dispatch, synchronously, so rapid clicks and lost responses
+    // cannot turn one intended review into multiple paid requests.
+    reviewWorkingRef.current = true;
+    keepReview(selected.id, attempt, uid);
+    const input = mode === "check" ? resumeReviewInput(attempt) : reviewInput(attempt);
+    return action(mode === "start" ? "analyze" : mode === "check" ? "review-status" : "review-retry", async () => {
+      try {
+        const result = await api.analyze(selected.id, input);
+        if (clientAuth().currentUser?.uid !== uid) return;
+        acceptProject(result.project);
+        forgetReview(uid, selected.id, attempt.requestId);
+        const next = readReviewRequest(result.project.reviewRequest);
+        keepReview(selected.id, next ? withReviewMetadata(attempt, next) : null, uid);
+        setClarification((text) => text.trim() === (attempt.clarification ?? "").trim() ? "" : text);
+        // Resuming a review must not reset a saved draft or unsaved owner prices.
+        if (!selected.analysis && !currentDraft) {
+          const restoredDraft = result.project.proposals.find((proposal) => proposal.status === "draft");
+          setQuantity(restoredDraft ? String(restoredDraft.quantity) : "");
+          setUnitPrice(restoredDraft ? String(restoredDraft.unitPricePaise / 100) : "");
+          setDescription(restoredDraft?.description || (result.project.analysis?.provider === "fixture" ? "Display lights" : ""));
+        }
+        setNotice(next ? "Saved review restored. Another review still needs attention." : "Review saved. Check the findings, then choose what goes in your draft.");
+      } catch (cause) {
+        if (clientAuth().currentUser?.uid !== uid) return;
+        if (mode === "check" && cause instanceof ServiceError && cause.code === "REVIEW_REQUEST_NOT_FOUND") {
+          forgetReview(uid, selected.id, attempt.requestId);
+          const current = cause.reviewRequest ? withReviewMetadata(null, cause.reviewRequest) : null;
+          keepReview(selected.id, current, uid);
+          setNotice(current ? "A different review is active for this project. Check its status before starting another review. Your text is still here."
+            : "No review was started for that request. Your text is still here. Start a review when you’re ready.");
+          return;
+        }
+        const server = cause instanceof ServiceError ? cause.reviewRequest : undefined;
+        const retained = server ? withReviewMetadata(attempt, server)
+          : { ...attempt, status: "unknown" as const, retryAllowed: false, retryAfterMs: undefined };
+        keepReview(selected.id, retained, uid);
+        if (server?.status === "running" || server?.status === "save_pending") return;
+        throw cause;
+      }
+    }).finally(() => { reviewWorkingRef.current = false; });
+  };
+
   const analyze = (event?: FormEvent) => {
     event?.preventDefault();
-    if (!selected) return;
-    return action("analyze", async () => {
-      const result = await api.analyze(selected.id, clarification.trim() || undefined);
-      acceptProject(result.project);
-      setClarification("");
-      // A model review never supplies prices or clears the owner's draft edits.
-      if (!selected.analysis && !currentDraft) {
-        setQuantity(""); setUnitPrice("");
-        setDescription(result.project.analysis?.provider === "fixture" ? "Display lights" : "");
-      }
-      setNotice("Review saved. Check the findings, then choose what goes in your draft.");
-    });
+    return runReview("start");
   };
 
   const save = (event: FormEvent) => {
@@ -297,7 +369,7 @@ export default function Workspace() {
       {isLoading ? <div className="loading-state" aria-label={authReady ? "Loading projects" : "Opening workspace"}><div className="skeleton" /><div className="skeleton short" /><p>Opening your workspace…</p></div> : <>
         {!selected && !creating && <Home guest={usesAnonymousAuth && !accessSaved} cloud={health?.storageConnection === "cloud"} googleContinue={canOpenGoogle} onGoogleContinue={continueGoogle} onRoomDemo={() => void startRoomDemo()} projects={projects} signedIn={!!user} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} onNew={startNew} onExample={(source) => void create(source)} onOpen={choose} onRefresh={() => { setLoadingProjects(true); setReloadProjects((value) => value + 1); }} onSignIn={() => void action("signin", async () => { if (!clientAuth().currentUser) await startSession(); else { setLoadingProjects(true); setReloadProjects((value) => value + 1); } })} />}
         {creating && <><Button variant="ghost" className="button back-button" disabled={!!busy} onClick={() => requestLeave("projects")}><ArrowLeft size={17} />All projects</Button><SourceWizard value={newProject} onChange={setNewProject} onSave={() => void create(newProject)} onCancel={() => requestLeave("projects")} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} /></>}
-        {selected && <ProjectView roomId={sourceRoomId} onRoom={() => requestLeave("room")} key={selected.id} project={selected} health={health} busy={busy} hasUnsavedChanges={hasUnsavedChanges} draftChanged={draftChanged} fields={{ quantity, unitPrice, description, clarification }} setters={{ quantity: setQuantity, unitPrice: setUnitPrice, description: setDescription, clarification: setClarification }} onLeave={() => requestLeave("projects")} onAnalyze={(event) => void analyze(event)} onSave={(event) => void save(event)} onDownload={() => void download()} />}
+        {selected && <ProjectView roomId={sourceRoomId} onRoom={() => requestLeave("room")} key={selected.id} project={selected} health={health} busy={busy} hasUnsavedChanges={hasUnsavedChanges} draftChanged={draftChanged} pendingReview={pendingReview} reviewStorageUnavailable={reviewStorageUnavailable} onCheckReview={() => void runReview("check")} onRetryReview={() => void runReview("retry")} fields={{ quantity, unitPrice, description, clarification }} setters={{ quantity: setQuantity, unitPrice: setUnitPrice, description: setDescription, clarification: setClarification }} onLeave={() => requestLeave("projects")} onAnalyze={(event) => void analyze(event)} onSave={(event) => void save(event)} onDownload={() => void download()} />}
       </>}
       {serviceChecked && !health && <div className="service-status" role="status"><span>The project service is unavailable. Your text stays here. Reconnect to save or review.</span><Button className="button secondary" onClick={() => void refreshHealth()}>Check connection</Button></div>}
     </main>

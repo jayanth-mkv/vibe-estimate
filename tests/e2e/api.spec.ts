@@ -1,7 +1,8 @@
 import { test, expect, APIRequestContext } from "@playwright/test";
 import { FIXTURE_SCOPE, FIXTURE_MESSAGES } from "../../backend/src/fixtures";
+import { apiOrigin } from "./target";
 
-const api = "http://127.0.0.1:8080";
+const api = apiOrigin;
 async function account(request: APIRequestContext) {
   const result = await request.post("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key", {
     data: { returnSecureToken: true }
@@ -12,9 +13,8 @@ async function account(request: APIRequestContext) {
 }
 test.beforeAll(async ({ request }) => {
   const response = await request.get(api + "/health");
-  const health = await response.json();
-  expect(health.auth).toBe("emulator");
-  expect(health.aiProvider).toBe("fixture");
+  expect(response.ok()).toBe(true);
+  expect(await response.json()).toMatchObject({ status: "ok", runtime: "local", auth: "emulator", aiProvider: "fixture", storage: "firestore", storageConnection: "emulator" });
 });
 test("real emulator auth, tenant isolation, revision arithmetic, idempotency, and export", async ({ request }) => {
   const owner = await account(request);

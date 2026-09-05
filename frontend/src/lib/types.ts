@@ -15,6 +15,16 @@ export interface Proposal {
   status: "draft" | "superseded";
   createdAt: string;
 }
+export type ReviewRequestStatus = "running" | "save_pending" | "failed" | "unknown" | "stale";
+export interface ReviewRequest {
+  requestId: string;
+  status: ReviewRequestStatus;
+  retryAllowed: boolean;
+  retryAfterMs?: number;
+}
+export type ReviewInput =
+  | { requestId: string; clarification?: string; retryOf?: string; resumeOnly?: never }
+  | { requestId: string; resumeOnly: true; clarification?: never; retryOf?: never };
 export interface Project {
   id: string;
   roomId?: string;
@@ -24,6 +34,7 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   analysis?: Analysis;
+  reviewRequest?: ReviewRequest;
   proposals: Proposal[];
 }
 export interface Health {

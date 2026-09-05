@@ -16,5 +16,5 @@ export const metadata: Metadata = { title: "VibeEstimate · Make the change clea
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const config = firebaseConfigScript(process.env.FIREBASE_WEB_CONFIG);
-  return <html lang="en" className={`${bodyFont.variable} ${headingFont.variable}`}><head>{config && <script dangerouslySetInnerHTML={{ __html: config }} />}</head><body>{children}</body></html>;
+  return <html lang="en" className={`${bodyFont.variable} ${headingFont.variable}`}><head>{config ? <script dangerouslySetInnerHTML={{ __html: config }} /> : null}</head><body>{children}</body></html>;
 }
