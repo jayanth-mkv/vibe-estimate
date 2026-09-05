@@ -24,7 +24,9 @@ For the complete collaborative demo, choose **Try a shared room**. In the room, 
 
 The [client's separate view](docs/screenshots/connected-client-room.png) shows the same saved conversation and shared drafts with its own identity and permissions.
 
-The initial connected version is preserved at `4fa4d70` on `snapshot/initial-connected-v1`. The next version is being planned on `feat/spatial-home-studio`: plan/image upload, editable whole-home 3D, visual change proposals and walkthroughs. Read the [researched implementation plan](docs/spatial-home-studio-plan.md) and [UI brief](docs/spatial-studio-brief.md); spatial features are not yet implemented.
+The initial connected version is preserved at `4fa4d70` on `snapshot/initial-connected-v1`. Work continues on `feat/spatial-home-studio` towards a spatial platform: a designer publishes an agent onto their own website, a homeowner talks to it, the agent opens a project and builds their home in 3D from an uploaded plan, and the designer reviews what it did through a visual console rather than a transcript.
+
+That work is sequenced as three releases — read the [release plan](docs/plan/README.md), covering [v1](docs/plan/v1.md), [v2](docs/plan/v2.md), [v3](docs/plan/v3.md) and [who controls what](docs/plan/controls.md). The deep technical reference is the [researched implementation plan](docs/spatial-home-studio-plan.md) with its [UI brief](docs/spatial-studio-brief.md). Beyond the initial production release recorded in [production readiness](docs/production-readiness.md), no spatial or agent-crew feature is implemented yet.
 
 The default runner uses a demo Firebase project and local Auth/Firestore emulators. Its AI provider is a clearly labeled, deterministic lighting fixture. It does not call paid Gemini services and does not access production Firebase data. Arbitrary scope analysis requires the real Gemini provider and server credentials.
 

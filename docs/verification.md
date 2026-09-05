@@ -1,5 +1,7 @@
 # Verification status
 
+This file records **executed** results only. The checks each future release must pass before it can be called done are specified separately, as gates in the [release plan](plan/README.md) — [v1](plan/v1.md#v1-gate), [v2](plan/v2.md#v2-gate) and [v3](plan/v3.md). A planned gate is not evidence; copy a result here only once it has actually run.
+
 ## Initial production hardening — 5 September 2026
 
 Branch: `fix/initial-production`, isolated from spatial work. Connection stage committed as `6544aeb`.

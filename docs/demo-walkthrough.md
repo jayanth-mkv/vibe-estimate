@@ -2,6 +2,8 @@
 
 This is a fictional scenario for rehearsing the product flow. The default run uses a deterministic fixture; it is not a live Gemini demonstration.
 
+This walkthrough describes the workflow **as it exists today**. The demonstration the product is being built towards — a homeowner uploading a plan on a designer's site, the crew revealing their home in 3D, and the designer reviewing a change card in a console — is specified separately in [v2](plan/v2.md#the-demonstration) and is not implemented.
+
 Start with: "Asha thinks lighting was included. Her designer agrees about the kitchen strip, but the conversation also contains four display lights, then six. They need a clear decision before either person treats a message as a bill."
 
 1. Open the home workspace and choose **Try the lighting example**. A guest identity supports private saving without a login form; the original agreement and conversation stay together. The illustrated product tour is still available at `/welcome`.

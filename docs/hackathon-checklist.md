@@ -17,6 +17,8 @@ The local scaffold is preparation for the [Google challenge](https://codelabs.de
 
 The supplied dashboard records 6 September 2026, 11:59 PM IST as the deadline. Recheck the dashboard before submitting.
 
+The [release plan](plan/README.md) deliberately deploys before it builds: [v1](plan/v1.md) closes every mandatory row in this table so that nothing in [v2](plan/v2.md) or [v3](plan/v3.md) is required for a valid submission. Deployment is now largely delivered — see [production readiness](production-readiness.md) and the inventory record. The rows still genuinely open are the AI Studio configuration and build history, completed Google consent, the `dev-tutorial=cloud-run-ai-challenge` label, full public user journeys, and publication and submission. Note that the deployed Secret Manager entry holds browser SDK configuration while the runtime reaches Vertex through a keyless attached identity; that is sound production practice but is **not** the codelab's Gemini API-key-in-Secret-Manager evidence and must not be recorded as such.
+
 The judging pillars are authenticity, usability, stability, and security. We should demonstrate a complete user task, understandable correction, recovery from failure, and enforced access control. The current codelab explicitly asks for Google Sign-In and SSO; the app implements optional Google linking and returning access alongside guest entry. Published point weights or a required two-minute video were not established.
 
 The frontend is intended for Vercel and backend for Cloud Run. Provide a clear entry URL and architecture so reviewers can follow the actual Cloud Run-backed flow; both deployments still need verification.

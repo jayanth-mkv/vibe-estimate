@@ -73,7 +73,7 @@ No Vercel project, hosted frontend, state bucket, load balancer, custom domain, 
 
 ## Spatial studio proposals: research only
 
-The [spatial plan](spatial-home-studio-plan.md) proposes the following additions. None is discovered as existing, imported, configured in Terraform, provisioned or deployed by this planning stage. Keep these proposals separate from the prepared definitions and six managed Gemini resources above.
+The [spatial plan](spatial-home-studio-plan.md) and the [release plan](plan/README.md) propose the following additions. None is discovered as existing, imported, configured in Terraform, provisioned or deployed by this planning stage. Keep these proposals separate from the prepared definitions and six managed Gemini resources above, and from the separately recorded initial production release below.
 
 | Proposed resource | Intended boundary | Status |
 | --- | --- | --- |
@@ -81,6 +81,16 @@ The [spatial plan](spatial-home-studio-plan.md) proposes the following additions
 | Object access IAM | Authorized development/runtime identity, limited to the selected bucket | Planned; no grant or key creation. The first upload path uses an authenticated backend proxy. |
 | Worker queue and authenticated worker delivery | Backend project, deployment region selected from private configuration | Future deployed job processing only; local job worker needs no queue infrastructure. |
 | Optional indexes for new scene/job queries | Existing Firebase database, only indexes proven necessary by implemented queries | Planned discovery/testing; no index or billing change. |
+| Three agent Cloud Run services (`concierge`, `spatial`, `insight`) | Backend project, same verified region; separate scaling profiles and minimum instances | [v2](plan/v2.md) proposal. Each is an additional billable service; review minimum-instance settings before enabling any non-zero floor. |
+| One service account per agent service | Backend project; no key files, no shared runtime identity | v2 proposal. Narrow inference and Firestore access only, following the existing runtime-identity pattern. |
+| Service-to-service `run.invoker` bindings | Granted only along call edges that actually exist; no `allUsers` on any agent service | v2 proposal. ID-token audience is the callee URL; end-user identity travels separately in task metadata. |
+| Additional Artifact Registry images | Existing private repository where possible | v2 proposal. Prefer additional images in the existing repository over new repositories; review retention. |
+| Per-service Secret Manager access | Existing secrets; accessor bindings scoped per service account | v2 proposal. No new secret payload is implied; the browser SDK configuration secret remains what it is. |
+| Extended Cloud Tasks queue use | The review queue and recovery scheduler already created for the initial production release | v2 proposal. Extend the deployed delivery path rather than adding Pub/Sub for the same shape of work. |
+| Cloud Run worker pool | Only if a specific job justifies long-lived instances or GPU | v2/v3 proposal, deliberately conditional. Record the justification before creating it; worker pools bill differently from request-driven services. |
+| BigQuery dataset for the rate-card MCP server | Backend project; the designer's own historical rates only | [v3](plan/v3.md) proposal. Storage and query charges apply. No dataset is created by any current definition. |
+| Maps Platform API enablement | Sourcer local-availability lookups | v3 proposal. Maps requests bill per call and need their own budget guard. |
+| GPU worker pool for image-to-3D | Backend project; explicit opt-in | v3 proposal. Substantially more expensive than every other resource listed here; not required by v2. |
 
 Firebase Storage now requires the [Blaze plan](https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024). The proposal keeps existing Firebase Auth/Firestore and uses the already billed backend project for private binaries; it does not upgrade Firebase billing or claim storage is free. Existing APIs, credentials, shared ADC, database, rules and providers remain unchanged. Future resource work must use Terraform and record actual actions separately.
 

@@ -79,7 +79,9 @@ Preserve server-confirmed saved states, original evidence, prior revisions, safe
 
 ## Verification
 
-The next spatial workspace has a separate [proposed surface brief](docs/spatial-studio-brief.md) and [researched implementation plan](docs/spatial-home-studio-plan.md). It preserves this visual system. No studio UI is implemented by that planning checkpoint, and current route verification does not establish its future 3D behaviour.
+The next spatial workspace has a separate [proposed surface brief](docs/spatial-studio-brief.md) and [researched implementation plan](docs/spatial-home-studio-plan.md), sequenced by the [release plan](docs/plan/README.md). It preserves this visual system. No studio UI is implemented by that planning checkpoint, and current route verification does not establish its future 3D behaviour.
+
+Three new surfaces are planned and each needs its own sibling brief under `frontend/.impeccable/surfaces/` before implementation, because none is covered by the existing route table: the **spatial studio** ([v1](docs/plan/v1.md), brief already drafted), the **designer console** — front desk, fleet ribbon and a *Needs you* queue ([v2](docs/plan/v2.md)) — and the **hosted assistant page** that plays the role of a designer's website ([v2](docs/plan/v2.md)). All three preserve the navy/red system, the 56px header and the self-hosted type; the home itself adds material colour. Treat them as expansion, not redesign.
 
 Verify both routes at 1440px desktop, tablet, 390px, and 320px: readable layout, no page overflow, working route links, preserved tour art, keyboard tabs and focus, mobile sources, onboarding validation, sign-in/save timing, review, draft/revision/history, download, and failure recovery. Also verify navigating between routes does not leak tour styles into the workspace.
 

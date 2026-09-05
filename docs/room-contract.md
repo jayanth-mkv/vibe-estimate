@@ -40,6 +40,10 @@ Use 1.5-second authenticated polling for live synchronization and reconnect feed
 
 Limit messages to 1,000 characters, 40 new messages and a 16,000-character assembled transcript. Bound room creation per owner. Invitations are random, stored only as hashes and expire after 24 hours; a full room rejects third members. Original sources are immutable. Source quotes must match the exact frozen transcript or scope. Preserve messages, review snapshots and shared drafts. The fixture only supports the supplied lighting room and explicitly supported demo messages; unsupported text must not receive a fabricated analysis.
 
+## Planned extension
+
+The [release plan](plan/README.md) extends this room rather than replacing it. [v2](plan/v2.md#data-sharing-and-collaboration) adds explicitly shared scene snapshots as an allowlisted projection, private client options with their own attachment namespace, annotations anchored to visual evidence, and per-identity read cursors — and replaces the single observer with a nine-role crew whose proposals still cannot share, price or send without the designer. Everything in this contract stays binding: hashed expiring one-client invitations, server-derived roles, bounded and debounced model calls, owner-only draft and sharing actions, immutable snapshots, and exact-quote evidence.
+
 ## Required verification
 
 The separate source/context panes are a UI choice; they do not enforce access. Google's [NotebookLM sharing documentation](https://support.google.com/notebooklm/answer/16322204) also distinguishes a focused chat view from underlying access. Here, explicit room membership and owner-only project routes enforce the product's narrower sharing boundary. Firebase [server libraries](https://firebase.google.com/docs/firestore/client/libraries) are privileged server access; the API must perform authorization in addition to denying direct client database access.

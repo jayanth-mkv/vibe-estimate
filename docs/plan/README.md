@@ -9,11 +9,13 @@ Three releases take VibeEstimate from a text-shaped local app to a deployed spat
 | New AI surface | None | Most of it | Voice, more roles, more MCP |
 | Risk | Low | High — see the [cut line](v2.md#the-cut-line) | Optional by definition |
 
-[Who controls what](controls.md) is cross-cutting: the settings each party gets, the problem each one solves, and the server-side access matrix.
+Two documents are cross-cutting. [Who controls what](controls.md) covers the settings each party gets, the problem each one solves, and the server-side access matrix. [Foundations](foundations.md) covers what to reuse rather than rebuild, the pinned libraries, the security controls and the verification categories.
 
 ## Why this order
 
-Nothing in this project has ever been deployed. Every verified result to date is on loopback. An undeployed app scores zero regardless of how good its geometry is, so **v1 deploys the app that already works before building anything new**, and every release after that is upside rather than exposure.
+An undeployed app scores zero regardless of how good its geometry is, so **v1 deploys the app that already works before building anything new**, and every release after that is upside rather than exposure.
+
+That deployment is now largely delivered: a Cloud Run application, a bounded review queue and recovery scheduler, dedicated identities and a public `/health` returning HTTP 200 against production Firebase, cloud Firestore and live Vertex. See [production readiness](../production-readiness.md) and the [v1 record](v1.md#deploy-what-already-works). Full public user journeys remain the release gate.
 
 v1 also deliberately contains **no AI in the studio**. A complete authored sample home proves the 3D editing environment first, which means v2's plan recognition is measured against a known-good environment rather than debugged against a moving one.
 
