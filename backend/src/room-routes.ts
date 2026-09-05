@@ -5,7 +5,12 @@ import type { RoomStore } from "./room-store.js";
 import { publicProject } from "./types.js";
 
 /** Register after shared Firebase authentication/rate limiting and before the 404/error handlers. */
-export function registerRoomRoutes(app: Express, store: RoomStore) {
+export function registerRoomRoutes(app: Express, store: RoomStore, notify?: (id: string) => Promise<void>) {
+  const schedule = async (id: string) => {
+    try { await notify?.(id); }
+    catch { console.error(JSON.stringify({ event: "room_task_enqueue_unavailable" })); }
+    // The saved queued state is the durable outbox. The reconciler recovers it.
+  };
   app.param("roomId", (_request, _response, next, value: string) => {
     if (!z.string().uuid().safeParse(value).success) { next(roomNotFound()); return; }
     next();
@@ -32,11 +37,15 @@ export function registerRoomRoutes(app: Express, store: RoomStore) {
   });
   app.post("/api/rooms/:roomId/messages", async (request, response) => {
     const input = roomMessageSchema.parse(request.body);
-    response.json({ room: await store.message(response.locals.uid as string, request.params.roomId as string, input) });
+    const room = await store.message(response.locals.uid as string, request.params.roomId as string, input);
+    if (["queued", "thinking"].includes(room.observer.status)) await schedule(room.id);
+    response.json({ room });
   });
   app.post("/api/rooms/:roomId/observer", async (request, response) => {
     const input = roomObserverSchema.parse(request.body);
-    response.json({ room: await store.control(response.locals.uid as string, request.params.roomId as string, input.action) });
+    const room = await store.control(response.locals.uid as string, request.params.roomId as string, input.action);
+    if (["queued", "thinking"].includes(room.observer.status)) await schedule(room.id);
+    response.json({ room });
   });
   app.post("/api/rooms/:roomId/prepare-draft", async (request, response) => {
     emptyRoomBody.parse(request.body ?? {});

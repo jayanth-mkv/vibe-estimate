@@ -75,7 +75,8 @@ test("separates connected backend credentials from guest frontend public Firebas
   assert.equal(frontendEnv.NEXT_PUBLIC_USE_FIREBASE_EMULATORS, "false");
   assert.equal(frontendEnv.NEXT_PUBLIC_AUTH_MODE, "guest");
   assert.equal(frontendEnv.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED, "true");
-  assert.equal(frontendEnv.NEXT_PUBLIC_API_URL, "http://127.0.0.1:8080");
+  assert.equal(frontendEnv.NEXT_PUBLIC_API_URL, "");
+  assert.equal(frontendEnv.BACKEND_ORIGIN, "http://127.0.0.1:8080");
   assert.equal(frontendEnv.NEXT_PUBLIC_FIREBASE_API_KEY, publicWebKey);
   assert.equal(frontendEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID, files.settings.firebaseProjectId);
   for (const key of Object.keys(frontendEnv)) assert.ok(!/^(?:CONNECTED_AUTH_|VERTEX_|GEMINI_|FIREBASE_|FIRESTORE_|CLOUDSDK_|GOOGLE_)/i.test(key), key);

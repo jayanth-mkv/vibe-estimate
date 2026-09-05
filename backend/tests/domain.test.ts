@@ -27,7 +27,7 @@ describe("local and production configuration boundaries", () => {
     expect(() => readConfig(input)).toThrow();
   });
   it("accepts explicit real production settings", () => {
-    expect(readConfig({ APP_ENV: "production", NODE_ENV: "production", AI_PROVIDER: "gemini", FIREBASE_PROJECT_ID: "production-test-example", GEMINI_API_KEY: "test-placeholder", GEMINI_MODEL: "chosen-model", FRONTEND_ORIGIN: "https://example.test" }).appEnv).toBe("production");
+    expect(readConfig({ APP_ENV: "production", NODE_ENV: "production", AI_PROVIDER: "gemini", FIREBASE_PROJECT_ID: "production-test-example", GEMINI_API_KEY: "test-placeholder", GEMINI_MODEL: "chosen-model", FRONTEND_ORIGIN: "https://example.test", ROOM_TASK_QUEUE: "projects/test-project/locations/asia-southeast1/queues/reviews", ROOM_TASK_SERVICE_ACCOUNT: "delivery@test-project.iam.gserviceaccount.com" }).appEnv).toBe("production");
   });
 });
 

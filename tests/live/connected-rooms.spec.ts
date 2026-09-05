@@ -5,8 +5,8 @@ import type { Analysis, Project } from "../../backend/src/types";
 import type { Room } from "../../backend/src/room-types";
 import { decodedQr } from "../e2e/qr";
 
-const api = "http://127.0.0.1:8080";
-const baseURL = "http://localhost:3000";
+const baseURL = process.env.VERIFICATION_BASE_URL || "http://localhost:3000";
+const api = baseURL;
 const authorizedProject = process.env.CONNECTED_FIREBASE_PROJECT_ID;
 const synthetic = {
   scope: "Kitchen lighting: a 3m LED strip is included in the agreed scope. Display lights are excluded and require a separate draft proposal.",
@@ -100,7 +100,7 @@ test("connected guests join by room code and preserve real Gemini shared draft r
   const healthResponse = await request.get(api + "/health");
   expect(healthResponse.ok()).toBe(true);
   const health = await healthResponse.json();
-  expect(health).toMatchObject({ status: "ok", aiProvider: "gemini", geminiTransport: "vertex", storage: "firestore", auth: "firebase", storageConnection: "cloud", runtime: "connected" });
+  expect(health).toMatchObject({ status: "ok", aiProvider: "gemini", geminiTransport: "vertex", storage: "firestore", auth: "firebase", storageConnection: "cloud", runtime: process.env.VERIFICATION_RUNTIME || "connected" });
   expect(Boolean(authorizedProject && !authorizedProject.startsWith("demo-")), "The authorized Firebase project must be supplied explicitly.").toBe(true);
 
   let messageRequests = 0;

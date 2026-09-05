@@ -43,7 +43,7 @@ describe("Firebase runtime routing", () => {
     expect(calls.directFirestore).not.toHaveBeenCalled();
     expect(apiHost(local)).toBe("127.0.0.1");
     expect(process.env.GOOGLE_CLOUD_QUOTA_PROJECT).toBe("unrelated-inherited-project");
-    const production = readConfig({ APP_ENV: "production", NODE_ENV: "production", FIREBASE_PROJECT_ID: "synthetic-production-project", FRONTEND_ORIGIN: "https://example.test", GEMINI_API_KEY: "synthetic-key", GEMINI_MODEL: "synthetic-model" });
+    const production = readConfig({ APP_ENV: "production", NODE_ENV: "production", FIREBASE_PROJECT_ID: "synthetic-production-project", FRONTEND_ORIGIN: "https://example.test", GEMINI_API_KEY: "synthetic-key", GEMINI_MODEL: "synthetic-model", ROOM_TASK_QUEUE: "projects/test-project/locations/asia-southeast1/queues/reviews", ROOM_TASK_SERVICE_ACCOUNT: "delivery@test-project.iam.gserviceaccount.com" });
     const runtime = createFirebaseRuntime(production);
     expect(calls.adc).toHaveBeenCalledTimes(1);
     expect(apiHost(production)).toBe("0.0.0.0");

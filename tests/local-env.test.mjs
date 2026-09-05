@@ -147,7 +147,8 @@ test("inherited live credentials and endpoints cannot escape into the default lo
     assert.equal(env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, "demo-vibeestimate.firebaseapp.com");
     assert.equal(env.NEXT_PUBLIC_FIREBASE_APP_ID, "demo-app");
     assert.equal(env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL, "http://127.0.0.1:9099");
-    assert.equal(env.NEXT_PUBLIC_API_URL, "http://127.0.0.1:8080");
+    assert.equal(env.NEXT_PUBLIC_API_URL, "");
+    assert.equal(env.BACKEND_ORIGIN, "http://127.0.0.1:8080");
     assert.equal(env.FRONTEND_ORIGIN, "http://127.0.0.1:3000");
     assert.equal(env.PORT, "8080");
     assert.ok(!Object.values(env).includes(fakeSecret));
@@ -185,7 +186,7 @@ test("mixed-case inherited credentials and local endpoint aliases are removed be
     assert.equal(env.AI_PROVIDER, "fixture");
     assert.equal(env.FIREBASE_PROJECT_ID, "demo-vibeestimate");
     assert.equal(env.FIRESTORE_EMULATOR_HOST, "127.0.0.1:8085");
-    assert.equal(env.NEXT_PUBLIC_API_URL, "http://127.0.0.1:8080");
+    assert.equal(env.NEXT_PUBLIC_API_URL, "");
     assert.ok(!Object.values(env).includes(fakeSecret));
     assert.deepEqual(process.env, inherited);
   } finally {

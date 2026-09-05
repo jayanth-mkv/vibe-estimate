@@ -4,7 +4,6 @@ import { geminiBackendEnv, outsideRepository } from "./gemini-config.mjs";
 import { localEnv } from "./local-env.mjs";
 
 const frontendOrigin = "http://localhost:3000";
-const publicApiUrl = "http://127.0.0.1:8080";
 const settingsKeys = new Set(["firebaseProjectId", "firestoreDatabaseId", "webConfigPath", "gcloudConfiguration", "account", "gcloudConfigDir", "authProjectId", "geminiConfigPath", "frontendOrigin"]);
 const sdkKeys = new Set(["apiKey", "authDomain", "projectId", "appId", "storageBucket", "messagingSenderId", "measurementId", "databaseURL"]);
 const systemKeys = new Map([
@@ -96,7 +95,7 @@ export function connectedEnvironments(configPath, inheritedEnv = process.env) {
     ...base, NEXT_PUBLIC_USE_FIREBASE_EMULATORS: "false", NEXT_PUBLIC_AUTH_MODE: "guest", NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "true",
     NEXT_PUBLIC_FIREBASE_PROJECT_ID: web.projectId, NEXT_PUBLIC_FIREBASE_API_KEY: web.apiKey,
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: web.authDomain, NEXT_PUBLIC_FIREBASE_APP_ID: web.appId,
-    NEXT_PUBLIC_API_URL: publicApiUrl
+    NEXT_PUBLIC_API_URL: "", BACKEND_ORIGIN: "http://127.0.0.1:8080"
   };
   for (const [field, key] of [["storageBucket", "STORAGE_BUCKET"], ["messagingSenderId", "MESSAGING_SENDER_ID"], ["measurementId", "MEASUREMENT_ID"], ["databaseURL", "DATABASE_URL"]]) {
     if (web[field] !== undefined) frontendEnv["NEXT_PUBLIC_FIREBASE_" + key] = web[field];

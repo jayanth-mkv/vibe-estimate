@@ -40,11 +40,11 @@ export class FirestoreRoomDatabase implements RoomDatabase {
     }));
   }
   async scheduledIds() {
-    const snapshot = await this.db.collection("rooms").where("observer.status", "in", ["queued", "thinking"]).get();
+    const snapshot = await this.db.collection("rooms").where("observer.status", "in", ["queued", "thinking"]).select().get();
     return snapshot.docs.map(document => document.id);
   }
   async findRoomByJoinCodeHash(hash: string) {
-    const snapshot = await this.db.collection("rooms").where("invite.codeHash", "==", hash).limit(2).get();
+    const snapshot = await this.db.collection("rooms").where("invite.codeHash", "==", hash).select().limit(2).get();
     return snapshot.docs.length === 1 ? snapshot.docs[0]!.id : undefined;
   }
 }
@@ -220,6 +220,13 @@ export class RoomStore {
   }
 
   scheduledIds() { return this.database.scheduledIds(); }
+
+  hasPendingReview(id: string) {
+    return this.database.transaction(async transaction => {
+      const room = await transaction.getRoom(id);
+      return Boolean(room?.run || room?.observer.status === "queued");
+    });
+  }
 
   /** The persisted room lease and owner lease prevent duplicate workers and tabs from spending twice. */
   async claim(id: string): Promise<ClaimedReview | undefined> {

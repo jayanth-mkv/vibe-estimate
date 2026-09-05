@@ -1,5 +1,25 @@
 # Verification status
 
+## Initial production hardening — 5 September 2026
+
+Branch: `fix/initial-production`, isolated from spatial work. Connection stage committed as `6544aeb`.
+
+Executed before deployment:
+
+- Reproduced the connected browser-origin mismatch: `localhost:3000` accepted; `127.0.0.1:3000` rejected by the old direct API preflight.
+- Five same-origin gateway/recovery tests passed; 25 local/connected configuration tests passed.
+- 156 backend tests passed, including managed-task identity denial, debounce, duplicate delivery, failed enqueue recovery and interrupted paid-lease handling.
+- 24 frontend tests passed, including independent guest recovery identities and runtime public-config field allowlisting/HTML escaping.
+- Workspace type checks, frontend lint and optimized Next.js build passed. The scoped Impeccable detector reported no findings for the changed request surfaces.
+- A separate production-build preview passed the 390-pixel mobile offline-save/retry journey against real Firebase: inputs retained, retry saved once, no horizontal overflow and no tested WCAG A/AA axe violations.
+- Terraform validation passed. The original Firebase wrapper replacement plan was blocked by `prevent_destroy`; the corrected plan imports and updates authorized domains in place. The bootstrap and foundation applies succeeded. Private configuration values were absent from the image source archive and write-only configuration was absent from the saved Terraform plan. Shared ADC hashes remained unchanged.
+
+The deployed end-to-end checks, Google consent, specific Gemini API-key evidence and genuine AI Studio build evidence are still pending at this checkpoint. See `production-readiness.md` and the inventory for the room-schema decision and cloud resources.
+
+The subsequent Cloud Build and Terraform deployment succeeded. The public service health returned HTTP 200 with `runtime: production`, Firebase authentication, cloud Firestore and Vertex. Three Firebase Rules checks also passed in an isolated local emulator, which was stopped afterward. Public end-to-end journeys remain pending. A fresh Developer API probe still returned HTTP 429/prepaid balance; it is not a working alternative to Vertex yet.
+
+## Earlier connected/local verification
+
 Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the project-local packages. **The connected two-person journey now passes with real Firebase Authentication, the operator's existing Firestore database, and Gemini 3.7 Flash through Vertex.** Earlier desktop/mobile live reviews and shared-room checks with local emulators remain separate evidence below. Guest entry requires no login form, and deployment remains deferred.
 
 The initial version is preserved at `4fa4d70` on `snapshot/initial-connected-v1`. The later `feat/spatial-home-studio` checkpoint contains [research and a complete implementation plan](spatial-home-studio-plan.md) only. No spatial app code, dependencies, uploaded plans, model calls, cloud resources or deployment were added in that stage. Its proposed 3D/recognition/performance checks are not executed results.
