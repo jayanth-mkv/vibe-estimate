@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Bot, Check, CheckCheck, ChevronDown, CircleHelp, Copy, ExternalLink, FileText, Link2, LoaderCircle, MessageCircle, Pause, Play, Send, ShieldCheck, Users, WifiOff, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bot, Check, CheckCheck, ChevronDown, CircleHelp, FileText, LoaderCircle, MessageCircle, Pause, Play, Send, ShieldCheck, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Room, RoomObserver, SharedDraft } from "@/lib/room-types";
 import type { PendingMessage } from "./room-workspace";
+import { RoomInvitation } from "./room-invitation";
 import styles from "./room.module.css";
 
 interface Props {
@@ -20,6 +21,9 @@ interface Props {
   connectionError: string;
   inviteOpen: boolean;
   inviteHref: string;
+  joinCode: string;
+  environmentLabel: string;
+  googleAvailable: boolean;
   local: boolean;
   composerRef: RefObject<HTMLTextAreaElement | null>;
   onTextChange: (value: string) => void;
@@ -29,6 +33,8 @@ interface Props {
   onToggleInvite: () => void;
   onCreateInvite: () => void;
   onCopyInvite: () => void;
+  onCopyCode: () => void;
+  onGoogle: () => void;
   onPrepareDraft: () => void;
   onShareDraft: () => void;
   onNavigate: (href: string) => void;
@@ -61,7 +67,7 @@ const suggestions = {
 };
 
 export function RoomView(props: Props) {
-  const { room, text, pending, busy, notice, actionError, connectionError, inviteOpen, inviteHref, local, composerRef, onTextChange, onSend, onRetryMessage, onObserver, onToggleInvite, onCreateInvite, onCopyInvite, onPrepareDraft, onShareDraft, onNavigate } = props;
+  const { room, text, pending, busy, notice, actionError, connectionError, inviteOpen, inviteHref, joinCode, environmentLabel, googleAvailable, local, composerRef, onTextChange, onSend, onRetryMessage, onObserver, onToggleInvite, onCreateInvite, onCopyInvite, onCopyCode, onGoogle, onPrepareDraft, onShareDraft, onNavigate } = props;
   const [panel, setPanel] = useState("conversation");
   const [unreadMessages, setUnreadMessages] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
@@ -100,7 +106,7 @@ export function RoomView(props: Props) {
     <a className="skip-link" href="#room-main">Skip to project room</a>
     <header className={styles.header}>
       <Link className="brand" href="/" onClick={(event) => { event.preventDefault(); onNavigate("/"); }}><span className="brand-mark"><CheckCheck size={19} aria-hidden="true" /></span>VibeEstimate</Link>
-      <div className={styles.headerRight}><span className={styles.viewBadge}>{designer ? "Designer view" : "Client view"}</span><Link className={styles.tourLink} href="/welcome" onClick={(event) => { event.preventDefault(); onNavigate("/welcome"); }}>Product tour</Link></div>
+      <div className={styles.headerRight}><span className={styles.viewBadge}>{designer ? "Designer view" : "Client view"}</span>{googleAvailable ? <Button className={`button text-button ${styles.googleAccess}`} disabled={!!busy} onClick={onGoogle}>{busy === "google" ? "Connecting…" : "Save access with Google"}</Button> : <Link className={styles.tourLink} href="/welcome" onClick={(event) => { event.preventDefault(); onNavigate("/welcome"); }}>Product tour</Link>}</div>
     </header>
 
     <main id="room-main" className={styles.main}>
@@ -110,7 +116,7 @@ export function RoomView(props: Props) {
           <h1>{room.name}</h1>
           <p>One conversation. A clearer scope. Every draft kept.</p>
         </div>
-        {designer && <Button className="button secondary" onClick={onToggleInvite} aria-expanded={inviteOpen} aria-controls="room-invite"><Users size={17} aria-hidden="true" />{room.clientJoined ? "Client access" : "Invite client"}</Button>}
+        {designer && <RoomInvitation roomId={room.id} clientJoined={room.clientJoined} open={inviteOpen} inviteHref={inviteHref} joinCode={joinCode} busy={!!busy} local={local} notice={notice} error={actionError} onOpenChange={onToggleInvite} onCreate={onCreateInvite} onCopyLink={onCopyInvite} onCopyCode={onCopyCode} />}
       </div>
 
       <div className={styles.roomPeople} aria-label="Room participants">
@@ -119,15 +125,6 @@ export function RoomView(props: Props) {
         <span className={styles.agentPerson}><i className={styles.agentAvatar}><Bot size={16} aria-hidden="true" /></i><strong>Scope agent</strong><small>{agent.status === "paused" ? "Paused" : agent.status === "error" || agent.status === "limit" ? "Needs attention" : "Observes messages"}</small></span>
         <span className={styles.connection} role="status">{connectionError ? <><WifiOff size={14} aria-hidden="true" />Reconnecting</> : <><Check size={14} aria-hidden="true" />Room synced</>}</span>
       </div>
-
-      {inviteOpen && designer && <section id="room-invite" className={styles.invitePanel} aria-labelledby="invite-title">
-        <div><h2 id="invite-title">{room.clientJoined ? "Your client has joined." : "Bring your client into the conversation."}</h2><p>{room.clientJoined ? "The client view opens separately, with access to this conversation and the drafts you share." : "The link shares this room’s agreed scope, source conversation, and future messages with one client. Private draft work stays with you until you share it."}</p></div>
-        <div className={styles.inviteActions}>
-          {room.clientJoined ? local && <Button asChild className="button primary"><a href={`/client/rooms/${encodeURIComponent(room.id)}`} target="_blank" rel="noopener noreferrer">Open client demo<ExternalLink size={15} aria-hidden="true" /></a></Button> : inviteHref ? <><Button className="button secondary" onClick={onCopyInvite}><Copy size={15} aria-hidden="true" />Copy invite link</Button><Button asChild className="button primary"><a href={inviteHref} target="_blank" rel="noopener noreferrer">{local ? "Open client demo" : "Open client invitation"}<ExternalLink size={15} aria-hidden="true" /></a></Button></> : <Button className="button primary" disabled={!!busy} onClick={onCreateInvite}><Link2 size={16} aria-hidden="true" />{busy === "invite" ? "Creating link…" : "Create invite link"}</Button>}
-          <Button className={`button text-button ${styles.closeInvite}`} aria-label="Close invitation panel" onClick={onToggleInvite}><X size={18} aria-hidden="true" /></Button>
-        </div>
-        {local && <p className={styles.inviteHint}>Demo tip: place the two tabs side by side. Each view is a different signed-in person; send a message to see it arrive in the other view.</p>}
-      </section>}
 
       {connectionError && <p className={styles.reconnect} role="status"><WifiOff size={16} aria-hidden="true" />{connectionError}</p>}
       {actionError && <p className={styles.error} role="alert">{actionError}</p>}
@@ -192,7 +189,7 @@ export function RoomView(props: Props) {
           </TabsContent>
         </div>
       </Tabs>
-      <footer className={styles.footer}><span>{local ? "Local room" : "Private project room"} · {agent.provider === "gemini" ? "Gemini enabled" : "Sample agent"}</span><span>Drafts are for review · Approval not collected</span></footer>
+      <footer className={styles.footer}><span>{environmentLabel}</span><span>Drafts are for review · Approval not collected</span></footer>
     </main>
   </div>;
 }

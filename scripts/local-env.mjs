@@ -7,10 +7,10 @@ const privateEnvironmentKeys = new Set([
   "GOOGLE_APPLICATION_CREDENTIALS", "GOOGLE_CREDENTIALS", "GOOGLE_CLOUD_KEYFILE_JSON", "GCLOUD_KEYFILE_JSON",
   "GOOGLE_OAUTH_ACCESS_TOKEN", "TF_VAR_ACCESS_TOKEN", "TF_VAR_GEMINI_API_KEY", "FIREBASE_CONFIG", "FIREBASE_TOKEN",
   "GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_TRANSPORT", "GOOGLE_API_KEY", "GOOGLE_GENAI_USE_VERTEXAI",
-  "GOOGLE_GENAI_USE_ENTERPRISE", "CLOUDSDK_CONFIG"
+  "GOOGLE_GENAI_USE_ENTERPRISE", "CLOUDSDK_CONFIG", "FIRESTORE_DATABASE_ID", "GOOGLE_CLOUD_QUOTA_PROJECT"
 ]);
-export function localEnv() {
-  const env = { ...process.env };
+export function localEnv(inherited = process.env) {
+  const env = { ...inherited };
   const local = {
     APP_ENV: "local",
     AI_PROVIDER: "fixture",
@@ -22,6 +22,8 @@ export function localEnv() {
     FRONTEND_ORIGIN: "http://127.0.0.1:3000",
     PORT: "8080",
     NEXT_PUBLIC_USE_FIREBASE_EMULATORS: "true",
+    NEXT_PUBLIC_AUTH_MODE: "google",
+    NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "false",
     NEXT_PUBLIC_FIREBASE_PROJECT_ID: "demo-vibeestimate",
     NEXT_PUBLIC_FIREBASE_API_KEY: "demo-key",
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "demo-vibeestimate.firebaseapp.com",
@@ -45,7 +47,7 @@ export function localEnv() {
   const localKeys = new Set(Object.keys(local).map(key => key.toUpperCase()));
   for (const key of Object.keys(env)) {
     const normalized = key.toUpperCase();
-    if (normalized.startsWith("CLOUDSDK_AUTH_") || normalized.startsWith("VERTEX_") ||
+    if (normalized.startsWith("CLOUDSDK_AUTH_") || normalized.startsWith("VERTEX_") || normalized.startsWith("CONNECTED_AUTH_") || normalized.startsWith("NEXT_PUBLIC_") ||
         privateEnvironmentKeys.has(normalized) || localKeys.has(normalized)) delete env[key];
   }
   Object.assign(env, local);

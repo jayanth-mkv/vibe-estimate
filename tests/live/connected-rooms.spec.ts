@@ -3,8 +3,11 @@ import AxeBuilder from "@axe-core/playwright";
 import fs from "node:fs/promises";
 import type { Analysis, Project } from "../../backend/src/types";
 import type { Room } from "../../backend/src/room-types";
+import { decodedQr } from "../e2e/qr";
 
 const api = "http://127.0.0.1:8080";
+const baseURL = "http://localhost:3000";
+const authorizedProject = process.env.CONNECTED_FIREBASE_PROJECT_ID;
 const synthetic = {
   scope: "Kitchen lighting: a 3m LED strip is included in the agreed scope. Display lights are excluded and require a separate draft proposal.",
   messages: "Client: I would like to discuss display lighting.\nDesigner: We will confirm any additional scope, quantity and unit price in our shared room.\nClient: The kitchen LED strip stays in the original scope. No additional work has been approved.",
@@ -13,17 +16,48 @@ const synthetic = {
   description: "Matte white display lights"
 };
 type Headers = { Authorization: string };
+type SafeApi = Pick<APIRequestContext, "get" | "post">;
 const responseFor = (path: string, method: string) => (response: Response) => response.url() === api + path && response.request().method() === method;
 
-test.skip(process.env.LIVE_GEMINI_TEST !== "1", "Use the explicit live runner with Gemini and local Firebase emulators.");
+test.skip(process.env.CONNECTED_FIREBASE_TEST !== "1", "Use the explicit connected Firebase runner.");
+test.use({ baseURL, trace: "off", screenshot: "off", video: "off" });
 
-async function readRoom(request: APIRequestContext, path: string, headers: Headers): Promise<Room> {
+function guestClaims(authorization: string) {
+  // Inspect only in memory. Boolean assertions keep credentials, UID and the
+  // private project configuration out of Playwright failure output.
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  let claims: { aud?: string; iss?: string; sub?: string; firebase?: { sign_in_provider?: string } } = {};
+  try { claims = JSON.parse(Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8")); }
+  catch { throw new Error("The UI did not supply a valid Firebase identity token."); }
+  expect(Boolean(claims.aud === authorizedProject), "The UI identity must belong to the explicitly authorized Firebase project.").toBe(true);
+  expect(Boolean(claims.iss === "https://securetoken.google.com/" + authorizedProject)).toBe(true);
+  expect(Boolean(claims.firebase?.sign_in_provider === "anonymous"), "Guest access must use real Firebase anonymous authentication.").toBe(true);
+  expect(Boolean(claims.sub)).toBe(true);
+  return claims;
+}
+
+function safeApi(raw: APIRequestContext): SafeApi {
+  // APIRequestContext network errors can include a request-header call log.
+  // Replace those exceptions before they reach the reporter.
+  return {
+    async get(...args) {
+      try { return await raw.get(...args); }
+      catch { throw new Error("The connected API read failed; request credentials are withheld."); }
+    },
+    async post(...args) {
+      try { return await raw.post(...args); }
+      catch { throw new Error("The connected API write failed; request credentials are withheld."); }
+    }
+  };
+}
+
+async function readRoom(request: SafeApi, path: string, headers: Headers): Promise<Room> {
   const response = await request.get(api + path, { headers });
   expect(response.ok()).toBe(true);
   return (await response.json()).room;
 }
 
-async function reviewedRoom(request: APIRequestContext, path: string, headers: Headers, count: number) {
+async function reviewedRoom(request: SafeApi, path: string, headers: Headers, count: number) {
   await expect.poll(async () => {
     const room = await readRoom(request, path, headers);
     expect(room.observer.provider, "Fixture output cannot satisfy live-room verification.").toBe("gemini");
@@ -59,13 +93,15 @@ async function send(page: Page, path: string, text: string) {
   await expect(page.getByLabel("Message the room", { exact: true })).toHaveValue("");
 }
 
-test("live shared room observes two people and preserves owner-priced shared draft revisions", async ({ page, browser, request }, testInfo) => {
+test("connected guests join by room code and preserve real Gemini shared draft revisions", async ({ page, browser, request: rawRequest }, testInfo) => {
   test.skip(testInfo.project.name.includes("mobile"), "The additional paid room journey is desktop-only.");
   test.setTimeout(210000);
+  const request = safeApi(rawRequest);
   const healthResponse = await request.get(api + "/health");
   expect(healthResponse.ok()).toBe(true);
   const health = await healthResponse.json();
-  expect(health).toMatchObject({ status: "ok", aiProvider: "gemini", geminiTransport: "vertex", storage: "firestore", auth: "emulator" });
+  expect(health).toMatchObject({ status: "ok", aiProvider: "gemini", geminiTransport: "vertex", storage: "firestore", auth: "firebase", storageConnection: "cloud", runtime: "connected" });
+  expect(Boolean(authorizedProject && !authorizedProject.startsWith("demo-")), "The authorized Firebase project must be supplied explicitly.").toBe(true);
 
   let messageRequests = 0;
   let blockedRequests = 0;
@@ -89,10 +125,18 @@ test("live shared room observes two people and preserves owner-priced shared dra
   await page.route(api + "/api/**", guard);
 
   try {
-    await page.goto("/");
-    await expect(page.getByText("Local workspace · Gemini enabled", { exact: true })).toBeVisible();
+    const initialList = page.waitForResponse(responseFor("/api/projects", "GET"));
+    await page.goto(baseURL);
+    expect(new URL(page.url()).origin).toBe(baseURL);
+    await expect(page.getByText("Cloud workspace · Gemini enabled", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign in", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Sign out", exact: true })).toHaveCount(0);
+    const initialListResponse = await initialList;
+    expect(initialListResponse.ok()).toBe(true);
+    const initialIdentity = guestClaims(await initialListResponse.request().headerValue("authorization") ?? "");
+    expect((await initialListResponse.json()).projects, "This journey must start with its own fresh guest workspace.").toHaveLength(0);
     await page.getByRole("button", { name: "Start a project", exact: true }).click();
-    await page.getByLabel("Project name", { exact: true }).fill("Synthetic live shared lighting");
+    await page.getByLabel("Project name", { exact: true }).fill("Synthetic connected lighting " + new Date().toISOString());
     await page.getByLabel("Agreed scope", { exact: true }).fill(synthetic.scope);
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     await page.getByLabel("Client messages", { exact: true }).fill(synthetic.messages);
@@ -103,6 +147,7 @@ test("live shared room observes two people and preserves owner-priced shared dra
     const original = (await createdResponse.json()).project as Project;
     const ownerAuthorization = await createdResponse.request().headerValue("authorization");
     expect(Boolean(ownerAuthorization?.startsWith("Bearer "))).toBe(true);
+    expect(guestClaims(ownerAuthorization!).sub === initialIdentity.sub, "Creating a project must retain the guest identity established on entry.").toBe(true);
     owner = { Authorization: ownerAuthorization! };
     const started = page.waitForResponse(responseFor("/api/projects/" + original.id + "/room", "POST"));
     await page.getByRole("button", { name: "Start shared room", exact: true }).click();
@@ -114,24 +159,34 @@ test("live shared room observes two people and preserves owner-priced shared dra
     await expect(page.getByText("Designer view", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Invite client", exact: true }).click();
     await page.getByRole("button", { name: "Create invite link", exact: true }).click();
-    const invitation = page.getByRole("link", { name: "Open client demo", exact: true });
+    const invitation = page.getByRole("link", { name: "Open client view", exact: true });
     await expect(invitation).toBeVisible();
     const inviteHref = await invitation.getAttribute("href");
     expect(Boolean(inviteHref)).toBe(true);
     const inviteUrl = new URL(inviteHref!, page.url());
-    expect(inviteUrl.origin).toBe("http://127.0.0.1:3000");
+    expect(inviteUrl.origin).toBe(baseURL);
+    expect((await decodedQr(page.getByRole("img", { name: "Scan to join the project room", exact: true }))) === inviteUrl.toString(), "The actual QR pixels must encode the current invitation.").toBe(true);
+    const joinCode = (await page.getByRole("dialog").getByLabel("Room code", { exact: true }).innerText()).replace(/-/g, "");
+    expect(/^[0-9A-HJKMNP-TV-Z]{12}$/.test(joinCode)).toBe(true);
     await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
 
     clientContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await clientContext.route(api + "/api/**", guard);
     const clientPage = await clientContext.newPage();
-    const joined = clientPage.waitForResponse(responseFor(roomPath + "/join", "POST"));
-    await clientPage.goto(inviteUrl.toString());
+    await clientPage.goto(baseURL + "/join");
+    await expect(clientPage.getByRole("heading", { name: "Join your project room.", exact: true })).toBeVisible();
+    await clientPage.getByLabel("Room code", { exact: true }).fill(joinCode.toLowerCase().match(/.{4}/g)!.join(" - "));
+    const joined = clientPage.waitForResponse(responseFor("/api/rooms/join", "POST"));
+    await clientPage.getByRole("button", { name: "Join room", exact: true }).focus();
+    await clientPage.keyboard.press("Enter");
     const joinedResponse = await joined;
     expect(joinedResponse.ok()).toBe(true);
     const clientAuthorization = await joinedResponse.request().headerValue("authorization");
     expect(Boolean(clientAuthorization?.startsWith("Bearer "))).toBe(true);
     expect(clientAuthorization !== ownerAuthorization).toBe(true);
+    const ownerClaims = guestClaims(ownerAuthorization!);
+    const clientClaims = guestClaims(clientAuthorization!);
+    expect(ownerClaims.sub !== clientClaims.sub, "Independent browser guests must have different Firebase identities.").toBe(true);
     const client = { Authorization: clientAuthorization! };
     await expect(clientPage.getByText("Client view", { exact: true })).toBeVisible();
     await expect.poll(() => new URL(clientPage.url()).hash === "").toBe(true);
@@ -147,7 +202,7 @@ test("live shared room observes two people and preserves owner-priced shared dra
     const firstReview = firstRoom.observer.analysis!;
     expect(firstReview.questions.join(" ")).toMatch(/price|rate|cost/i);
     expect([firstReview.summary, ...firstReview.proposed].join(" ")).toMatch(/matte[ -]+white/i);
-    await testInfo.attach("first-live-room-observation", { body: JSON.stringify(firstRoom.observer, null, 2), contentType: "application/json" });
+    await testInfo.attach("first-connected-room-observation", { body: JSON.stringify(firstRoom.observer, null, 2), contentType: "application/json" });
 
     await send(page, roomPath, synthetic.designerMessage);
     await expect(clientPage.getByRole("log", { name: "Room conversation", exact: true }).getByText(synthetic.designerMessage, { exact: true })).toBeVisible();
@@ -164,8 +219,6 @@ test("live shared room observes two people and preserves owner-priced shared dra
     await expect(page.getByText("Review up to date", { exact: true })).toBeVisible();
     await accessible(page);
     await accessible(clientPage);
-    await page.screenshot({ path: testInfo.outputPath("live-designer-room-review.png"), fullPage: true });
-    await clientPage.screenshot({ path: testInfo.outputPath("live-client-room-review.png"), fullPage: true });
 
     const prepared = page.waitForResponse(responseFor(roomPath + "/prepare-draft", "POST"));
     await page.getByRole("button", { name: "Prepare draft", exact: true }).click();
@@ -185,6 +238,11 @@ test("live shared room observes two people and preserves owner-priced shared dra
     sourceLinked(secondReview, frozen);
     expect(frozen.analysis).toEqual(secondReview);
     const projectPath = "/api/projects/" + frozen.id;
+    for (const id of [original.id, frozen.id]) {
+      expect((await request.get(api + "/api/projects/" + id, { headers: client })).status()).toBe(404);
+      expect((await request.get(api + "/api/projects/" + id + "/export", { headers: client })).status()).toBe(404);
+    }
+    expect((await readRoom(request, roomPath, client)).sharedDrafts).toHaveLength(0);
     await page.getByRole("button", { name: "Continue to draft", exact: true }).click();
     await expect(page.getByLabel("Quantity", { exact: true })).toHaveValue("");
     await expect(page.getByLabel("Confirmed unit price (₹)", { exact: true })).toHaveValue("");
@@ -201,6 +259,12 @@ test("live shared room observes two people and preserves owner-priced shared dra
     const firstProject = (await savedResponse.json()).project as Project;
     expect(firstProject.proposals).toHaveLength(1);
     expect(firstProject.proposals[0]).toMatchObject({ quantity: 6, unitPricePaise: 200050, totalPaise: 1200300, status: "draft" });
+    expect((await readRoom(request, roomPath, client)).sharedDrafts, "Saving a private draft must not silently share it with the client.").toHaveLength(0);
+    const replay = await request.post(api + projectPath + "/proposals", {
+      headers: owner, data: savedResponse.request().postDataJSON()
+    });
+    expect(replay.ok()).toBe(true);
+    expect((await replay.json()).project.proposals).toEqual(firstProject.proposals);
     await expect(page.getByRole("heading", { name: "Your saved draft", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Back to room", exact: true }).click();
     await page.getByRole("button", { name: "Share saved draft", exact: true }).click();
@@ -209,12 +273,16 @@ test("live shared room observes two people and preserves owner-priced shared dra
     expect(sharedOnce.sharedDrafts).toHaveLength(1);
     expect(sharedOnce.sharedDrafts[0]).toMatchObject({ version: 1, quantity: 6, unitPricePaise: 200050, totalPaise: 1200300, messageCount: 2 });
     const firstSnapshot = structuredClone(sharedOnce.sharedDrafts[0]);
+    const shareReplay = await request.post(api + roomPath + "/share-draft", { headers: owner, data: {} });
+    expect(shareReplay.ok()).toBe(true);
+    expect((await shareReplay.json()).room.sharedDrafts).toEqual(sharedOnce.sharedDrafts);
 
     // Revise the same owner project without posting another room message.
     await page.getByRole("link", { name: "Open private draft workspace", exact: true }).click();
     await expect(page.getByLabel("Quantity", { exact: true })).toHaveValue("6");
     await page.getByLabel("Quantity", { exact: true }).fill("4");
     await expect(page.locator("output")).toHaveText("₹8,002");
+    await expect(page.getByRole("button", { name: "Download draft", exact: true })).toBeDisabled();
     const revised = page.waitForResponse(responseFor(projectPath + "/proposals", "POST"));
     await page.getByRole("button", { name: "Save revision", exact: true }).click();
     const revisedResponse = await revised;
@@ -223,6 +291,7 @@ test("live shared room observes two people and preserves owner-priced shared dra
     expect(revisionProject.proposals).toHaveLength(2);
     expect(revisionProject.proposals[0]).toEqual({ ...firstProject.proposals[0], status: "superseded" });
     expect(revisionProject.proposals[1]).toMatchObject({ quantity: 4, unitPricePaise: 200050, totalPaise: 800200, status: "draft" });
+    expect((await readRoom(request, roomPath, client)).sharedDrafts, "A saved revision remains private until the designer shares it.").toEqual([firstSnapshot]);
     await expect(page.getByRole("row", { name: /Draft 1/ })).toContainText("₹12,003");
     await expect(page.getByRole("row", { name: /Draft 2/ })).toContainText("₹8,002");
     await page.reload();
@@ -244,8 +313,14 @@ test("live shared room observes two people and preserves owner-priced shared dra
     await page.getByRole("button", { name: "Back to room", exact: true }).click();
     await page.getByRole("button", { name: "Share saved draft", exact: true }).click();
     await expect(clientPage.getByRole("article", { name: "Shared draft 2", exact: true })).toContainText("₹8,002");
+    const ownerReload = page.waitForResponse(responseFor(roomPath, "GET"));
     await page.reload();
+    const clientReload = clientPage.waitForResponse(responseFor(roomPath, "GET"));
     await clientPage.reload();
+    const reloadedOwnerAuthorization = await (await ownerReload).request().headerValue("authorization");
+    const reloadedClientAuthorization = await (await clientReload).request().headerValue("authorization");
+    expect(guestClaims(reloadedOwnerAuthorization ?? "").sub === ownerClaims.sub, "Reload must retain the designer's anonymous identity.").toBe(true);
+    expect(guestClaims(reloadedClientAuthorization ?? "").sub === clientClaims.sub, "Reload must retain the client's anonymous identity.").toBe(true);
     for (const current of [page, clientPage]) {
       await expect(current.getByRole("article", { name: "Shared draft 1", exact: true })).toContainText("₹12,003");
       await expect(current.getByRole("article", { name: "Shared draft 2", exact: true })).toContainText("₹8,002");
@@ -258,19 +333,25 @@ test("live shared room observes two people and preserves owner-priced shared dra
     expect(retained.observer).toMatchObject({ provider: "gemini", status: "ready", reviewedMessageCount: 2, callsUsed: 2 });
     expect(retained.observer.analysis).toEqual(secondReview);
     expect(retained.messages).toHaveLength(2);
+    const persisted = await request.get(api + projectPath, { headers: owner });
+    expect(persisted.ok()).toBe(true);
+    const persistedProject = (await persisted.json()).project as Project;
+    expect(persistedProject.proposals).toEqual(revisionProject.proposals);
+    expect(persistedProject.analysis).toEqual(secondReview);
+    expect(persistedProject.messages).toBe(frozen.messages);
     expect((await request.get(api + projectPath, { headers: client })).status()).toBe(404);
     expect((await request.get(api + projectPath + "/export", { headers: client })).status()).toBe(404);
     const originalAgain = await request.get(api + "/api/projects/" + original.id, { headers: owner });
     expect((await originalAgain.json()).project).toMatchObject({ scope: synthetic.scope, messages: synthetic.messages, proposals: [] });
     expect(messageRequests).toBe(2);
     expect(blockedRequests).toBe(0);
-    await clientPage.screenshot({ path: testInfo.outputPath("live-client-shared-revisions.png"), fullPage: true });
-    await testInfo.attach("live-shared-room-verification", { body: JSON.stringify({
+    await testInfo.attach("connected-shared-room-verification", { body: JSON.stringify({
       verifiedAt: new Date().toISOString(), health, messageRequests, observerCalls: retained.observer.callsUsed,
+      roomId: room.id, originalProjectId: original.id, draftProjectId: frozen.id,
       sources: { scope: synthetic.scope, messages: synthetic.messages }, roomMessages: retained.messages,
       firstReview, secondReview, frozenSources: { scope: frozen.scope, messages: frozen.messages },
       proposals: revisionProject.proposals, sharedDrafts: retained.sharedDrafts,
-      checks: ["independent emulator identities", "two real Gemini observations", "exact source quotes", "owner-confirmed price", "integer-paise totals", "immutable shared snapshots", "preserved revision", "client access denial", "reload persistence", "export", "keyboard and accessibility"]
+      checks: ["independent real Firebase guest identities", "scannable QR and room-code join", "real Firestore persistence", "two real Gemini observations", "exact source quotes", "owner-confirmed price", "integer-paise totals", "private until explicitly shared", "idempotent save and share", "immutable shared snapshots", "preserved revision", "client access denial", "guest identity retained on reload", "reload persistence", "export", "keyboard and accessibility"]
     }, null, 2), contentType: "application/json" });
     await testInfo.attach("synthetic-room-draft-export", { body: exported, contentType: "text/plain" });
   } finally {

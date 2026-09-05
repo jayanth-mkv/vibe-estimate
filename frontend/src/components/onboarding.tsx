@@ -17,6 +17,10 @@ type HomeProps = {
   busy: boolean;
   available: boolean;
   fixture: boolean;
+  guest: boolean;
+  cloud: boolean;
+  googleContinue: boolean;
+  onGoogleContinue: () => void;
   onNew: () => void;
   onExample: (source: SourceInput) => void;
   onOpen: (project: Project) => void;
@@ -51,6 +55,10 @@ export function Home({
   busy,
   available,
   fixture,
+  guest,
+  cloud,
+  googleContinue,
+  onGoogleContinue,
   onNew,
   onExample,
   onOpen,
@@ -104,12 +112,13 @@ export function Home({
           <div className={styles.sectionHeading}>
             <div>
               <h1 id="projects-heading">Your projects</h1>
-              <p>Pick up where you left off.</p>
+              <p>{guest ? cloud ? "Saved online. Pick up where you left off in this browser." : "Pick up where you left off in this browser." : "Pick up where you left off."}</p>
             </div>
             <Button type="button" className={styles.primaryButton} onClick={onNew} disabled={busy}>
               <Plus aria-hidden="true" /> New project
             </Button>
           </div>
+          {guest && <p className={styles.guestNote}>No account setup needed. Keep using this browser to return to your private projects.</p>}
           <div className={styles.listToolbar}>
             <h2>Recent projects</h2>
             <Button
@@ -174,12 +183,13 @@ export function Home({
               </Button>
             )}
           </div>
+          {googleContinue && <div className={styles.returningGoogle}><p>Returning to work you saved with Google?</p><Button type="button" variant="ghost" className={styles.quietButton} disabled={busy || !available} onClick={onGoogleContinue}>Continue with Google</Button></div>}
         </section>
       )}
       <section className={styles.roomIntro} aria-labelledby="room-intro-heading">
         <div className={styles.roomPeople} aria-label="Designer, client and observing agent"><span>D<small>Designer</small></span><i aria-hidden="true">↔</i><span>C<small>Client</small></span><i aria-hidden="true">+</i><span>V<small>Agent</small></span></div>
         <div className={styles.roomIntroCopy}><h2 id="room-intro-heading">Make the change clear, together.</h2><p>A shared room for you and your client, with an agent keeping track of scope and open questions.</p></div>
-        <Button type="button" className={styles.roomButton} disabled={busy || !available} onClick={onRoomDemo}>Try a shared room<ArrowRight size={16} aria-hidden="true" /></Button>
+        <div className={styles.roomActions}><Button type="button" className={styles.roomButton} disabled={busy || !available} onClick={onRoomDemo}>Try a shared room<ArrowRight size={16} aria-hidden="true" /></Button><Link href="/join" className={styles.joinRoomLink}>Join a room<ArrowRight size={15} aria-hidden="true" /></Link></div>
       </section>
       {returning ? (
         <details className={styles.exampleDisclosure}>

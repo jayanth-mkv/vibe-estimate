@@ -2,7 +2,9 @@
 
 Backend: Express + TypeScript, port 8080. Frontend: Next.js, port 3000. All protected routes require Authorization: Bearer <Firebase ID token>. Firebase Auth emulator 9099; Firestore emulator 8085; emulator UI 4000; local project demo-vibeestimate. No production data in the local test suite.
 
-GET /health → { status: "ok", aiProvider: "fixture" | "gemini", storage: "firestore", auth: "emulator" | "firebase" }.
+GET /health → { status: "ok", aiProvider: "fixture" | "gemini", storage: "firestore", auth: "emulator" | "firebase", storageConnection: "emulator" | "cloud", runtime: "local" | "connected" | "production", geminiTransport?: "vertex" | "developer" }.
+
+The separately authorized connected development runtime uses real Firebase Authentication and Firestore with explicit private project/profile configuration. An anonymous Firebase identity is still authenticated and has the same ownership enforcement as a Google-linked identity. Invalid or revoked identity returns 401; an upstream sign-in verification outage returns a sanitized 503 so the frontend retains the current identity.
 
 GET /api/projects → { projects: Project[] }.
 POST /api/projects with { name, scope, messages } → 201 { project: Project }.

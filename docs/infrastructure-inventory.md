@@ -32,12 +32,23 @@ The requested `gemini-3.7-flash` was confirmed in the authorized Vertex model ca
 | Component | Evidence | State in this setup |
 |---|---|---|
 | Backend GCP project | Named profile/project and compute region verified by the parent setup process | Existing; not imported or modified |
-| Firebase project and web app | Supplied web configuration and explicit user confirmation; deliberately distinct from backend project | Existing according to supplied configuration; auth providers, database and rules still require live discovery |
+| Firebase project and web app | Explicitly authorized separate Firebase project; one existing web app and matching SDK configuration discovered | Existing, unchanged; private identifiers and SDK configuration retained outside the checkout |
+| Firestore database | Existing native Standard `(default)` database; actual location and settings recorded privately | User-created; no replacement, import or settings change by this work |
+| Firebase Authentication | Read-only verification confirms Anonymous, Email/Password and Google enabled after the operator enabled them | Existing/user-configured; no agent-created provider, OAuth client or Terraform Auth change |
+| Firebase authorized domains | Existing list includes localhost, which the connected launcher uses | Existing, unchanged; hosted origins remain a deployment task |
+| Firestore rules | Existing release denies all client reads and writes | Existing, unchanged; backend uses explicit privileged authentication and enforces ownership |
+| Firebase project billing | Verified disabled; existing initialized Auth and default database can be used for this connection | No billing link or upgrade performed |
 | Cloud Build connection | User supplied an existing regional GitHub connection | Existing according to user; full repository child and trigger inventory not yet verified |
-| Billing | Cloud Billing readback reports enabled; Developer API reports depleted prepaid balance; Vertex generation succeeds | No billing account changes or prepaid purchases; individual credit deductions have not been reconciled against a billing report |
+| Backend project billing | Cloud Billing readback reports enabled; Developer API reports depleted prepaid balance; Vertex generation succeeds | No billing account changes or prepaid purchases; individual credit deductions have not been reconciled against a billing report |
 | Local emulators | Separate `demo-` project configured in application setup | Local test resources only, not the production Firebase project |
 
 Backend region, Cloud Build connection region and Firestore location are separate values. Use the verified backend region from private configuration. Discover Firestore's existing location; never infer it from either compute region.
+
+### Connected Firebase development
+
+The user explicitly requested using the existing database after the emulator-only Gemini checkpoint. Discovery verified the authorized profile's existing Firestore data permissions and Firebase Auth read permissions. The operator initialized the auth providers themselves. The connected application therefore needs **zero new cloud resources, imports, IAM grants, API enables, provider changes, rules changes or billing upgrades**. The six Gemini Terraform resources remain the only resources created by this work. Synthetic test users and documents created through the application are application data, not infrastructure provisioning. Any future management of the existing database, providers or rules must first adopt them through Terraform.
+
+An initial auth discovery query returned an unnecessary password-hashing parameter in tool output. The query was restricted immediately to explicit provider flags, the private metadata record was replaced with sanitized fields, and no such parameter was written to repository files. Subsequent discovery prints only safe configuration flags and counts.
 
 ## Prepared Terraform resources
 

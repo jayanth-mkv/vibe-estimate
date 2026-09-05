@@ -10,12 +10,15 @@ Genuine Vertex runs now verify two-turn Gemini reviews and the resulting draft/r
 | --- | --- | --- |
 | AI Studio custom instructions | A genuine settings record showing the security instructions, app identity, and date before the relevant build | No settings or build-history evidence available in this checkout |
 | Original enhancement through AI Studio | Actual prompt, response/build history, resulting source change, and before/after walkthrough for source review, clarification, or revisions | The app implements these features; AI Studio authorship is not established |
-| Live Firebase and Firestore | Federated sign-in from the deployed frontend, reload, and cross-user denial with production configuration | Deferred; current verification uses emulators |
+| Live Firebase and Firestore | Real identities, reload, cross-user denial and deployed frontend configuration | Anonymous and Google providers verified enabled; connected application verification tracked separately in verification.md; deployment deferred |
+| Google SSO | Genuine Google consent/sign-in and retained ownership in the application | Optional guest-to-Google linking and returning account entry implemented; real consent not yet verified |
 | Secret Manager runtime use | Terraform-managed Gemini API-key secret version, narrow runtime access, and working injection into the deployed backend | Deferred; local Vertex OAuth and private JSON are not this evidence |
 | Cloud Run | Verified deployed service, image digest, health/task checks, and `dev-tutorial=cloud-run-ai-challenge` | Deferred |
 | Submission assets | Public source, working URL or genuine walkthrough, social/demo link, and required hashtag | No publication or submission performed |
 
 The supplied dashboard snapshot gives **6 September 2026, 11:59 PM IST** as the deadline and a 1,024-character description limit. These are supplied snapshot values, not a fresh authenticated dashboard check. Confirm them before submitting. A walkthrough can document a deployment that is subsequently stopped; it does not remove the need to verify the deployed application.
+
+The official codelab explicitly calls for Google Sign-In and single sign-on usability. The product therefore offers Google access alongside entry without a login wall; an anonymous identity still receives server ownership checks. Linking an anonymous Firebase user to Google preserves its UID and associated work, following [Firebase's anonymous-account guidance](https://firebase.google.com/docs/auth/web/anonymous-auth). The enabled Email/Password provider does not add a password form to the product.
 
 ## Preserve an authentic record
 

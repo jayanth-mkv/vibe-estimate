@@ -239,6 +239,7 @@ test("live source review, owner clarification, private saved draft and preserved
     contentType: "application/json"
   });
   await testInfo.attach("synthetic-draft-export", { body: exported, contentType: "text/plain" });
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Open local workspace", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator("output")).toHaveText("₹8,002");
 });

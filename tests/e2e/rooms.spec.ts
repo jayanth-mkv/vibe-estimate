@@ -2,6 +2,7 @@ import { test, expect, type APIRequestContext, type Page, type Response } from "
 import AxeBuilder from "@axe-core/playwright";
 import fs from "node:fs/promises";
 import { FIXTURE_SCOPE, FIXTURE_MESSAGES } from "../../backend/src/fixtures";
+import { decodedQr } from "./qr";
 
 const api = "http://127.0.0.1:8080";
 const authEmulator = "http://127.0.0.1:9099";
@@ -171,6 +172,8 @@ test("independent designer and client exchange messages, preserve shared revisio
   expect(parsedInvite.origin).toBe("http://127.0.0.1:3000");
   const inviteToken = new URLSearchParams(parsedInvite.hash.slice(1)).get("invite");
   expect(Boolean(inviteToken)).toBe(true);
+  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Invite client", exact: true })).toBeFocused();
 
   const clientContext = await browser.newContext({
     viewport: page.viewportSize() ?? { width: 1440, height: 1000 },
@@ -413,4 +416,119 @@ test("unsupported fixture messages remain saved with a visible observer failure 
   await expect(page.getByText("Review needs attention", { exact: true })).toBeVisible();
   expect((await getRoom(request, room.id, owner)).observer.callsUsed).toBe(2);
   await accessible(page);
+});
+
+test("guest room codes and scannable invitations support rotation, keyboard entry, and private membership", async ({ page, browser, request }, testInfo) => {
+  test.setTimeout(90000);
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toHaveCount(0);
+  const created = page.waitForResponse(responseFor("/api/projects", "POST"));
+  await page.getByRole("button", { name: "Try the lighting example", exact: true }).click();
+  const createdResponse = await created;
+  expect(createdResponse.status()).toBe(201);
+  const project = (await createdResponse.json()).project;
+  const ownerAuthorization = await createdResponse.request().headerValue("authorization");
+  expect(Boolean(ownerAuthorization?.startsWith("Bearer "))).toBe(true);
+  const owner = { Authorization: ownerAuthorization! };
+  const started = page.waitForResponse(responseFor("/api/projects/" + project.id + "/room", "POST"));
+  await page.getByRole("button", { name: "Start shared room", exact: true }).click();
+  const room = (await (await started).json()).room as Room;
+  const roomPath = "/api/rooms/" + room.id;
+  const invite = page.getByRole("button", { name: "Invite client", exact: true });
+  await invite.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await page.getByRole("button", { name: "Create invite link", exact: true }).click();
+  const code = dialog.getByLabel("Room code", { exact: true });
+  await expect(code).toHaveText(/^[0-9A-HJKMNP-TV-Z]{4}(?:-[0-9A-HJKMNP-TV-Z]{4}){2}$/);
+  const oldCode = (await code.innerText()).replace(/[\s-]/g, "");
+  const oldHref = await dialog.getByRole("link", { name: "Open client demo", exact: true }).getAttribute("href");
+  expect(Boolean(oldHref)).toBe(true);
+  expect((await decodedQr(dialog.getByRole("img", { name: "Scan to join the project room", exact: true }))) === oldHref,
+    "The displayed QR code must resolve to the exact current client invitation.").toBe(true);
+  await accessible(page);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(invite).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(code).toHaveText(new RegExp(oldCode.match(/.{4}/g)!.join("-")));
+  const rotated = page.waitForResponse(responseFor(roomPath + "/invite", "POST"));
+  await dialog.getByRole("button", { name: "Create a new invitation", exact: true }).click();
+  const rotatedResponse = await rotated;
+  expect(rotatedResponse.ok()).toBe(true);
+  const freshInvite = await rotatedResponse.json();
+  const freshCode = freshInvite.joinCode as string;
+  expect(Boolean(freshCode && freshCode.replace(/[\s-]/g, "") !== oldCode)).toBe(true);
+  await expect(code).toHaveText(freshCode);
+  const freshHref = await dialog.getByRole("link", { name: "Open client demo", exact: true }).getAttribute("href");
+  expect(Boolean(freshHref && freshHref !== oldHref)).toBe(true);
+  expect((await decodedQr(dialog.getByRole("img", { name: "Scan to join the project room", exact: true }))) === freshHref).toBe(true);
+  await page.keyboard.press("Escape");
+
+  const clientContext = await browser.newContext({
+    viewport: page.viewportSize() ?? { width: 1440, height: 1000 },
+    isMobile: Boolean(testInfo.project.use.isMobile), hasTouch: Boolean(testInfo.project.use.hasTouch)
+  });
+  const clientPage = await clientContext.newPage();
+  try {
+    await clientPage.goto("/");
+    await clientPage.getByRole("link", { name: "Join a room", exact: true }).focus();
+    await clientPage.keyboard.press("Enter");
+    await expect(clientPage).toHaveURL(/\/join$/);
+    await expect(clientPage.getByRole("heading", { name: "Join your project room.", exact: true })).toBeVisible();
+    const input = clientPage.getByLabel("Room code", { exact: true });
+    const submit = clientPage.getByRole("button", { name: "Join room", exact: true });
+    let codeRequests = 0;
+    clientPage.on("request", request => { if (request.url() === api + "/api/rooms/join" && request.method() === "POST") codeRequests += 1; });
+    for (const invalid of ["", "ABCD", "IIII-OOOO-LLLL"]) {
+      await input.fill(invalid);
+      await submit.focus();
+      await clientPage.keyboard.press("Enter");
+      await expect(input).toBeFocused();
+      await expect(input).toHaveAttribute("aria-invalid", "true");
+      await expect(clientPage.getByRole("main").getByRole("alert")).toHaveText("Enter the 12-character room code from your designer. Spaces and hyphens are optional.");
+    }
+    expect(codeRequests, "Malformed input must be rejected before authentication or a join request.").toBe(0);
+    await expect(input).toHaveAttribute("maxlength", "32");
+    if (testInfo.project.name.includes("mobile")) await clientPage.setViewportSize({ width: 320, height: 740 });
+    await accessible(clientPage);
+    await input.fill(oldCode.toLowerCase());
+    const rejected = clientPage.waitForResponse(responseFor("/api/rooms/join", "POST"));
+    await submit.click();
+    const rejectedResponse = await rejected;
+    expect(rejectedResponse.status()).toBe(403);
+    expect((await rejectedResponse.json()).error.code).toBe("INVITE_INVALID");
+    await expect(input).toHaveValue(oldCode);
+    await expect(clientPage.getByRole("main").getByRole("alert")).toBeVisible();
+
+    // Case, spaces, and hyphens are accepted without changing the room identity.
+    const formatted = freshCode.replace(/-/g, "").toLowerCase().match(/.{4}/g)!.join(" - ");
+    await input.fill(formatted);
+    const joined = clientPage.waitForResponse(responseFor("/api/rooms/join", "POST"));
+    await submit.focus();
+    await clientPage.keyboard.press("Enter");
+    const joinedResponse = await joined;
+    expect(joinedResponse.ok()).toBe(true);
+    const clientAuthorization = await joinedResponse.request().headerValue("authorization");
+    expect(Boolean(clientAuthorization && clientAuthorization !== ownerAuthorization)).toBe(true);
+    const client = { Authorization: clientAuthorization! };
+    await expect(clientPage).toHaveURL(new RegExp("/client/rooms/" + room.id + "$"));
+    await expect(clientPage.getByText("Client view", { exact: true })).toBeVisible();
+    expect(codeRequests).toBe(2);
+    await roomPanel(clientPage, "Scope agent");
+    await expect(clientPage.getByRole("button", { name: "Prepare draft", exact: true })).toHaveCount(0);
+    await accessible(clientPage);
+    await clientPage.reload();
+    await expect(clientPage.getByText("Client view", { exact: true })).toBeVisible();
+    expect((await getRoom(request, room.id, client)).role).toBe("client");
+    expect((await request.get(api + "/api/projects/" + project.id, { headers: client })).status()).toBe(404);
+    const repeated = await request.post(api + "/api/rooms/join", { headers: client, data: { joinCode: freshCode } });
+    expect(repeated.ok()).toBe(true);
+    const outsider = await account(request);
+    expect((await request.post(api + "/api/rooms/join", { headers: outsider, data: { joinCode: freshCode } })).status()).toBe(403);
+    expect((await request.get(api + roomPath, { headers: outsider })).status()).toBe(404);
+    expect((await getRoom(request, room.id, owner)).observer.callsUsed).toBe(0);
+    await expect(page.getByRole("button", { name: "Client access", exact: true })).toBeVisible();
+  } finally { await clientContext.close(); }
 });

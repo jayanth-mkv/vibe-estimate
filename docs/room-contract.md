@@ -1,20 +1,21 @@
 # Shared project room
 
-This is the user-requested extension to the existing workflow: designer + invited client + an observing agent share one conversation. The existing home, illustrated tour and owner-reviewed draft workflow remain available. Local Firebase emulators continue to hold all state. No deployment or automatic outreach.
+This is the user-requested extension to the existing workflow: designer + invited client + an observing agent share one conversation. The existing home, illustrated tour and owner-reviewed draft workflow remain available. The default demo stores state in local Firebase emulators. The separately authorized connected runtime uses the existing real Firebase database with guest identities and live Gemini. No deployment or automatic outreach.
 
 ## Journey
 
 1. The designer starts a room from a saved project. The room explains that its agreed scope and source conversation will be shared.
-2. An invite opens a separate client page. In the local demo, this page uses a separate Firebase app/auth identity, so two tabs can genuinely act as different people.
+2. A QR code or invite link opens a separate client page; a short code can also be entered at `/join`. Firebase establishes a guest identity without a login wall. The client page uses a separate Firebase app/auth identity, so two tabs can act as different people. Google linking is optional for retaining the same identity across devices.
 3. Both people send and receive persisted messages. The agent observes new messages, updates a source-linked review and identifies open decisions; it cannot send human messages, set prices, or record approval.
 4. The designer chooses **Prepare draft** from a current agent review. This freezes the conversation into a new private review project; original project sources and room messages stay intact. The existing draft/revision/export flow handles commercial choices.
 5. The designer explicitly shares the saved draft back to the room. The client sees that snapshot as a draft, can discuss it, and sees subsequent shared versions. New conversation does not silently change a shared draft.
 
 ## HTTP contract (all endpoints require Firebase ID token)
 
-- `POST /api/projects/:id/room` `{}` → `{ room: Room, inviteToken: string }`. Owner-only, idempotently returns the project's room; a newly generated invite may replace an unused old invite.
+- `POST /api/projects/:id/room` `{}` → `{ room: Room, inviteToken: string, joinCode: string }`. Owner-only, idempotently returns the project's room; a newly generated invite may replace an unused old invite.
 - `GET /api/rooms/:roomId` → `{ room: Room }`. Members only; no UID, credential, private provider history or invite hash is returned.
-- `POST /api/rooms/:roomId/invite` `{}` → `{ inviteToken: string }`. Owner-only; rotate the expiring, one-client invite.
+- `POST /api/rooms/:roomId/invite` `{}` → `{ inviteToken: string, joinCode: string }`. Owner-only; rotate the expiring, one-client link and code together.
+- `POST /api/rooms/join` `{ joinCode: string }` → `{ room: Room }`. Bind the authenticated non-owner using a 12-character Crockford code, ignoring case, whitespace and hyphens. Only a SHA256 hash is stored. Recheck the hash, expiry and membership inside the binding transaction after lookup.
 - `POST /api/rooms/:roomId/join` `{ inviteToken: string }` → `{ room: Room }`. Bind the authenticated non-owner as the one client; repeated joins by that client are safe. Reject other users, expired/invalid invites, and all unauthorized reads/posts.
 - `POST /api/rooms/:roomId/messages` `{ text: string, requestId: UUID }` → `{ room: Room }`. Server derives sender role. Replaying a request does not duplicate the message or model call.
 - `POST /api/rooms/:roomId/observer` `{ action: "retry" | "pause" | "resume" }` → `{ room: Room }`. Owner-only. Bounded explicit retry; no automatic retry after model failure.
@@ -32,6 +33,8 @@ This is the user-requested extension to the existing workflow: designer + invite
 ## Behavior and limits
 
 The client page is `/client/rooms/:id#invite=...`; the designer page is `/rooms/:id`. Consume the fragment into memory and remove it from the URL after a successful join. Do not log/store invite values in source files or server diagnostics. A room is visible only to its authenticated members, and the API derives roles from verified identities. The demo's client auth app must be distinct from the default designer app; production keeps the same membership controls with real sign-in.
+
+The invitation dialog generates its QR locally from the current fragment link. A room ID alone grants no access. Codes have 60 bits of randomness, share the 24-hour expiry and one-client restriction, and are invalidated with the link when the owner replaces the invitation. A localhost QR cannot connect a separate phone: the UI explains that both devices need a reachable workspace address, while **Open client view/demo** supports two tabs immediately. Hosting remains deferred.
 
 Use 1.5-second authenticated polling for live synchronization and reconnect feedback. A backend-owned, debounced observer follows persisted new messages with one in-flight request per room, a persisted call budget of 10 per room, per-owner active-call limits and no silent retries/fallback. Pause is immediate for future work; an in-flight result cannot become a current result after newer messages. Failures preserve the conversation and show explicit retry. Use real Gemini 3.7 through the existing provider when enabled. Never launch model requests from polling or duplicate browser sessions.
 

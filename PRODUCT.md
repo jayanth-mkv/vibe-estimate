@@ -30,6 +30,8 @@ The user approved the selected product and delegated implementation/setup choice
 
 The user subsequently requested a live shared conversation connecting the designer, client and observing agent. Separate designer/client pages must use independent authenticated identities, including in the local demo. The agent follows conversation changes and identifies scope questions. The designer freezes a reviewed conversation into a private draft project, chooses commercial terms, and explicitly shares the saved draft to the room. Messages and shared versions remain preserved. This is real local interaction, not a simulated second speaker or fabricated agent feed. See docs/room-contract.md for the agreed extension.
 
+The user then authorized using their existing real Firebase database and requested entry without a login wall. Firebase anonymous identities establish ownership behind the scenes. A client joins through a QR invitation, link, or short room code. Optional Google linking keeps the guest's identity and work; an explicit returning Google action is available only before the current guest has saved work. The operator enabled Anonymous, Email/Password and Google providers; the product uses anonymous and federated access without a password form. The default fixture stack remains entirely local, and deployment is still deferred.
+
 ## Brand Commitments
 
 Working name: VibeEstimate. Plain, calm language. Make next steps clear and avoid exposing backend implementation details in the customer-facing proposal.
@@ -47,7 +49,7 @@ The public docs contain the selected workflow, fictional examples, and implement
 - Keep review separate from approval.
 - Make mistakes visible and repairable.
 - Protect each owner's private project records.
-- Let a first-time owner enter source material before sign-in is needed to save it; let a returning owner resume saved work directly.
+- Let a first-time owner start without a login wall; use an anonymous identity for private saving and let a returning owner resume saved work. Offer Google linking as a way to keep access across browsers.
 - Reward actual completion with a clear saved state and useful next action. Do not invent progress, urgency, savings, or client approval.
 
 ## Accessibility & Inclusion

@@ -2,11 +2,17 @@
   "name": "vibeestimate",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["frontend", "backend"],
-  "engines": { "node": ">=22.17.0 <25" },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "engines": {
+    "node": ">=22.17.0 <25"
+  },
   "scripts": {
     "setup": "node scripts/setup-local.mjs",
     "dev": "node scripts/dev.mjs",
+    "dev:connected": "node scripts/dev-connected.mjs",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspace @vibeestimate/backend",
@@ -14,7 +20,8 @@
     "test:e2e": "node scripts/playwright.mjs test",
     "test:local": "node scripts/test-local.mjs",
     "test:live": "node scripts/test-live.mjs",
-    "test:config": "node --test tests/local-env.test.mjs",
+    "test:connected": "node tests/live/run-connected.mjs",
+    "test:config": "node --test tests/local-env.test.mjs tests/emulator-auth-continuity.test.mjs tests/connected-config.test.mjs",
     "mcp:playwright": "node scripts/start-playwright-mcp.mjs",
     "mcp:verify": "node scripts/verify-mcp.mjs",
     "check:public": "node scripts/check-public.mjs",
@@ -27,6 +34,7 @@
     "@playwright/mcp": "0.0.80",
     "@playwright/test": "1.63.0",
     "firebase-tools": "15.29.0",
+    "jsqr": "1.4.0",
     "vitest": "3.2.6"
   }
 }

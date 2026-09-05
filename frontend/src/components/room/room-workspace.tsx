@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCheck } from "lucide-react";
-import { clientAuth, startSession, usesEmulators, type SessionIdentity } from "@/lib/firebase";
+import { clientAuth, googleAuthEnabled, saveAccessWithGoogle, startSession, usesAnonymousAuth, usesEmulators, type SessionIdentity } from "@/lib/firebase";
+import { api as projectApi } from "@/lib/api";
+import { workspaceStatus } from "@/lib/workspace-status";
+import type { Health } from "@/lib/types";
 import { makeRoomApi } from "@/lib/room-api";
 import type { Room } from "@/lib/room-types";
 import { Button } from "@/components/ui/button";
@@ -31,6 +34,9 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
   const [pending, setPending] = useState<PendingMessage | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteHref, setInviteHref] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [health, setHealth] = useState<Health | null>(null);
+  const [anonymous, setAnonymous] = useState(false);
   const [leaveHref, setLeaveHref] = useState("");
   const inviteToken = useRef<string | null>(null);
   const sendLock = useRef(false);
@@ -38,6 +44,12 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
 
   const acceptRoom = useCallback((next: Room) => {
     setRoom((current) => current && current.updatedAt > next.updatedAt ? current : next);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void projectApi.health().then((value) => { if (active) setHealth(value); }).catch(() => { if (active) setHealth(null); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -52,8 +64,8 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
         if (identity === "client" && inviteToken.current === null) {
           inviteToken.current = new URLSearchParams(window.location.hash.slice(1)).get("invite") || "";
         }
-        if (!auth.currentUser && identity === "client" && usesEmulators && inviteToken.current) {
-          await startSession("client");
+        if (!auth.currentUser && usesAnonymousAuth) {
+          await startSession(identity);
         }
         if (cancelled) return;
         if (!auth.currentUser) {
@@ -61,6 +73,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
           return;
         }
         setNeedsSignIn(false);
+        setAnonymous(auth.currentUser.isAnonymous);
         const result = identity === "client" && inviteToken.current
           ? await api.join(roomId, inviteToken.current)
           : await api.get(roomId);
@@ -165,6 +178,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
       const url = new URL(`/client/rooms/${encodeURIComponent(room.id)}`, window.location.origin);
       url.hash = new URLSearchParams({ invite: result.inviteToken }).toString();
       setInviteHref(url.href);
+      setJoinCode(result.joinCode);
       setNotice("Invite link ready. It expires in 24 hours and admits one client.");
     } catch (error) { setActionError(errorText(error)); }
     finally { setBusy(""); }
@@ -174,7 +188,24 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
     try {
       await navigator.clipboard.writeText(inviteHref);
       setNotice("Invite link copied. Send it to your client when you’re ready.");
-    } catch { setActionError("The link could not be copied. Use Open client demo to open the invitation in another tab."); }
+    } catch { setActionError("The link could not be copied. Use the room code or open the client view below."); }
+  }
+
+  async function copyCode() {
+    try { await navigator.clipboard.writeText(joinCode); setNotice("Room code copied. Your client can enter it on Join a room."); }
+    catch { setActionError("The code could not be copied. You can select and copy the room code shown here."); }
+  }
+
+  async function saveGoogleAccess() {
+    if (busy) return;
+    setBusy("google");
+    setActionError("");
+    try {
+      await saveAccessWithGoogle(identity);
+      setAnonymous(false);
+      setNotice("Access saved with Google. Your room and guest work stay with you.");
+    } catch (cause) { setActionError(errorText(cause)); }
+    finally { setBusy(""); }
   }
 
   async function prepareDraft() {
@@ -211,18 +242,19 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
       {loading ? <div role="status"><div className={styles.loadingLine} /><div className={styles.loadingLineShort} /><h1>Opening your project room…</h1><p>Connecting to the saved conversation.</p></div> : <>
         <span className={styles.largeRoomMark}><CheckCheck size={28} aria-hidden="true" /></span>
         <h1>{needsSignIn ? identity === "client" ? "A shared space for your project." : "Return to your project room." : "We couldn’t open this room."}</h1>
-        <p>{needsSignIn ? "Discuss the details with your designer, see what belongs in the scope, and keep every draft in one place." : "Use your invitation and the same signed-in account to reopen the conversation."}</p>
+        <p>{needsSignIn ? "Discuss the details with your designer, see what belongs in the scope, and keep every draft in one place." : usesAnonymousAuth ? "Use your invitation or the browser where you joined to reopen the conversation." : "Use your invitation and the same signed-in account to reopen the conversation."}</p>
         {initialError && <p role="alert" className={styles.error}>{initialError}</p>}
-        {needsSignIn ? <Button className="button primary" disabled={!!busy} onClick={() => void signIn()}>{busy ? "Connecting…" : identity === "client" ? usesEmulators ? "Join local room" : "Sign in to join" : usesEmulators ? "Open local workspace" : "Sign in to continue"}</Button> : <Button className="button primary" onClick={() => setBootVersion((value) => value + 1)}>Try again</Button>}
+        {needsSignIn ? <Button className="button primary" disabled={!!busy} onClick={() => void signIn()}>{busy ? "Connecting…" : usesAnonymousAuth ? "Reconnect to room" : identity === "client" ? "Sign in to join" : "Sign in to continue"}</Button> : <Button className="button primary" onClick={() => setBootVersion((value) => value + 1)}>Try again</Button>}
+        {identity === "client" && <Link className={styles.joinRecovery} href="/join">Join with a room code</Link>}
         {identity === "client" && <p className={styles.small}>The scope agent sees the conversation. It helps review changes; it does not approve work or prices.</p>}
       </>}
     </main>
   </div>;
 
   return <>
-    <RoomView room={room} text={text} pending={pending} busy={busy} notice={notice} actionError={actionError} connectionError={connectionError} inviteOpen={inviteOpen} inviteHref={inviteHref} local={usesEmulators} composerRef={composerRef}
+    <RoomView room={room} text={text} pending={pending} busy={busy} notice={notice} actionError={actionError} connectionError={connectionError} inviteOpen={inviteOpen} inviteHref={inviteHref} joinCode={joinCode} environmentLabel={workspaceStatus(health)} googleAvailable={googleAuthEnabled && anonymous} local={usesEmulators} composerRef={composerRef}
       onTextChange={setText} onSend={() => void sendMessage()} onRetryMessage={() => void sendMessage(true)} onObserver={(action) => void act(action)}
-      onToggleInvite={() => setInviteOpen((value) => !value)} onCreateInvite={() => void createInvite()} onCopyInvite={() => void copyInvite()} onPrepareDraft={() => void prepareDraft()} onShareDraft={() => void shareDraft()} onNavigate={navigate} />
+      onToggleInvite={() => { setInviteOpen((value) => !value); setNotice(""); setActionError(""); }} onCreateInvite={() => void createInvite()} onCopyInvite={() => void copyInvite()} onCopyCode={() => void copyCode()} onGoogle={() => void saveGoogleAccess()} onPrepareDraft={() => void prepareDraft()} onShareDraft={() => void shareDraft()} onNavigate={navigate} />
     <AlertDialog open={!!leaveHref} onOpenChange={(open) => { if (!open) setLeaveHref(""); }}>
       <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Leave your unsent message?</AlertDialogTitle><AlertDialogDescription>Your saved conversation will stay in the room. The message you are writing has not been confirmed as saved.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="button secondary">Keep writing</AlertDialogCancel><AlertDialogAction className="button primary" onClick={() => { const href = leaveHref; setText(""); setPending(null); setLeaveHref(""); router.push(href); }}>Leave room</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
     </AlertDialog>

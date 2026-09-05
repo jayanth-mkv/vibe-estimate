@@ -23,7 +23,7 @@ async function openExample(page: Page) {
   await example.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Asha’s home renovation", exact: true })).toBeVisible();
-  expect(creations, "The signed-out example should authenticate and create once from one activation.").toBe(1);
+  expect(creations, "The guest example should establish access and create once from one activation.").toBe(1);
   page.off("request", countCreation);
   await expect(page.getByRole("tab", { name: "Review", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: "Draft", exact: true })).toBeDisabled();
@@ -50,7 +50,8 @@ async function accessible(page: Page) {
 test("source review, keyboard clarification, saved revision, reload, and draft download", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Turn client changes into clear drafts.", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Open local workspace" })).toBeVisible();
+  await expect(page.getByText("Guest access", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toHaveCount(0);
   await accessible(page);
   await page.screenshot({ path: testInfo.outputPath("welcome.png"), fullPage: true });
   await openExample(page);
@@ -98,8 +99,9 @@ test("source review, keyboard clarification, saved revision, reload, and draft d
   await page.getByRole("button", { name: "All projects", exact: true }).click();
   await page.getByRole("button", { name: /Asha’s home renovation/ }).click();
   await expect(page.locator("output")).toHaveText("₹8,000");
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Open local workspace" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator("output")).toHaveText("₹8,000");
 });
 
 test("review failure recovers and a lost save response retries without duplicate revisions", async ({ page }) => {
@@ -156,7 +158,7 @@ test("review tabs preserve owner pricing and unsaved edits require a keyboard-sa
   await expect(page.getByRole("heading", { name: "Your projects", exact: true })).toBeVisible();
 });
 
-test("guided sources validate each step, retain edits, save once, and resume without premature sign-in", async ({ page }, testInfo) => {
+test("guided sources validate each step, retain edits, save once, and resume without a login gate", async ({ page }, testInfo) => {
   let creations = 0;
   let signIns = 0;
   let reviews = 0;
@@ -195,7 +197,8 @@ test("guided sources validate each step, retain edits, save once, and resume wit
   await page.getByRole("button", { name: "Save project", exact: true }).click();
   await expect(page.getByLabel("Client messages", { exact: true })).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByLabel("Client messages", { exact: true })).toBeFocused();
-  expect({ creations, signIns, reviews }).toEqual({ creations: 0, signIns: 0, reviews: 0 });
+  expect({ creations, reviews }).toEqual({ creations: 0, reviews: 0 });
+  expect(signIns, "Anonymous access may start on entry, but must not create duplicate identities.").toBeLessThanOrEqual(1);
 
   await page.getByLabel("Client messages", { exact: true }).fill(FIXTURE_MESSAGES);
   await page.getByRole("button", { name: "Back", exact: true }).click();
@@ -204,7 +207,8 @@ test("guided sources validate each step, retain edits, save once, and resume wit
   await page.getByRole("button", { name: "Continue", exact: true }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Client messages", { exact: true })).toHaveValue(FIXTURE_MESSAGES);
-  expect({ creations, signIns, reviews }).toEqual({ creations: 0, signIns: 0, reviews: 0 });
+  expect({ creations, reviews }).toEqual({ creations: 0, reviews: 0 });
+  expect(signIns, "Editing source steps must not create another guest identity.").toBeLessThanOrEqual(1);
   await accessible(page);
   await page.screenshot({ path: testInfo.outputPath("guided-sources.png"), fullPage: true });
 

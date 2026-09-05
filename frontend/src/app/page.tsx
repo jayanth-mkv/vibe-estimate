@@ -12,14 +12,15 @@ import { api } from "@/lib/api";
 import { roomApi } from "@/lib/room-api";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { clientAuth, startSession, usesEmulators } from "@/lib/firebase";
+import { clientAuth, googleAuthEnabled, openGoogleWorkspace, saveAccessWithGoogle, startSession, usesEmulators, usesGuestAccess, usesAnonymousAuth } from "@/lib/firebase";
+import { workspaceStatus } from "@/lib/workspace-status";
 import type { Health, Project } from "@/lib/types";
 
 const emptySource = (): SourceInput => ({ name: "", scope: "", messages: "" });
 const describeError = (error: unknown) => {
   if (error && typeof error === "object" && "code" in error && String(error.code).startsWith("auth/")) {
     if (error.code === "auth/popup-closed-by-user") return "Sign-in was closed. Your text is still here. Try again when you’re ready.";
-    return usesEmulators ? "Local sign-in is unavailable. Start the Firebase emulators, then try again." : "Sign-in could not be completed. Please try again.";
+    return usesEmulators ? "Your local workspace could not connect. Check the connection and try again." : usesGuestAccess ? "Your guest workspace could not connect. Your text is still here; please try again." : "Sign-in could not be completed. Please try again.";
   }
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
 };
@@ -32,9 +33,11 @@ export default function Workspace() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [accessSaved, setAccessSaved] = useState(false);
   const [health, setHealth] = useState<Health | null>(null);
   const [serviceChecked, setServiceChecked] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsKnown, setProjectsKnown] = useState(false);
   const [selected, setSelected] = useState<Project | null>(null);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -88,10 +91,17 @@ export default function Workspace() {
     let unsubscribe = () => {};
     void api.health().then((result) => { if (active) setHealth(result); }).catch(() => { if (active) setHealth(null); }).finally(() => { if (active) setServiceChecked(true); });
     // Browser-only SDK initialization shares the asynchronous subscription lifecycle.
-    void Promise.resolve().then(() => {
+    void Promise.resolve().then(async () => {
       if (!active) return;
-      unsubscribe = onAuthStateChanged(clientAuth(), (currentUser) => {
+      const auth = clientAuth();
+      await auth.authStateReady();
+      if (!active) return;
+      if (usesGuestAccess && !auth.currentUser) await startSession();
+      if (!active) return;
+      unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
+        setAccessSaved(Boolean(currentUser && !currentUser.isAnonymous));
+        setProjectsKnown(false);
         setAuthReady(true);
         setLoadingProjects(Boolean(currentUser));
         if (!currentUser) { setProjects([]); setSelected(null); }
@@ -113,6 +123,7 @@ export default function Workspace() {
         const result = await api.list();
         if (!active || startingProjectRef.current) return;
         setProjects(result.projects);
+        setProjectsKnown(true);
         const id = new URLSearchParams(window.location.search).get("project");
         if (id) {
           const result = await api.project(id);
@@ -245,6 +256,22 @@ export default function Workspace() {
   const draftChanged = !!draft && (Number(quantity) !== draft.quantity || Math.round(Number(unitPrice) * 100) !== draft.unitPricePaise || description.trim() !== (draft.description || defaultDescription));
   const isLoading = !authReady || (user && loadingProjects && !creating && !selected);
   const startNew = () => { setCreating(true); setError(""); setNotice(""); };
+  const canOpenGoogle = googleAuthEnabled && usesAnonymousAuth && !accessSaved && !selected && !creating && !hasUnsavedChanges && projects.length === 0 && (!user || projectsKnown);
+  const continueGoogle = () => {
+    if (!canOpenGoogle) return;
+    void action("google-signin", async () => {
+      // Recheck the server immediately before an explicit account switch. A
+      // previous create may have saved even when its response did not arrive.
+      if (clientAuth().currentUser) {
+        const fresh = await api.list();
+        setProjects(fresh.projects);
+        setProjectsKnown(true);
+        if (fresh.projects.length) throw new Error("Your guest workspace has saved work. Use Save access with Google to keep these projects with you.");
+      }
+      await openGoogleWorkspace();
+      setNotice("Your Google workspace is open.");
+    });
+  };
 
   return <>
     <a className="skip-link" href="#main">Skip to workspace</a>
@@ -260,21 +287,21 @@ export default function Workspace() {
             <p className="fine-print">You decide what to propose. Client approval is a separate step.</p>
           </div>
         </details>
-        {authReady && (user ? <Button variant="ghost" className="button text-button" disabled={!!busy} onClick={() => requestLeave("signout")}>Sign out</Button> : <Button variant="ghost" className="button text-button signin-button" disabled={!!busy} onClick={() => void action("signin", async () => { await startSession(); })}>{usesEmulators ? "Open local workspace" : "Sign in"}</Button>)}
+        {authReady && (usesAnonymousAuth ? googleAuthEnabled && user && !accessSaved && (projects.length > 0 || creating || selected) ? <Button variant="ghost" className="button text-button google-access-button" disabled={!!busy} onClick={() => void action("google", async () => { await saveAccessWithGoogle(); setAccessSaved(true); setNotice("Access saved with Google. Your projects and drafts stay with you."); })}>{busy === "google" ? "Connecting…" : "Save access with Google"}</Button> : <span className="guest-access-label">{accessSaved ? "Access saved" : "Guest access"}</span> : user ? <Button variant="ghost" className="button text-button" disabled={!!busy} onClick={() => requestLeave("signout")}>Sign out</Button> : <Button variant="ghost" className="button text-button signin-button" disabled={!!busy} onClick={() => void action("signin", async () => { await startSession(); })}>Sign in</Button>)}
       </div>
     </div></header>
 
     <main id="main" className="shell">
       {error && <div className="alert" role="alert"><span>{error}</span><Button variant="ghost" className="button text-button" aria-label="Dismiss error" onClick={() => setError("")}>Dismiss</Button></div>}
       <div className={notice ? "notice visible" : "notice"} role="status" aria-live="polite">{notice && <><Check size={17} aria-hidden="true" />{notice}</>}</div>
-      {isLoading ? <div className="loading-state" aria-label={authReady ? "Loading projects" : "Loading sign-in"}><div className="skeleton" /><div className="skeleton short" /><p>Opening your workspace…</p></div> : <>
-        {!selected && !creating && <Home onRoomDemo={() => void startRoomDemo()} projects={projects} signedIn={!!user} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} onNew={startNew} onExample={(source) => void create(source)} onOpen={choose} onRefresh={() => { setLoadingProjects(true); setReloadProjects((value) => value + 1); }} onSignIn={() => void action("signin", async () => { await startSession(); })} />}
+      {isLoading ? <div className="loading-state" aria-label={authReady ? "Loading projects" : "Opening workspace"}><div className="skeleton" /><div className="skeleton short" /><p>Opening your workspace…</p></div> : <>
+        {!selected && !creating && <Home guest={usesAnonymousAuth && !accessSaved} cloud={health?.storageConnection === "cloud"} googleContinue={canOpenGoogle} onGoogleContinue={continueGoogle} onRoomDemo={() => void startRoomDemo()} projects={projects} signedIn={!!user} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} onNew={startNew} onExample={(source) => void create(source)} onOpen={choose} onRefresh={() => { setLoadingProjects(true); setReloadProjects((value) => value + 1); }} onSignIn={() => void action("signin", async () => { if (!clientAuth().currentUser) await startSession(); else { setLoadingProjects(true); setReloadProjects((value) => value + 1); } })} />}
         {creating && <><Button variant="ghost" className="button back-button" disabled={!!busy} onClick={() => requestLeave("projects")}><ArrowLeft size={17} />All projects</Button><SourceWizard value={newProject} onChange={setNewProject} onSave={() => void create(newProject)} onCancel={() => requestLeave("projects")} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} /></>}
         {selected && <ProjectView roomId={sourceRoomId} onRoom={() => requestLeave("room")} key={selected.id} project={selected} health={health} busy={busy} hasUnsavedChanges={hasUnsavedChanges} draftChanged={draftChanged} fields={{ quantity, unitPrice, description, clarification }} setters={{ quantity: setQuantity, unitPrice: setUnitPrice, description: setDescription, clarification: setClarification }} onLeave={() => requestLeave("projects")} onAnalyze={(event) => void analyze(event)} onSave={(event) => void save(event)} onDownload={() => void download()} />}
       </>}
       {serviceChecked && !health && <div className="service-status" role="status"><span>The project service is unavailable. Your text stays here. Reconnect to save or review.</span><Button className="button secondary" onClick={() => void refreshHealth()}>Check connection</Button></div>}
     </main>
     <AlertDialog open={leaveAction !== null} onOpenChange={(open) => { if (!open) setLeaveAction(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Leave these changes behind?</AlertDialogTitle><AlertDialogDescription>Your latest edits have not been saved. Your previously saved project and proposals will remain in your account.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="button secondary">Keep editing</AlertDialogCancel><AlertDialogAction className="button primary" onClick={() => { if (leaveAction) finishLeave(leaveAction); }}>Discard edits and leave</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-    <footer className="page-footer"><span>From the original wording to your next decision.</span>{(usesEmulators || health?.aiProvider === "fixture") && <span className="environment-strip"><span className="status-dot" aria-hidden="true" />{health?.aiProvider === "gemini" ? "Local workspace · Gemini enabled" : "Local sample · Gemini not connected"}</span>}</footer>
+    <footer className="page-footer"><span>From the original wording to your next decision.</span><span className="environment-strip"><span className="status-dot" aria-hidden="true" />{workspaceStatus(health)}</span></footer>
   </>;
 }

@@ -7,9 +7,9 @@ Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the pr
 | Terraform main/adoption formatting and schema validation | Passed in local tooling |
 | Terraform behavior checks | Main/adoption baseline: 7 mock tests passed. Gemini root: 6 mock tests and 3 provider loopback checks passed; saved-plan guards passed and authenticated final plan clean |
 | TypeScript and production build | Backend and frontend typechecks/builds passed after room integration; frontend production build, TypeScript and ESLint passed again after the live accessibility fix |
-| Backend unit/API tests | 100 passed: 74 existing + 26 room authorization, observation, snapshot/sharing and strict fixture-follow-up checks |
+| Backend unit/API tests | 150 passed after connected Firebase authentication and room-code enforcement; earlier 100-test checkpoint below retained as history |
 | Firebase emulator access checks | 3 Firestore Rules tests passed, including direct room/membership denial for designer, client and guest |
-| Playwright desktop/mobile and accessibility | 18 distinct checks passed: original 12 rerun after integration, plus 6 new shared-room journeys/API checks |
+| Playwright desktop/mobile and accessibility | Full updated fixture suite: 20/20 passed in 5.8 minutes (11 desktop, 9 mobile), including QR decoding and room-code joining |
 | Project-local MCP handshake/browser launch | Playwright: 24 tools and successful isolated Chromium launch; shadcn: 7 tools |
 | Impeccable detector / visual review | Guided workspace and shared room: one detector run per completed UI pass, zero findings; Playwright MCP desktop/mobile inspection and shadcn checklist passed |
 | Public/private configuration scan | Final: 170 publishable text files passed; exact-key/OAuth scan passed across 358 publishable/compiled/browser/log files; 2 private state files contained no Gemini key |
@@ -20,6 +20,14 @@ Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the pr
 | AI Studio initial settings and enhancement evidence | Prepared instructions; actual setup not verified |
 
 ## Live Gemini enablement: 5 September 2026
+
+### Guest access and room-code fixture checkpoint
+
+Guest entry, `/join`, QR/link/code invitations, invitation replacement and optional Google account access are implemented. The default demo remains on emulators. The separate connected launcher requires matching private Firebase/Vertex configuration and passes only public Firebase SDK settings to the frontend; it never starts emulators or discovers shared ADC. Its real private settings were validated without displaying values, and the connected service started successfully. Real cloud application verification is recorded separately when executed.
+
+Executed: **150 backend tests**, backend/frontend production builds, frontend TypeScript/ESLint, **25 configuration tests**, **20 fixture browser checks** and **3 Firestore Rules checks** passed. The QR checks decoded actual rendered pixels, verified invite replacement and stale-code rejection, joined with a formatted code, and checked same-client replay and stranger denial. Desktop and mobile included 320-pixel layout, keyboard/Escape focus and accessibility. Those QR-only checks made zero observer calls. The remaining full journeys retained the source, pricing, draft/revision, sharing, persistence, export and failure assertions. The final emulator snapshot preserves **92 users, 71 projects and 21 rooms**.
+
+Playwright MCP inspected the join form and invitation dialog at desktop and mobile widths, including invalid-code focus and invitation replacement. The official shadcn Dialog was generated with the project-local CLI and its checklist reviewed. The completed Impeccable detector pass returned zero findings. The original theme, artwork and `/welcome` remain intact. Google linking code preserves the current guest UID on cancellation/collision/failure; genuine Google consent is still unverified.
 
 ### Gemini 3.7 and shared-room live checkpoint
 

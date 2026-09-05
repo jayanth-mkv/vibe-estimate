@@ -155,6 +155,8 @@ button, a, input, textarea { transition: background-color 140ms ease-out, border
 .brand { display: inline-flex; align-items: center; gap: 9px; color: var(--ve-navy); font-size: 1.125rem; letter-spacing: -.035em; font-weight: 650; white-space: nowrap; }
 .brand-mark { width: 30px; height: 30px; display: grid; place-items: center; background: var(--ve-accent); color: white; border-radius: 8px; }
 .header-actions { display: flex; align-items: center; gap: 12px; }
+.guest-access-label { color: var(--ve-muted); background: var(--ve-surface-muted); border-radius: 6px; padding: 5px 9px; font-size: .75rem; white-space: nowrap; }
+.google-access-button { font-size: .8125rem; }
 .button { min-height: 44px; height: auto; border: 1px solid transparent; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 10px 16px; font-weight: 600; font-size: .875rem; line-height: 1.4; flex-shrink: 0; }
 .primary { color: white; background: var(--ve-accent); }
 .primary:hover:not(:disabled) { color: white; background: var(--ve-accent-hover); }
@@ -310,6 +312,7 @@ input:disabled, textarea:disabled { background: var(--ve-surface-muted); }
   .next-step { flex-direction: row; align-items: center; }
 }
 @media (max-width: 600px) {
+  .google-access-button { white-space: normal; max-width: 132px; font-size: .75rem; padding: 6px 8px; }
   .topbar-inner { padding-inline: 16px; gap: 8px; }
   .header-actions { gap: 2px; }
   .brand { font-size: 1rem; gap: 7px; }
@@ -346,6 +349,7 @@ input:disabled, textarea:disabled { background: var(--ve-surface-muted); }
   .alert, .service-status { align-items: flex-start; gap: 8px; flex-wrap: wrap; }
 }
 @media (max-width: 360px) {
+  .header-actions:has(.google-access-button) .quick-guide { display: none; }
   .brand { font-size: .875rem; }
   .review-start, .review-result, .draft-sheet { padding: 16px; }
   .amount-inputs { grid-template-columns: 1fr; }

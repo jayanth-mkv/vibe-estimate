@@ -158,6 +158,50 @@
 .spinner { animation: spin 900ms linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.inviteDialog { width: min(680px, calc(100vw - 32px)); max-width: min(680px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 28px; gap: 20px; background: white; color: var(--ve-ink); border: 1px solid var(--ve-line); border-radius: 14px; box-shadow: 0 20px 60px #102b3f24; }
+.inviteDialog [data-slot=dialog-title] { padding-right: 28px; font-family: var(--font-poppins), sans-serif; font-size: 1.1875rem; line-height: 1.5; letter-spacing: -.015em; }
+.inviteDialog [data-slot=dialog-description] { color: var(--ve-muted); font-size: .875rem; line-height: 1.65; }
+.inviteDialog > [data-slot=dialog-close] { min-width: 44px; min-height: 44px; right: 6px; top: 6px; }
+.inviteMethods { display: grid; grid-template-columns: 220px minmax(0, 1fr); align-items: center; gap: 28px; padding-block: 8px; }
+.inviteQr { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.inviteQr svg { display: block; width: 220px; height: 220px; max-width: 100%; border: 1px solid var(--ve-line); border-radius: 8px; padding: 8px; background: white; }
+.inviteQr figcaption { color: var(--ve-muted); font-size: .75rem; text-align: center; }
+.codeMethod { min-width: 0; }
+.codeMethod h3 { font-size: .875rem; font-weight: 600; }
+.roomCode { display: block; margin: 10px 0 14px; color: var(--ve-navy); font-size: 1.375rem; font-weight: 650; letter-spacing: .04em; font-variant-numeric: tabular-nums; white-space: nowrap; user-select: all; }
+.codeMethod p { color: var(--ve-muted); font-size: .8125rem; margin-top: 14px; line-height: 1.7; }
+.codeMethod p a { color: var(--ve-accent-hover); text-decoration: underline; text-underline-offset: 3px; }
+.codeMethod > span { display: block; margin-top: 12px; color: var(--ve-muted); font-size: .75rem; }
+.invitationFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; border-top: 1px solid var(--ve-line); }
+.inviteReachability { color: var(--ve-muted); font-size: .8125rem; line-height: 1.65; }
+.inviteNotice { color: var(--ve-navy); font-size: .8125rem; line-height: 1.65; }
+.rotateInvitation { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: -6px; }
+.rotateInvitation button { font-size: .75rem; min-height: 40px; padding: 6px 8px; margin-left: -8px; }
+.rotateInvitation p { color: var(--ve-muted); font-size: .75rem; }
+.createInvitation, .joinedInvitation { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding-top: 6px; }
+.createInvitation > svg, .joinedInvitation > span { color: var(--ve-navy); }
+.createInvitation p, .joinedInvitation p { color: var(--ve-muted); font-size: .875rem; line-height: 1.7; }
+.joinedInvitation small { color: var(--ve-muted); font-size: .8125rem; }
+.joinRecovery { display: inline-flex; align-items: center; min-height: 44px; margin: 12px 0 0 16px; color: var(--ve-accent-hover); font-size: .875rem; text-decoration: underline; text-underline-offset: 4px; }
+.joinPage { max-width: 560px; margin: 0 auto; padding: 32px 24px 48px; }
+.joinHeading { margin-top: 24px; }
+.joinHeading .largeRoomMark { margin-bottom: 20px; }
+.joinHeading h1 { font-size: 1.75rem; line-height: 1.4; }
+.joinHeading > p { color: var(--ve-muted); font-size: .9375rem; line-height: 1.7; margin-top: 10px; }
+.joinForm { margin-top: 28px; padding: 26px; border: 1px solid var(--ve-line); border-radius: 12px; background: white; }
+.joinForm label { color: var(--ve-navy); font-size: .9375rem; }
+.joinHelp { color: var(--ve-muted); font-size: .8125rem; margin-bottom: 14px; }
+.joinForm .joinCodeInput { height: 56px; font-size: 1.25rem; font-weight: 600; letter-spacing: .06em; border-color: #a6b2bb; color: var(--ve-navy); }
+.joinForm .joinCodeInput::placeholder { color: #6d7984; font-weight: 400; }
+.joinForm > button { width: 100%; margin-top: 20px; justify-content: space-between; }
+.joinError { color: var(--ve-danger); font-size: .8125rem; line-height: 1.65; margin-top: 12px; }
+.joinPrivacy { color: var(--ve-muted); font-size: .8125rem; line-height: 1.6; margin-top: 14px; }
+.joinExplanation { padding: 24px 3px 0; }
+.joinExplanation h2 { color: var(--ve-navy); font-size: 1rem; margin-bottom: 10px; }
+.joinExplanation p { color: var(--ve-muted); font-size: .875rem; line-height: 1.75; }
+.joinExplanation span { display: block; color: var(--ve-muted); font-size: .8125rem; margin-top: 12px; }
+.googleAccess { font-size: .8125rem; }
+
 @media (min-width: 1280px) {
   .roomGrid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, .9fr); grid-template-areas: "chat context drafts"; gap: 16px; }
   .contextPanel { padding: 20px; }
@@ -202,6 +246,21 @@
   .draftDiscussion p { font-size: .8125rem; }
 }
 @media (max-width: 600px) {
+  .inviteDialog { padding: 22px; gap: 18px; }
+  .inviteMethods { grid-template-columns: 1fr; gap: 22px; }
+  .inviteQr svg { width: 192px; height: 192px; }
+  .codeMethod { text-align: center; }
+  .roomCode { font-size: 1.25rem; }
+  .invitationFooter { flex-direction: column; align-items: stretch; }
+  .invitationFooter > button, .invitationFooter > a { width: 100%; }
+  .joinPage { padding: 22px 18px 36px; }
+  .joinHeading { margin-top: 18px; }
+  .joinHeading h1 { font-size: 1.5rem; }
+  .joinForm { padding: 22px 18px; }
+  .joinForm .joinCodeInput { font-size: 1.125rem; }
+  .header:has(.googleAccess) { flex-wrap: wrap; padding-block: 10px; }
+  .googleAccess { font-size: .75rem; padding: 8px; }
+  .header:has(.googleAccess) .headerRight { justify-content: space-between; }
   .header { padding-inline: 16px; gap: 10px; }
   .headerRight { gap: 10px; }
   .viewBadge { font-size: .6875rem; padding: 4px 7px; }

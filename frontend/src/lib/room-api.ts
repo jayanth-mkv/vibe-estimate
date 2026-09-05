@@ -28,10 +28,11 @@ export function makeRoomApi(identity: SessionIdentity = "designer") {
   }
   const roomPath = (id: string) => `/api/rooms/${encodeURIComponent(id)}`;
   return {
-    create: (projectId: string) => request<{ room: Room; inviteToken: string }>(`/api/projects/${encodeURIComponent(projectId)}/room`, {}),
+    create: (projectId: string) => request<{ room: Room; inviteToken: string; joinCode: string }>(`/api/projects/${encodeURIComponent(projectId)}/room`, {}),
     get: (id: string) => request<{ room: Room }>(roomPath(id)),
-    invite: (id: string) => request<{ inviteToken: string }>(`${roomPath(id)}/invite`, {}),
+    invite: (id: string) => request<{ inviteToken: string; joinCode: string }>(`${roomPath(id)}/invite`, {}),
     join: (id: string, inviteToken: string) => request<{ room: Room }>(`${roomPath(id)}/join`, { inviteToken }),
+    joinCode: (joinCode: string) => request<{ room: Room }>("/api/rooms/join", { joinCode }),
     send: (id: string, text: string, requestId: string) => request<{ room: Room }>(`${roomPath(id)}/messages`, { text, requestId }),
     observer: (id: string, action: "retry" | "pause" | "resume") => request<{ room: Room }>(`${roomPath(id)}/observer`, { action }),
     prepareDraft: (id: string) => request<{ project: Project }>(`${roomPath(id)}/prepare-draft`, {}),

@@ -113,6 +113,7 @@ test("inherited live credentials and endpoints cannot escape into the default lo
     "GOOGLE_OAUTH_ACCESS_TOKEN", "TF_VAR_access_token", "TF_VAR_gemini_api_key", "FIREBASE_CONFIG", "FIREBASE_TOKEN",
     "GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_TRANSPORT", "GOOGLE_API_KEY", "GOOGLE_GENAI_USE_VERTEXAI", "GOOGLE_GENAI_USE_ENTERPRISE", "CLOUDSDK_CONFIG",
     "VERTEX_PROJECT_ID", "VERTEX_LOCATION", "VERTEX_GCLOUD_CONFIGURATION", "VERTEX_GCLOUD_ACCOUNT", "VERTEX_GCLOUD_CONFIG_DIR",
+    "CONNECTED_AUTH_PROJECT_ID", "CONNECTED_AUTH_GCLOUD_CONFIGURATION", "CONNECTED_AUTH_GCLOUD_ACCOUNT", "CONNECTED_AUTH_GCLOUD_CONFIG_DIR", "FIRESTORE_DATABASE_ID",
     "CLOUDSDK_AUTH_ACCESS_TOKEN", "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE", "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE"
   ];
   const inherited = {
@@ -121,6 +122,7 @@ test("inherited live credentials and endpoints cannot escape into the default lo
     GCLOUD_PROJECT: "synthetic-non-demo-project", GOOGLE_CLOUD_PROJECT: "synthetic-non-demo-project", FIREBASE_PROJECT_ID: "synthetic-non-demo-project",
     FIREBASE_AUTH_EMULATOR_HOST: "remote.invalid:9099", FIRESTORE_EMULATOR_HOST: "remote.invalid:8085",
     NEXT_PUBLIC_USE_FIREBASE_EMULATORS: "false", NEXT_PUBLIC_FIREBASE_PROJECT_ID: "synthetic-non-demo-project",
+    NEXT_PUBLIC_AUTH_MODE: "guest", NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "true", NEXT_PUBLIC_GEMINI_API_KEY: fakeSecret,
     NEXT_PUBLIC_FIREBASE_API_KEY: fakeSecret, NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "remote.invalid", NEXT_PUBLIC_FIREBASE_APP_ID: "synthetic-live-app",
     NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL: "https://remote.invalid", NEXT_PUBLIC_API_URL: "https://remote.invalid",
     FRONTEND_ORIGIN: "https://remote.invalid", PORT: "9999"
@@ -138,6 +140,9 @@ test("inherited live credentials and endpoints cannot escape into the default lo
     assert.equal(env.FIREBASE_AUTH_EMULATOR_HOST, "127.0.0.1:9099");
     assert.equal(env.FIRESTORE_EMULATOR_HOST, "127.0.0.1:8085");
     assert.equal(env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS, "true");
+    assert.equal(env.NEXT_PUBLIC_AUTH_MODE, "google");
+    assert.equal(env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED, "false");
+    assert.equal(env.NEXT_PUBLIC_GEMINI_API_KEY, undefined);
     assert.equal(env.NEXT_PUBLIC_FIREBASE_API_KEY, "demo-key");
     assert.equal(env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, "demo-vibeestimate.firebaseapp.com");
     assert.equal(env.NEXT_PUBLIC_FIREBASE_APP_ID, "demo-app");
@@ -165,6 +170,7 @@ test("mixed-case inherited credentials and local endpoint aliases are removed be
     CloudSdk_Auth_Access_Token: fakeSecret, Gemini_Api_Key: fakeSecret,
     Tf_Var_Access_Token: fakeSecret, Tf_Var_Gemini_Api_Key: fakeSecret,
     Google_Application_Credentials: fakeSecret, Vertex_Gcloud_Config_Dir: fakeSecret,
+    Connected_Auth_Gcloud_Account: fakeSecret, Firestore_Database_Id: "unrelated-database", Next_Public_Gemini_Key: fakeSecret,
     Google_Genai_Use_VertexAi: "true", CloudSdk_Config: fakeSecret,
     App_Env: "production", Ai_Provider: "gemini", Firebase_Project_Id: "synthetic-live-project",
     Firestore_Emulator_Host: "remote.invalid:8085", Next_Public_Api_Url: "https://remote.invalid",
@@ -228,4 +234,19 @@ test("Vertex private configuration fails closed for unsafe targets, mixed creden
 test("Vertex cannot redirect the gcloud credential directory into the public checkout", t => {
   const directory = privateDirectory(t);
   safeError(() => geminiBackendEnv({ APP_ENV: "local" }, privateConfig(directory, { ...vertexSettings(directory), gcloudConfigDir: root })), /directory must exist outside the public repository/);
+});
+
+test("connected Vertex can resolve a private relative directory and clears mixed-case Gemini aliases", t => {
+  const directory = privateDirectory(t);
+  const filename = privateConfig(directory, { ...vertexSettings(directory), gcloudConfigDir: "." });
+  const inherited = { APP_ENV: "connected", Gemini_Api_Key: fakeSecret, Google_Api_Key: fakeSecret, Vertex_Project_Id: "wrong-project" };
+  const result = geminiBackendEnv(inherited, filename);
+  assert.equal(result.VERTEX_GCLOUD_CONFIG_DIR, directory);
+  assert.equal(result.VERTEX_PROJECT_ID, "example-cloud-project");
+  assert.ok(!Object.values(result).includes(fakeSecret));
+  assert.equal(inherited.Gemini_Api_Key, fakeSecret);
+});
+
+test("missing private paths are sanitized without echoing their values", () => {
+  safeError(() => geminiBackendEnv({ APP_ENV: "local" }, path.join(os.tmpdir(), fakeSecret, "does-not-exist.json")), /outside the public repository/);
 });

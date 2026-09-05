@@ -31,4 +31,6 @@ export interface Health {
   aiProvider: "fixture" | "gemini";
   storage: "firestore";
   auth: "emulator" | "firebase";
+  storageConnection?: "cloud" | "emulator";
+  runtime?: "local" | "connected" | "production";
 }
