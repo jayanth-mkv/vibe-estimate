@@ -1,30 +1,14 @@
 import { clientAuth, type SessionIdentity } from "./firebase";
 import type { Room } from "./room-types";
 import type { Project } from "./types";
-
-const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8080").replace(/\/$/, "");
+import { serviceRequest } from "./service-request";
 
 export function makeRoomApi(identity: SessionIdentity = "designer") {
   async function request<T>(path: string, body?: object): Promise<T> {
-    const user = clientAuth(identity).currentUser;
-    if (!user) throw new Error("Your session has ended. Sign in to reconnect to the room.");
-    let response: Response;
-    try {
-      response = await fetch(`${apiUrl}${path}`, {
-        method: body === undefined ? "GET" : "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(20000),
-        cache: "no-store",
-      });
-    } catch {
-      throw new Error("The room could not be reached. Your message is still here. Check your connection and retry.");
-    }
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      throw new Error(payload?.error?.message || "The room could not complete that action. Please try again.");
-    }
-    return response.json() as Promise<T>;
+    return serviceRequest(path, clientAuth(identity).currentUser, {
+      method: body === undefined ? "GET" : "POST",
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }) as Promise<T>;
   }
   const roomPath = (id: string) => `/api/rooms/${encodeURIComponent(id)}`;
   return {
