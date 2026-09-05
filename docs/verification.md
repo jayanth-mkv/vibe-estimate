@@ -2,6 +2,18 @@
 
 This file records **executed** results only. The checks each future release must pass before it can be called done are specified separately, as gates in the [release plan](plan/README.md) — [v1](plan/v1.md#v1-gate), [v2](plan/v2.md#v2-gate) and [v3](plan/v3.md). A planned gate is not evidence; copy a result here only once it has actually run.
 
+## Native delivery configuration — 6 September 2026
+
+The operator requested automatic GitHub `main` releases and Terraform ownership for both Google Cloud and Vercel. The existing Google GitHub installation was verified, with no linked repository child or trigger. Terraform created the child, an enabled `^main$` trigger using `cloudbuild.yaml`, a private versioned runtime-state bucket and restricted release IAM: **nine resources**, no replacements or deletions. Exact operations are in the private delivery state/logs and [inventory](infrastructure-inventory.md).
+
+The existing Cloud Run service was imported into the GCS-backed runtime state before a `destroy=false` removal from the old state. The checked runtime plan retained the exact container template, image and effective labels; its label changes only adopted configuration ownership. The old production plan/apply contained only the one state `forget`. Shared ADC remained unchanged across all authenticated operations. No service replacement or application-data migration occurred.
+
+Executed configuration checks: Google delivery Terraform validation and **3/3 mocked safety runs**, Vercel validation and **7/7 mocked safety runs**, runtime Terraform validation, native build YAML parsing and **8/8 release-boundary tests**. Release checks reject non-main or abbreviated commits, credential-bearing runtime inputs, mutable images, new/deleted/replaced resources, a different service and fixture health. The public scan passed for **260 text files** at this stage and Git whitespace checks passed.
+
+Vercel CLI authentication succeeded. The reviewed project/environment plan contained no credential or environment values, but the initial apply failed because the account had not installed the Vercel GitHub App for this public repository. It created no Vercel project. A public repository URL does not bypass that native Git-link requirement. The operator was given the installation link. This configuration checkpoint does not claim a passing push-triggered release or Vercel hosting; those results must be added after execution.
+
+Manual image-build/upload release scripts were removed. `cloudbuild.yaml` now defines checks, immutable Git image build/push, guarded Terraform runtime apply and production health; ordinary releases use a `main` push. Project-local development and verification tools remain available.
+
 ## Submission evidence clarification — 5 September 2026
 
 The operator confirmed that this repository is the authentic build history for the agent-assisted workflow, replacing a separate AI Studio app. Current [evidence](ai-studio-evidence.md) and the [challenge checklist](hackathon-checklist.md) now use repository instructions, source commits and executed tests; older AI Studio-specific pending notes below are historical. No AI Studio UI session is claimed.

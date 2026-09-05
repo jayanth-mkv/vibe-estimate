@@ -18,6 +18,16 @@ variable "firebase_project_id" { type = string }
 variable "project_number" { type = string }
 variable "region" { type = string }
 variable "existing_auth_domains" { type = list(string) }
+variable "extra_auth_domains" {
+  type    = list(string)
+  default = []
+  validation {
+    condition = length(var.extra_auth_domains) <= 20 && alltrue([
+      for domain in var.extra_auth_domains : length(domain) <= 253 && domain == trimspace(domain) && can(regex("^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$", domain))
+    ])
+    error_message = "Additional Firebase domains must be at most 20 lowercase DNS hostnames without schemes, paths, ports, wildcards or IP addresses."
+  }
+}
 variable "firestore_database_id" { type = string }
 variable "gemini_model" { type = string }
 variable "access_token" {
@@ -190,7 +200,7 @@ resource "restful_resource" "auth_domains" {
   update_method        = "PATCH"
   merge_patch_disabled = true
   update_query         = { updateMask = ["authorizedDomains"], fields = ["authorizedDomains"] }
-  body                 = { authorizedDomains = distinct(concat(var.existing_auth_domains, [local.host])) }
+  body                 = { authorizedDomains = distinct(concat(var.existing_auth_domains, [local.host], var.extra_auth_domains)) }
   output_attrs         = ["authorizedDomains"]
   lifecycle { prevent_destroy = true }
 }
@@ -220,70 +230,20 @@ resource "google_cloud_tasks_queue" "reviews" {
   depends_on = [google_project_service.required]
 }
 
-resource "google_cloud_run_v2_service" "application" {
-  count               = local.deploy ? 1 : 0
-  project             = var.backend_project_id
-  name                = "vibeestimate"
-  location            = var.region
-  deletion_protection = true
-  ingress             = "INGRESS_TRAFFIC_ALL"
-  labels              = local.labels
-  template {
-    service_account                  = google_service_account.runtime.email
-    timeout                          = "120s"
-    max_instance_request_concurrency = 8
-    scaling {
-      min_instance_count = 0
-      max_instance_count = 2
-    }
-    containers {
-      image = var.image
-      ports { container_port = 8080 }
-      resources {
-        limits            = { cpu = "2", memory = "1Gi" }
-        cpu_idle          = true
-        startup_cpu_boost = true
-      }
-      startup_probe {
-        http_get { path = "/health" }
-        initial_delay_seconds = 2
-        period_seconds        = 3
-        failure_threshold     = 30
-      }
-      dynamic "env" {
-        for_each = {
-          APP_ENV                    = "production", NODE_ENV = "production", AI_PROVIDER = "gemini",
-          GEMINI_TRANSPORT           = "vertex", GEMINI_MODEL = var.gemini_model, VERTEX_AUTH_MODE = "runtime",
-          VERTEX_PROJECT_ID          = var.backend_project_id, VERTEX_LOCATION = "global",
-          FIREBASE_PROJECT_ID        = var.firebase_project_id, FIRESTORE_DATABASE_ID = var.firestore_database_id,
-          GOOGLE_CLOUD_QUOTA_PROJECT = var.firebase_project_id, FRONTEND_ORIGIN = local.origin,
-          ROOM_TASK_QUEUE            = google_cloud_tasks_queue.reviews.id, ROOM_TASK_SERVICE_ACCOUNT = google_service_account.delivery.email
-        }
-        content {
-          name  = env.key
-          value = env.value
-        }
-      }
-      env {
-        name = "FIREBASE_WEB_CONFIG"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.web_config.secret_id
-            version = google_secret_manager_secret_version.web_config.version
-          }
-        }
-      }
-    }
-  }
-  depends_on = [google_project_service.required, google_project_iam_member.firebase, google_project_iam_member.runtime_model, google_secret_manager_secret_iam_member.web_config]
+# Import the existing service into infra/runtime before applying this handoff.
+# Forget its old state entry without deleting or recreating the live service.
+removed {
+  from = google_cloud_run_v2_service.application
+  lifecycle { destroy = false }
 }
 resource "google_cloud_run_v2_service_iam_member" "public" {
-  count    = local.deploy ? 1 : 0
-  project  = var.backend_project_id
-  location = var.region
-  name     = google_cloud_run_v2_service.application[0].name
-  role     = "roles/run.invoker"
-  member   = "allUsers"
+  count      = local.deploy ? 1 : 0
+  project    = var.backend_project_id
+  location   = var.region
+  name       = "vibeestimate"
+  role       = "roles/run.invoker"
+  member     = "allUsers"
+  depends_on = [google_project_service.required]
 }
 resource "google_cloud_scheduler_job" "reconcile" {
   count     = local.deploy ? 1 : 0

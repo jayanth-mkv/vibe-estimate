@@ -1,9 +1,90 @@
-# Builds an immutable backend artifact. Terraform owns Cloud Run deployment.
+# Native GitHub main push -> checked image -> Terraform-owned Cloud Run release.
+# The Terraform-managed trigger supplies metadata substitutions and build identity.
 steps:
-  - name: gcr.io/cloud-builders/docker
-    args: ["build", "-f", "backend/Dockerfile", "-t", "$_IMAGE_REPOSITORY:$COMMIT_SHA", "."]
+  - id: main-and-metadata-guard
+    name: node:22-bookworm-slim
+    entrypoint: node
+    args: ["infra/runtime/verify-release.mjs", "guard"]
+
+  - id: checks
+    name: node:22-bookworm-slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        npm ci
+        npm run typecheck
+        npm test
+        npm run test --workspace @vibeestimate/frontend
+        node --test infra/runtime/tests/release.test.mjs
+
+  - id: build-commit
+    name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "Dockerfile", "-t", "${_IMAGE_REPOSITORY}:$COMMIT_SHA", "."]
+  - id: push-commit
+    name: gcr.io/cloud-builders/docker
+    args: ["push", "${_IMAGE_REPOSITORY}:$COMMIT_SHA"]
+
+  - id: resolve-digest
+    name: gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
+    entrypoint: sh
+    args:
+      - -ceu
+      - |
+        gcloud artifacts docker images describe "$${RELEASE_IMAGE_REPOSITORY}:$${COMMIT_SHA}" --format='value(image_summary.digest)' --quiet > /workspace/.cache/release/image-digest.txt
+  - id: bind-immutable-image
+    name: node:22-bookworm-slim
+    entrypoint: node
+    args: ["infra/runtime/verify-release.mjs", "variables"]
+
+  - id: terraform-plan
+    name: hashicorp/terraform:1.13.5
+    entrypoint: sh
+    args:
+      - -ceu
+      - |
+        terraform -chdir=infra/runtime init -input=false -lockfile=readonly -backend-config="bucket=$${RELEASE_STATE_BUCKET}" -backend-config=prefix=runtime
+        terraform -chdir=infra/runtime validate
+        terraform -chdir=infra/runtime plan -input=false -lock-timeout=300s -var-file=/workspace/.cache/release/runtime.tfvars.json -out=/workspace/.cache/release/runtime.tfplan > /workspace/.cache/release/plan.log
+        terraform -chdir=infra/runtime show -json /workspace/.cache/release/runtime.tfplan > /workspace/.cache/release/runtime-plan.json
+  - id: verify-plan-and-current-main
+    name: node:22-bookworm-slim
+    entrypoint: node
+    args: ["infra/runtime/verify-release.mjs", "plan"]
+  - id: terraform-apply
+    name: hashicorp/terraform:1.13.5
+    entrypoint: sh
+    args:
+      - -ceu
+      - |
+        if [ -f /workspace/.cache/release/skip.json ]; then exit 0; fi
+        test -f /workspace/.cache/release/plan-verified.json
+        terraform -chdir=infra/runtime apply -input=false -lock-timeout=300s /workspace/.cache/release/runtime.tfplan
+  - id: production-health
+    name: node:22-bookworm-slim
+    entrypoint: node
+    args: ["infra/runtime/verify-release.mjs", "health"]
+
 images:
-  - "$_IMAGE_REPOSITORY:$COMMIT_SHA"
+  - "${_IMAGE_REPOSITORY}:$COMMIT_SHA"
+substitutions:
+  _STATE_BUCKET: ""
+  _RUNTIME_VARS_B64: ""
+  _IMAGE_REPOSITORY: ""
+  _GITHUB_REPOSITORY: ""
 options:
   logging: CLOUD_LOGGING_ONLY
-timeout: 900s
+  machineType: E2_HIGHCPU_8
+  env:
+    - "BRANCH_NAME=$BRANCH_NAME"
+    - "COMMIT_SHA=$COMMIT_SHA"
+    - "RELEASE_STATE_BUCKET=${_STATE_BUCKET}"
+    - "RELEASE_RUNTIME_VARS_B64=${_RUNTIME_VARS_B64}"
+    - "RELEASE_IMAGE_REPOSITORY=${_IMAGE_REPOSITORY}"
+    - "RELEASE_GITHUB_REPOSITORY=${_GITHUB_REPOSITORY}"
+    - "TF_IN_AUTOMATION=1"
+    - "CHECKPOINT_DISABLE=1"
+    - "NEXT_TELEMETRY_DISABLED=1"
+    - "CI=true"
+tags: ["vibeestimate", "native-main-release"]
+timeout: 1200s

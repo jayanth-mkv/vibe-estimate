@@ -1,32 +1,45 @@
-# Initial production infrastructure
+# Production foundation
 
-This isolated Terraform root owns the initial Cloud Run app and its managed room tasks. It does not share state with the original backend template, Gemini-local root or Firebase adoption root.
+This Terraform root manages the production APIs, runtime/build/delivery identities and their IAM, image repository, original build-source bucket, review queue, recovery scheduler, browser SDK configuration secret, Firebase authorized domains, and public Cloud Run invocation binding. The existing Cloud Run service is owned separately by [infra/runtime](../runtime/README.md), whose state and permissions are limited to that service.
 
-The Next.js frontend and Express backend run as separate processes in one container. Cloud Run exposes only the frontend port. The Next.js gateway forwards authenticated API calls to the backend on loopback, preserving the `frontend/` and `backend/` boundaries and allowing a later hosting split through `BACKEND_ORIGIN`.
+Ordinary application releases follow a reviewed push to GitHub `main`. The native Cloud Build trigger runs [cloudbuild.yaml](../../cloudbuild.yaml), builds the committed source, and applies the runtime Terraform plan. This foundation root is used for infrastructure changes and ownership adoption, not for each image release. See [deployment.md](../../docs/deployment.md) for the complete workflow.
 
-Production uses Firebase ID tokens and server ownership checks, real Firestore, and an attached service identity for Vertex inference. Runtime browser SDK configuration is injected from Secret Manager using a four-field allowlist; it is never included in image build sources. This is not a Gemini API key. The challenge's specific server-key evidence is tracked separately.
+The existing Cloud Run image contains the Next.js gateway and Express backend as separate processes. A Vercel frontend uses its own same-origin gateway with an explicit `BACKEND_ORIGIN` pointing to Cloud Run. Firebase ID tokens continue to be verified by the backend; Firebase identity/storage and the backend project remain independently configured. The runtime identity calls Vertex without a user credential or service-account key.
 
-Room writes persist queued state before requesting a Cloud Task. Verified Google OIDC delivery invokes the worker, which awaits the model and save. A once-per-minute authenticated scheduler recovers queued work if enqueueing fails. Firestore room/owner leases prevent repeated delivery from duplicating a paid review. An expired paid lease requires explicit owner retry. No continuous production background timer runs. The Cloud Run service scales from zero to two instances; the queue allows four simultaneous task requests.
+Room writes persist queued work before requesting a Cloud Task. Verified Google OIDC delivery invokes the observer, and the scheduler recovers saved queue entries. Room leases and direct-review request records prevent ordinary retries from dispatching duplicate model calls. Interrupted attempts require explicit owner recovery. The queue, identities and scheduler stay in this foundation while the service template belongs to the runtime root.
 
-## Operator workflow
+## Private configuration and state
 
-Read and verify the outer private authorization first. Existing resources must be discovered before creation. Operator values, saved plans, Terraform state, short-lived credentials, build archives and verification artifacts belong outside the checkout under `../docs/private/`. The checked launcher reads the existing named-profile configuration, confirms targets, hashes shared ADC before/after, and binds apply to the saved plan and source/configuration hashes. Provider credentials are ephemeral and the secret version uses a write-only input. Never display a plan/state file or a raw cloud error in public output.
+Read the outer private authorization before operator cloud operations. Discover existing resources before managing them. Operator values, local foundation state, saved plans and verification records belong outside the checkout under `../docs/private/`. Never commit actual account/project IDs, credentials, state, plan files or raw cloud diagnostics.
 
-Commands run from the repository root, using its local Terraform binary and npm tooling:
+The retained `scripts/terraform-production.mts` launcher verifies the named profile and target, uses an ephemeral token, checks shared ADC before/after, and binds apply to the saved plan and configuration hashes. It is a bootstrap and infrastructure-maintenance tool. Routine releases need neither a local image archive nor an operator deployment script.
 
-```powershell
-rtk proxy node --import tsx scripts/terraform-production.mts init
-rtk proxy node --import tsx scripts/terraform-production.mts validate
-rtk proxy node --import tsx scripts/terraform-production.mts plan
-# Inspect the private plan; the launcher rejects deletes and replacements.
-rtk proxy node --import tsx scripts/terraform-production.mts apply
-rtk proxy node --import tsx scripts/terraform-production.mts outputs
-rtk proxy node --import tsx scripts/build-production.mts submit
-rtk proxy node --import tsx scripts/build-production.mts status
+The native runtime state belongs in the dedicated private, versioned GCS bucket provisioned by `infra/delivery`. Do not reuse this root's original source bucket for state: it has a seven-day object-deletion lifecycle. Gemini-local, Firebase adoption, foundation, delivery, runtime and Vercel state ownership remain separate.
+
+## Adopt the running service
+
+The ownership handoff follows this order; consult the inventory and verification record for its executed evidence:
+
+1. Preserve a private backup of the existing foundation state and the current service template, image digest and identity metadata. Pause release activity during the handoff.
+2. Initialize `infra/runtime` against its dedicated GCS bucket and import the existing service into `google_cloud_run_v2_service.application`. Use the currently deployed digest and exact existing template. Review its plan before any application update.
+3. Apply the reviewed foundation handoff. Its `removed` block forgets the old `google_cloud_run_v2_service.application[0]` entry with `destroy=false`; it must not delete or recreate the live service.
+4. Confirm that only the runtime state actively manages the service. Public invocation and the scheduler remain in the foundation state, with no unintended changes.
+
+The retained private `image` input still controls the public-invocation and scheduler resource counts. Keep it set to the current verified digest during adoption; clearing it is not the way to transfer service ownership. The foundation launcher rejects delete/replacement plans and permits Terraform's explicit forget action.
+
+## Firebase domains for Vercel
+
+After discovering the canonical production hostname, the optional private `vercel-config.json` supplies additional domains:
+
+```json
+{
+  "firebaseProjectId": "firebase-project-id",
+  "extraFirebaseAuthDomains": ["project-name.vercel.app"]
+}
 ```
 
-Cloud Build only builds and pushes the image into the Terraform-managed private repository. A successful status records its immutable digest in private configuration. Run plan/review/apply again to create or update the Cloud Run service and scheduler. Do not deploy tags or use `gcloud run deploy`. The original disabled-API bootstrap uses `plan --bootstrap`; routine deployments require the complete plan.
+The file can also contain other Vercel operator settings. Its Firebase project must match the authorized configuration. An absent file means no additional domains. Additional values are bounded lowercase DNS hostnames without schemes, paths, ports, wildcards or IP addresses; committed examples remain placeholders.
 
-The Firebase domain wrapper imports only `authorizedDomains`, requesting only that field on both import and refresh. Its PATCH has an explicit field mask and preserves all previously discovered domains. Do not enable output sensitivity after import: the REST provider treats that setting as replacement. The metadata-only allowlist and external state boundary are sufficient here; `prevent_destroy` remains mandatory.
+Terraform combines the extra domains with every previously discovered domain and the existing Cloud Run hostname. The imported REST resource reads and patches only `authorizedDomains` with an explicit field mask. It does not adopt sign-in providers or retrieve password-hashing configuration. Preserve its import identity and `prevent_destroy`; changing output sensitivity would cause the pinned REST provider to propose replacement.
 
-Read [production readiness](../../docs/production-readiness.md), [inventory](../../docs/infrastructure-inventory.md) and [verification](../../docs/verification.md) for the distinction between prepared configuration and executed evidence.
+Executed changes and deployment evidence belong in the [inventory](../../docs/infrastructure-inventory.md) and [verification record](../../docs/verification.md).

@@ -2,6 +2,24 @@
 
 The original local setup created no cloud resources. Live Gemini setup and the later authorized production deployment took place on 5 September 2026. The sections below retain those separate historical stages. Public documentation omits personal account names, real project IDs, connection paths, and credentials; exact operational records and Terraform state remain in the outer private workspace.
 
+## Native GitHub delivery — 6 September 2026
+
+The operator authorized Terraform-managed GitHub `main` delivery for both hosts. Discovery verified the existing Google GitHub connection was installed, with no repository children or build triggers. Its OAuth secret and installation remain unchanged.
+
+| Component | Executed action | Ownership |
+| --- | --- | --- |
+| Existing Google GitHub connection | Discovered installed; retained without modification | Operator's existing connection |
+| Cloud Build repository child and `main` trigger | Created through Terraform; exact `^main$` push filter, root `cloudbuild.yaml`, existing build identity | `infra/delivery` |
+| Runtime state bucket | Created private, uniform, versioned and protected against deletion; no expiration rule | `infra/delivery` |
+| Release IAM | Two custom roles and four bindings created: service-only get/update, operation polling/API use, runtime identity act-as, bucket-only state objects | `infra/delivery` |
+| Existing Cloud Run service | Imported into shared GCS state; forgotten from the old state with `destroy=false` | `infra/runtime` |
+| Existing IAM, queue, scheduler, APIs, SDK secret and Firebase authorized domains | Preserved in the original production state | `infra/production` |
+| Vercel project and seven write-only production environment values | Configuration and mock checks completed; initial apply rejected the missing GitHub App installation and created no project | `infra/vercel`, pending GitHub authorization |
+
+The delivery apply created **nine resources**, with no replacements or deletions. Runtime adoption preserved the exact container template, deployed image and effective labels. The old production apply performed only one state `forget`, after the service import succeeded. The separate state bucket does not use the build-source bucket's seven-day expiration policy. Application releases will apply only the imported Cloud Run service; the builder receives no secret-payload, Firebase administration, service-creation/deletion or IAM-administration permissions.
+
+Exact targets, configuration, state backups, reviewed plans and discovery/apply records are retained outside the checkout under `../docs/private/`. Google credentials remained ephemeral and shared ADC hashes matched. Vercel CLI login was verified and preserved; its credential copy and state are private. The [deployment guide](deployment.md) documents the native release path. Push-trigger execution and public-host verification are recorded separately in [verification](verification.md).
+
 ## Production audit: observed, no resource changes
 
 On 5 September 2026 a named-profile, read-only Cloud Run API check confirmed that the existing service is ready, sends 100% of traffic to its latest revision, selects `gemini-3.7-flash`, and has the required `dev-tutorial=cloud-run-ai-challenge` label. The deployed image digest is `sha256:537163883e4db76eab8e16c341b0301c4dc2e6990a27e4d9871e5d146a9d4f43`. Full service metadata is retained as `../docs/private/production-audit-service.json`. Shared ADC hashes matched before/after this read.

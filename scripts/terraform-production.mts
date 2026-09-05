@@ -2,7 +2,32 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 import { obtainNamedProfileToken } from '../backend/src/vertex-auth.ts';
+
+/** Optional extra domains belong to the same explicitly authorized Firebase
+ * project. Other private Vercel configuration fields are intentionally ignored. */
+export function extraAuthDomains(config: unknown, firebaseProjectId: string): string[] {
+  if(config === undefined)return [];
+  if(!config||typeof config!=='object'||Array.isArray(config))throw new Error('Invalid private frontend domain configuration');
+  const value=config as Record<string,unknown>;
+  if(!firebaseProjectId||value.firebaseProjectId!==firebaseProjectId)throw new Error('Frontend Firebase target mismatch');
+  const domains=value.extraFirebaseAuthDomains;
+  const hostname=/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/;
+  if(!Array.isArray(domains)||domains.length>20||!domains.every((domain): domain is string => typeof domain==='string'&&domain.length<=253&&domain===domain.trim()&&hostname.test(domain)))throw new Error('Invalid additional Firebase domain list');
+  return [...new Set(domains)];
+}
+
+function privateExtraAuthDomains(privateRoot: string, firebaseProjectId: string): string[] {
+  const file=path.join(privateRoot,'vercel-config.json');
+  try {fs.lstatSync(file);}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return [];throw new Error('Private frontend domain configuration is unavailable');}
+  const canonical=fs.realpathSync(file);
+  const relative=path.relative(privateRoot,canonical);
+  if(!relative||relative==='..'||relative.startsWith('..'+path.sep)||path.isAbsolute(relative))throw new Error('Frontend domain configuration must stay in the private directory');
+  const stat=fs.statSync(canonical);
+  if(!stat.isFile()||stat.size>32768)throw new Error('Invalid private frontend domain configuration');
+  return extraAuthDomains(JSON.parse(fs.readFileSync(canonical,'utf8')),firebaseProjectId);
+}
 
 async function main() {
   const action=process.argv[2];
@@ -15,6 +40,7 @@ async function main() {
   const discovery=JSON.parse(fs.readFileSync(path.join(privateRoot,'production-discovery.json'),'utf8'));
   const connected=JSON.parse(fs.readFileSync(path.join(privateRoot,'firebase-connected.json'),'utf8'));
   if(operator.backendProjectId!==vertex.projectId||operator.account!==vertex.account||operator.gcloudConfiguration!==vertex.gcloudConfiguration||operator.firebaseProjectId!==connected.firebaseProjectId||operator.backendRegion!==discovery.region||operator.backendProjectId!==discovery.backendProjectId)throw new Error('Authorized target mismatch');
+  const additionalDomains=privateExtraAuthDomains(privateRoot,operator.firebaseProjectId);
   const adc=path.join(vertex.gcloudConfigDir,'application_default_credentials.json');
   const digest=(data: string|Buffer)=>createHash('sha256').update(data).digest('hex');
   const adcHash=()=>fs.existsSync(adc)?digest(fs.readFileSync(adc)):'absent';
@@ -31,7 +57,7 @@ async function main() {
   if(web.projectId!==operator.firebaseProjectId)throw new Error('Firebase public config target mismatch');
   const publicConfig=Object.fromEntries(['projectId','apiKey','authDomain','appId'].map(k=>[k,web[k]]));
   const vars={backend_project_id:operator.backendProjectId,firebase_project_id:operator.firebaseProjectId,project_number:discovery.projectNumber,region:operator.backendRegion,
-    existing_auth_domains:discovery.results.find((r:any)=>r.name==='firebaseAuth').data.authorizedDomains,firestore_database_id:connected.firestoreDatabaseId,gemini_model:vertex.model,image};
+    existing_auth_domains:discovery.results.find((r:any)=>r.name==='firebaseAuth').data.authorizedDomains,extra_auth_domains:additionalDomains,firestore_database_id:connected.firestoreDatabaseId,gemini_model:vertex.model,image};
   const varsFile=path.join(stateDir,'production.tfvars.json');fs.writeFileSync(varsFile,JSON.stringify(vars));
   const env={...process.env};
   for(const k of Object.keys(env))if(/^(TF_|GOOGLE_|GCLOUD_|CLOUDSDK_|GEMINI_|VERTEX_)/i.test(k))delete env[k];
@@ -73,4 +99,4 @@ async function main() {
     else console.log(JSON.stringify({action,ok:true}));
   } finally {console.log(JSON.stringify({sharedAdcUnchanged:before===adcHash()}));if(before!==adcHash())process.exitCode=1;}
 }
-main().catch(()=>{console.error('Production Terraform operation stopped; private values and raw errors omitted.');process.exitCode=1;});
+if(process.argv[1]&&pathToFileURL(path.resolve(process.argv[1])).href===import.meta.url)main().catch(()=>{console.error('Production Terraform operation stopped; private values and raw errors omitted.');process.exitCode=1;});
