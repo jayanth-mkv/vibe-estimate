@@ -1,11 +1,12 @@
 import { getApps, initializeApp } from "firebase/app";
 import { browserLocalPersistence, connectAuthEmulator, getAuth, GoogleAuthProvider, linkWithPopup, setPersistence, signInAnonymously, signInWithPopup, type UserCredential } from "firebase/auth";
+import { recoveryIdentity, type ClientRoomIdentity, type GoogleRoomIdentity } from "./client-room-access";
 
 export const usesEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true";
 export const usesGuestAccess = process.env.NEXT_PUBLIC_AUTH_MODE === "guest";
 export const usesAnonymousAuth = usesEmulators || usesGuestAccess;
 export const googleAuthEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true";
-export type SessionIdentity = "designer" | "client";
+export type SessionIdentity = "designer" | ClientRoomIdentity;
 const pendingSessions = new Map<SessionIdentity, Promise<UserCredential>>();
 
 export function clientAuth(identity: SessionIdentity = "designer") {
@@ -14,7 +15,7 @@ export function clientAuth(identity: SessionIdentity = "designer") {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   if (!projectId || !apiKey) throw new Error("Sign-in is not configured. Add the frontend environment settings and restart the app.");
   if (usesEmulators && (!projectId.startsWith("demo-") || !["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname))) throw new Error("Local sign-in requires a demo project on localhost.");
-  const appName = identity === "client" ? "vibeestimate-client" : "[DEFAULT]";
+  const appName = identity === "designer" ? "[DEFAULT]" : identity === "client" ? "vibeestimate-client" : `vibeestimate-${recoveryIdentity(identity.slice("client-google:".length)).replace(":", "-")}`;
   const app = getApps().find((candidate) => candidate.name === appName) ?? initializeApp({ projectId, apiKey, authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID }, appName);
   const auth = getAuth(app);
   if (usesEmulators && !auth.emulatorConfig) {
@@ -26,6 +27,7 @@ export function clientAuth(identity: SessionIdentity = "designer") {
 }
 
 export async function startSession(identity: SessionIdentity = "designer") {
+  if (identity !== "designer" && identity !== "client") throw new Error("Use Continue with Google to reopen this room. Your guest access is unchanged.");
   const existing = pendingSessions.get(identity);
   if (existing) return existing;
   const auth = clientAuth(identity);
@@ -36,6 +38,25 @@ export async function startSession(identity: SessionIdentity = "designer") {
   pendingSessions.set(identity, pending);
   try { return await pending; }
   finally { if (pendingSessions.get(identity) === pending) pendingSessions.delete(identity); }
+}
+
+export async function openGoogleClientRoom(identity: GoogleRoomIdentity) {
+  if (!googleAuthEnabled) throw new Error("Google account access is not available here yet. Your guest rooms are unchanged.");
+  const auth = clientAuth(identity);
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  try {
+    // Each recovered room has a separate Firebase app. A popup here cannot
+    // replace the designer, client guest, or another recovered room's session.
+    await setPersistence(auth, browserLocalPersistence);
+    return await signInWithPopup(auth, provider);
+  } catch (cause) {
+    const code = cause && typeof cause === "object" && "code" in cause ? String(cause.code) : "";
+    if (["auth/popup-closed-by-user", "auth/cancelled-popup-request"].includes(code)) {
+      throw new Error("Google connection was cancelled. Your guest rooms are unchanged; try again when you’re ready.");
+    }
+    throw new Error("Google could not reconnect to this room. Your guest rooms are unchanged. Try again when your connection is ready.");
+  }
 }
 
 export async function saveAccessWithGoogle(identity: SessionIdentity = "designer") {

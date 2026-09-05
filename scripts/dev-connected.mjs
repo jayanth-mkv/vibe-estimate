@@ -31,6 +31,14 @@ try {
   if (health.runtime !== "connected" || health.auth !== "firebase" || health.storageConnection !== "cloud" || health.aiProvider !== "gemini" || health.geminiTransport !== "vertex") throw new Error("The API does not match the connected configuration.");
   start("node_modules/next/dist/bin/next", ["dev", "--hostname", "127.0.0.1", "--port", "3000"], path.join(root, "frontend"), frontendEnv);
   await waitPort(3000);
+  // A listening development server can still have a stale route manifest.
+  // Server-render these pages before announcing readiness; no browser JavaScript,
+  // Firebase identity, data request or model call is executed by this probe.
+  for (const route of ["/", "/join", "/rooms/00000000-0000-4000-8000-000000000000", "/client/rooms/00000000-0000-4000-8000-000000000000"]) {
+    const page = await fetch(frontendOrigin + route, { signal: AbortSignal.timeout(30000) });
+    if (!page.ok) throw new Error("The frontend route manifest is not ready.");
+    await page.body?.cancel();
+  }
   console.log("Ready: " + frontendOrigin + " | API http://127.0.0.1:8080/health | Cloud Firebase with guest access");
 } catch {
   console.error("The connected workspace could not start. Check the external configuration and local application ports. Private values were not displayed.");

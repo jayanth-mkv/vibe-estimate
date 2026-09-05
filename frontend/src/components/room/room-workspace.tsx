@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCheck } from "lucide-react";
-import { clientAuth, googleAuthEnabled, saveAccessWithGoogle, startSession, usesAnonymousAuth, usesEmulators, type SessionIdentity } from "@/lib/firebase";
+import { clientAuth, googleAuthEnabled, openGoogleClientRoom, saveAccessWithGoogle, startSession, usesAnonymousAuth, usesEmulators, type SessionIdentity } from "@/lib/firebase";
+import { recoverClientRoom, selectedClientIdentity, verifiedClientRoom } from "@/lib/client-room-access";
 import { api as projectApi } from "@/lib/api";
 import { workspaceStatus } from "@/lib/workspace-status";
 import type { Health } from "@/lib/types";
@@ -18,9 +19,10 @@ import styles from "./room.module.css";
 export interface PendingMessage { text: string; requestId: string; status: "sending" | "error"; error?: string }
 const errorText = (error: unknown) => error instanceof Error ? error.message : "This action could not be completed. Please try again.";
 
-export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: SessionIdentity }) {
+export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: "designer" | "client" }) {
   const router = useRouter();
-  const api = useMemo(() => makeRoomApi(identity), [identity]);
+  const [activeIdentity, setActiveIdentity] = useState<SessionIdentity>(identity);
+  const api = useMemo(() => makeRoomApi(activeIdentity), [activeIdentity]);
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsSignIn, setNeedsSignIn] = useState(false);
@@ -43,8 +45,9 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
   const composerRef = useRef<HTMLTextAreaElement>(null);
 
   const acceptRoom = useCallback((next: Room) => {
+    if (identity === "client" && activeIdentity !== "client") verifiedClientRoom(roomId, next);
     setRoom((current) => current && current.updatedAt > next.updatedAt ? current : next);
-  }, []);
+  }, [identity, activeIdentity, roomId]);
 
   useEffect(() => {
     let active = true;
@@ -55,8 +58,15 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
   useEffect(() => {
     let cancelled = false;
     async function connect() {
+      let changingIdentity = false;
       try {
-        const auth = clientAuth(identity);
+        const selectedIdentity = identity === "client" ? selectedClientIdentity(roomId) : identity;
+        if (selectedIdentity !== activeIdentity) {
+          changingIdentity = true;
+          setActiveIdentity(selectedIdentity);
+          return;
+        }
+        const auth = clientAuth(activeIdentity);
         await auth.authStateReady();
         if (cancelled) return;
         setLoading(true);
@@ -64,8 +74,8 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
         if (identity === "client" && inviteToken.current === null) {
           inviteToken.current = new URLSearchParams(window.location.hash.slice(1)).get("invite") || "";
         }
-        if (!auth.currentUser && usesAnonymousAuth) {
-          await startSession(identity);
+        if (!auth.currentUser && usesAnonymousAuth && (activeIdentity === "designer" || activeIdentity === "client")) {
+          await startSession(activeIdentity);
         }
         if (cancelled) return;
         if (!auth.currentUser) {
@@ -74,7 +84,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
         }
         setNeedsSignIn(false);
         setAnonymous(auth.currentUser.isAnonymous);
-        const result = identity === "client" && inviteToken.current
+        const result = activeIdentity === "client" && inviteToken.current
           ? await api.join(roomId, inviteToken.current)
           : await api.get(roomId);
         if (cancelled) return;
@@ -91,12 +101,12 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
       } catch (error) {
         if (!cancelled) setInitialError(errorText(error));
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !changingIdentity) setLoading(false);
       }
     }
     void connect();
     return () => { cancelled = true; };
-  }, [roomId, identity, api, bootVersion, acceptRoom]);
+  }, [roomId, identity, activeIdentity, api, bootVersion, acceptRoom]);
 
   const connectedRoomId = room?.id;
   useEffect(() => {
@@ -132,9 +142,33 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
   async function signIn() {
     setBusy("signin");
     setInitialError("");
-    try { await startSession(identity); setBootVersion((value) => value + 1); }
+    try { await startSession(activeIdentity); setBootVersion((value) => value + 1); }
     catch (error) { setInitialError(errorText(error)); }
     finally { setBusy(""); }
+  }
+
+  async function recoverGoogleAccess() {
+    if (busy || identity !== "client") return;
+    setBusy("recover-google");
+    setInitialError("");
+    try {
+      const result = await recoverClientRoom(roomId, {
+        authenticate: openGoogleClientRoom,
+        readRoom: (recovery, id) => makeRoomApi(recovery).get(id),
+      });
+      inviteToken.current = "";
+      if (new URLSearchParams(window.location.hash.slice(1)).has("invite")) {
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+      }
+      setActiveIdentity(result.identity);
+      setNeedsSignIn(false);
+      setAnonymous(false);
+      setConnectionError("");
+      acceptRoom(result.room);
+      setNotice(result.remembered ? "Your room is open with Google. Your guest workspace stays available." : "Your room is open with Google. This browser could not remember the choice; use Google again when you return.");
+    } catch (cause) {
+      setInitialError(`${errorText(cause)} Your guest workspace has not changed.`);
+    } finally { setBusy(""); setLoading(false); }
   }
 
   async function sendMessage(retry = false) {
@@ -201,7 +235,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
     setBusy("google");
     setActionError("");
     try {
-      await saveAccessWithGoogle(identity);
+      await saveAccessWithGoogle(activeIdentity);
       setAnonymous(false);
       setNotice("Access saved with Google. Your room and guest work stay with you.");
     } catch (cause) { setActionError(errorText(cause)); }
@@ -244,8 +278,9 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
         <h1>{needsSignIn ? identity === "client" ? "A shared space for your project." : "Return to your project room." : "We couldn’t open this room."}</h1>
         <p>{needsSignIn ? "Discuss the details with your designer, see what belongs in the scope, and keep every draft in one place." : usesAnonymousAuth ? "Use your invitation or the browser where you joined to reopen the conversation." : "Use your invitation and the same signed-in account to reopen the conversation."}</p>
         {initialError && <p role="alert" className={styles.error}>{initialError}</p>}
-        {needsSignIn ? <Button className="button primary" disabled={!!busy} onClick={() => void signIn()}>{busy ? "Connecting…" : usesAnonymousAuth ? "Reconnect to room" : identity === "client" ? "Sign in to join" : "Sign in to continue"}</Button> : <Button className="button primary" onClick={() => setBootVersion((value) => value + 1)}>Try again</Button>}
+        {needsSignIn && (activeIdentity === "client" || activeIdentity === "designer") ? <Button className="button primary" disabled={!!busy} onClick={() => void signIn()}>{busy ? "Connecting…" : usesAnonymousAuth ? "Reconnect to room" : identity === "client" ? "Sign in to join" : "Sign in to continue"}</Button> : <Button className="button primary" disabled={!!busy} onClick={() => setBootVersion((value) => value + 1)}>Try again</Button>}
         {identity === "client" && <Link className={styles.joinRecovery} href="/join">Join with a room code</Link>}
+        {identity === "client" && googleAuthEnabled && <section className={styles.googleRecovery} aria-labelledby="google-recovery-title"><h2 id="google-recovery-title">Saved access with Google?</h2><p>Open this room with the Google account you linked. Your guest workspace stays available in this browser.</p><Button className="button secondary" disabled={!!busy} onClick={() => void recoverGoogleAccess()}>{busy === "recover-google" ? "Opening your room…" : "Continue with Google"}</Button></section>}
         {identity === "client" && <p className={styles.small}>The scope agent sees the conversation. It helps review changes; it does not approve work or prices.</p>}
       </>}
     </main>

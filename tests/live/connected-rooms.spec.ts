@@ -345,6 +345,15 @@ test("connected guests join by room code and preserve real Gemini shared draft r
     expect((await originalAgain.json()).project).toMatchObject({ scope: synthetic.scope, messages: synthetic.messages, proposals: [] });
     expect(messageRequests).toBe(2);
     expect(blockedRequests).toBe(0);
+    // Capture only the completed synthetic room, after all invitations have
+    // disappeared. Automatic failure screenshots, traces and video stay off.
+    for (const [label, current] of [["designer", page], ["client", clientPage]] as const) {
+      await expect(current.getByRole("dialog")).toHaveCount(0);
+      expect(new URL(current.url()).hash).toBe("");
+      const filename = testInfo.outputPath(`connected-${label}-room.png`);
+      await current.screenshot({ path: filename, fullPage: true });
+      await testInfo.attach(`connected-${label}-room`, { path: filename, contentType: "image/png" });
+    }
     await testInfo.attach("connected-shared-room-verification", { body: JSON.stringify({
       verifiedAt: new Date().toISOString(), health, messageRequests, observerCalls: retained.observer.callsUsed,
       roomId: room.id, originalProjectId: original.id, draftProjectId: frozen.id,
