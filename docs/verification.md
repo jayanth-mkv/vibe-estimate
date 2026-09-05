@@ -2,6 +2,10 @@
 
 Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the project-local packages. **The connected two-person journey now passes with real Firebase Authentication, the operator's existing Firestore database, and Gemini 3.7 Flash through Vertex.** Earlier desktop/mobile live reviews and shared-room checks with local emulators remain separate evidence below. Guest entry requires no login form, and deployment remains deferred.
 
+The initial version is preserved at `4fa4d70` on `snapshot/initial-connected-v1`. The later `feat/spatial-home-studio` checkpoint contains [research and a complete implementation plan](spatial-home-studio-plan.md) only. No spatial app code, dependencies, uploaded plans, model calls, cloud resources or deployment were added in that stage. Its proposed 3D/recognition/performance checks are not executed results.
+
+Planning checks: 198 publishable text files passed the focused public/private scan; 42 relative links across eight edited documents resolved; Git whitespace checks passed. Application, test, script, dependency and Terraform files have no changes from the initial snapshot. Technical/UX reviews checked the proposed geometry, asset, permission, budget and compatibility contracts. Existing application tests were not repeated for documentation-only changes.
+
 | Check | Current state |
 | --- | --- |
 | Terraform main/adoption formatting and schema validation | Passed in local tooling |

@@ -32,6 +32,10 @@ The user subsequently requested a live shared conversation connecting the design
 
 The user then authorized using their existing real Firebase database and requested entry without a login wall. Firebase anonymous identities establish ownership behind the scenes. A client joins through a QR invitation, link, or short room code. Optional Google linking keeps the guest's identity and work; an explicit returning owner action is available only before the current guest has saved work. Returning clients can recover Google-linked room access through a separate identity after server-verified membership, preserving their other guest rooms. The operator enabled Anonymous, Email/Password and Google providers; the product uses anonymous and federated access without a password form. The default fixture stack remains entirely local, and deployment is still deferred.
 
+## Planned spatial extension
+
+The next user-requested version adds home-plan and image upload, a whole-home editable 3D view, curated assets selected through model tools, direct visual editing, different viewpoints and walkthroughs. Visual changes connect to the existing designer/homeowner room and proposal workflow; a separate client inbox provides an immediate two-person testing environment. Preserve the initial connected version and existing theme. Research and complete planning precede implementation. The proposed first scope is a complete single-floor home with private client options, followed by multiple floors; those defaults remain open to user correction. See [the implementation plan](docs/spatial-home-studio-plan.md) and [surface brief](docs/spatial-studio-brief.md). These capabilities are planned, not implemented in the initial snapshot.
+
 ## Brand Commitments
 
 Working name: VibeEstimate. Plain, calm language. Make next steps clear and avoid exposing backend implementation details in the customer-facing proposal.

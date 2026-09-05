@@ -79,6 +79,8 @@ Preserve server-confirmed saved states, original evidence, prior revisions, safe
 
 ## Verification
 
+The next spatial workspace has a separate [proposed surface brief](docs/spatial-studio-brief.md) and [researched implementation plan](docs/spatial-home-studio-plan.md). It preserves this visual system. No studio UI is implemented by that planning checkpoint, and current route verification does not establish its future 3D behaviour.
+
 Verify both routes at 1440px desktop, tablet, 390px, and 320px: readable layout, no page overflow, working route links, preserved tour art, keyboard tabs and focus, mobile sources, onboarding validation, sign-in/save timing, review, draft/revision/history, download, and failure recovery. Also verify navigating between routes does not leak tour styles into the workspace.
 
 Run relevant frontend TypeScript, ESLint, production build, shadcn audit, one Impeccable detector after the completed UI pass, and meaningful workflow tests. These are acceptance requirements, not executed results. Record actual results and remaining limitations in docs/verification.md; earlier tour checks do not prove the new composition.

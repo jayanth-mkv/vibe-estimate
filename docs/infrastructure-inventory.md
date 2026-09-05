@@ -71,6 +71,19 @@ Connected verification subsequently passed with real guest identities, two live 
 
 No Vercel project, hosted frontend, state bucket, load balancer, custom domain, Redis, Cloud SQL, VPC connector, document bucket, BigQuery dataset, or ADK infrastructure is created by these definitions.
 
+## Spatial studio proposals: research only
+
+The [spatial plan](spatial-home-studio-plan.md) proposes the following additions. None is discovered as existing, imported, configured in Terraform, provisioned or deployed by this planning stage. Keep these proposals separate from the prepared definitions and six managed Gemini resources above.
+
+| Proposed resource | Intended boundary | Status |
+| --- | --- | --- |
+| Private plan/scene object bucket | Authorized backend/Vertex project; uniform access and public-access prevention; explicit retention and scoped object permissions | Planned for connected uploads. Discover/adopt any suitable existing resource before creating through Terraform. |
+| Object access IAM | Authorized development/runtime identity, limited to the selected bucket | Planned; no grant or key creation. The first upload path uses an authenticated backend proxy. |
+| Worker queue and authenticated worker delivery | Backend project, deployment region selected from private configuration | Future deployed job processing only; local job worker needs no queue infrastructure. |
+| Optional indexes for new scene/job queries | Existing Firebase database, only indexes proven necessary by implemented queries | Planned discovery/testing; no index or billing change. |
+
+Firebase Storage now requires the [Blaze plan](https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024). The proposal keeps existing Firebase Auth/Firestore and uses the already billed backend project for private binaries; it does not upgrade Firebase billing or claim storage is free. Existing APIs, credentials, shared ADC, database, rules and providers remain unchanged. Future resource work must use Terraform and record actual actions separately.
+
 ## Before a real release
 
 1. Record existing resources and their exact IDs privately; import any matching Terraform-managed resource before applying. Stop on replacement/destroy plans.
