@@ -7,8 +7,9 @@ import type { AnalysisProvider } from "./ai.js";
 import type { AppConfig } from "./config.js";
 import { analyzeSchema, createProjectSchema, exportProposal, proposalSchema } from "./domain.js";
 import { AppError } from "./errors.js";
+import { ReviewRequestError, type AnalysisDecision } from "./analysis-requests.js";
 import type { ProjectStore } from "./store.js";
-import { publicProject } from "./types.js";
+import { publicProject, publicReviewRequest, type StoredProject } from "./types.js";
 import { registerRoomRoutes } from "./room-routes.js";
 import type { RoomStore } from "./room-store.js";
 import type { RoomObserver } from "./room-observer.js";
@@ -85,14 +86,49 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
     response.json({ project: publicProject(project) });
   });
   const aiLimiter = rateLimit({ windowMs: 60000, limit: 10, standardHeaders: "draft-8", legacyHeaders: false, keyGenerator: (_request, response) => String(response.locals.uid), message: { error: { code: "AI_RATE_LIMIT", message: "You have reached the review limit. Wait a minute before trying again." } } });
+  const accepted = (decision: AnalysisDecision) => {
+    if (decision.kind === "error") throw decision.error;
+    return decision;
+  };
+  const reviewFailure = async (uid: string, id: string, requestId: string, status: "failed" | "unknown", error?: unknown) => {
+    let project: StoredProject;
+    try { project = await store.failAnalysis(uid, id, requestId, status); }
+    catch {
+      return new ReviewRequestError(503, "REVIEW_OUTCOME_UNKNOWN", "The review status could not be confirmed saved. Check this request again before choosing a new review.", { requestId, status: "unknown", retryAllowed: false });
+    }
+    const reviewRequest = publicReviewRequest(project);
+    if (reviewRequest?.status === "save_pending") return new ReviewRequestError(503, "REVIEW_SAVE_PENDING", "The generated review is saved and waiting to be applied. Finish saving this request without starting another review.", reviewRequest);
+    if (error instanceof AppError) return new ReviewRequestError(error.status, error.code, error.message, reviewRequest);
+    return new ReviewRequestError(status === "failed" ? 502 : 503, status === "failed" ? "AI_UNAVAILABLE" : "REVIEW_OUTCOME_UNKNOWN", status === "failed" ? "The AI review did not finish. Check your project before explicitly choosing to retry." : "The generated review could not be confirmed saved. Check this request before explicitly choosing a new review.", reviewRequest);
+  };
   app.post("/api/projects/:id/analyze", aiLimiter, async (request, response) => {
     const input = analyzeSchema.parse(request.body ?? {});
     const uid = response.locals.uid as string;
-    const project = await store.get(uid, request.params.id as string);
-    if (project.analysis && !input.clarification) { response.json({ project: publicProject(project) }); return; }
-    const result = await provider.analyze(project, input.clarification);
-    const updated = await store.saveAnalysis(uid, project.id, project.version, result.analysis, result.conversation);
-    response.json({ project: publicProject(updated) });
+    const id = request.params.id as string;
+    let decision = accepted(await store.beginAnalysis(uid, id, input));
+    if (decision.kind === "dispatch") {
+      let result: Awaited<ReturnType<AnalysisProvider["analyze"]>>;
+      try { result = await provider.analyze(decision.project, decision.clarification); }
+      catch (error) { throw await reviewFailure(uid, id, decision.requestId, "failed", error); }
+      // Save only the generated delta before applying it to the project. A failed
+      // final save can then resume on another instance without a paid redispatch.
+      // One bounded retry here repeats a persistence write, never generation.
+      let staged: AnalysisDecision;
+      try { staged = await store.stageAnalysis(uid, id, decision.requestId, result.analysis, result.conversation); }
+      catch (error) {
+        if (error instanceof AppError) throw await reviewFailure(uid, id, decision.requestId, "failed", error);
+        try { staged = await store.stageAnalysis(uid, id, decision.requestId, result.analysis, result.conversation); }
+        catch (retryError) { throw await reviewFailure(uid, id, decision.requestId, "unknown", retryError instanceof AppError ? retryError : undefined); }
+      }
+      decision = accepted(staged);
+    }
+    if (decision.kind === "save") {
+      let completed: AnalysisDecision;
+      try { completed = await store.completeAnalysis(uid, id, decision.requestId); }
+      catch { throw new ReviewRequestError(503, "REVIEW_SAVE_PENDING", "The generated review is saved, but applying it was not confirmed. Check or finish saving this request; another AI call is not needed.", publicReviewRequest(decision.project)); }
+      decision = accepted(completed);
+    }
+    response.json({ project: publicProject(decision.project) });
   });
   app.post("/api/projects/:id/proposals", async (request, response) => {
     const input = proposalSchema.parse(request.body);
@@ -107,7 +143,7 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
   if (rooms) registerRoomRoutes(app, rooms, notifyRoom);
   app.use((_request, _response, next) => next(new AppError(404, "NOT_FOUND", "This endpoint could not be found.")));
   const errors: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
-    if (error instanceof AppError) { response.status(error.status).json({ error: { code: error.code, message: error.message } }); return; }
+    if (error instanceof AppError) { response.status(error.status).json({ error: { code: error.code, message: error.message, ...(error instanceof ReviewRequestError && error.reviewRequest ? { reviewRequest: error.reviewRequest } : {}) } }); return; }
     if (error instanceof ZodError || (error instanceof SyntaxError && "body" in error)) { response.status(422).json({ error: { code: "INVALID_INPUT", message: "Check the supplied fields. Text is required; quantities and prices must be positive whole numbers within the supported limits." } }); return; }
     if (typeof error === "object" && error !== null && "type" in error && error.type === "entity.too.large") { response.status(413).json({ error: { code: "INPUT_TOO_LARGE", message: "This source text is too long. Please use a shorter excerpt." } }); return; }
     // Never log source text, model content, authorization headers, or raw upstream errors.

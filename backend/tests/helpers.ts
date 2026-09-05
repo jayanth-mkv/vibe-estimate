@@ -1,7 +1,7 @@
-import { AppError } from "../src/errors.js";
 import { reviseProposal } from "../src/domain.js";
+import { beginAnalysis, completeAnalysis, failAnalysis, stageAnalysis, type AnalysisDecision } from "../src/analysis-requests.js";
 import { assertOwner, newProject, type ProjectStore } from "../src/store.js";
-import type { Analysis, ConversationTurn, CreateProjectInput, ProposalInput, StoredProject } from "../src/types.js";
+import type { Analysis, AnalyzeInput, ConversationTurn, CreateProjectInput, ProposalInput, StoredProject } from "../src/types.js";
 
 // API unit tests use this explicit test double. Root emulator integration tests exercise Firestore itself.
 export class MemoryProjectStore implements ProjectStore {
@@ -13,11 +13,23 @@ export class MemoryProjectStore implements ProjectStore {
   async get(uid: string, id: string) {
     const project = this.projects.get(id); assertOwner(project, uid); return structuredClone(project);
   }
-  async saveAnalysis(uid: string, id: string, expectedVersion: number, analysis: Analysis, conversation: ConversationTurn[]) {
+  private reviewTransaction(uid: string, id: string, operation: (project: StoredProject) => AnalysisDecision) {
     const project = this.projects.get(id); assertOwner(project, uid);
-    if (project.version !== expectedVersion) throw new AppError(409, "PROJECT_CHANGED", "The project changed while the review was running. Reload it and retry.");
-    const updated: StoredProject = { ...project, analysis, conversation, proposals: project.proposals.map(proposal => ({ ...proposal, status: "superseded" })), version: project.version + 1, updatedAt: new Date().toISOString() };
-    this.projects.set(id, updated); return structuredClone(updated);
+    const decision = operation(project);
+    this.projects.set(id, structuredClone(decision.project));
+    return { ...decision, project: structuredClone(decision.project) };
+  }
+  async beginAnalysis(uid: string, id: string, input: AnalyzeInput) {
+    return this.reviewTransaction(uid, id, project => beginAnalysis(project, input));
+  }
+  async stageAnalysis(uid: string, id: string, requestId: string, analysis: Analysis, conversation: ConversationTurn[]) {
+    return this.reviewTransaction(uid, id, project => stageAnalysis(project, requestId, analysis, conversation));
+  }
+  async completeAnalysis(uid: string, id: string, requestId: string) {
+    return this.reviewTransaction(uid, id, project => completeAnalysis(project, requestId));
+  }
+  async failAnalysis(uid: string, id: string, requestId: string, status: "failed" | "unknown") {
+    return this.reviewTransaction(uid, id, project => ({ kind: "complete", requestId, project: failAnalysis(project, requestId, status) })).project;
   }
   async appendProposal(uid: string, id: string, input: ProposalInput) {
     const project = this.projects.get(id); assertOwner(project, uid);

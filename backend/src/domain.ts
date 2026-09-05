@@ -4,7 +4,14 @@ import { AppError } from "./errors.js";
 import type { Analysis, ProposalInput, StoredProject } from "./types.js";
 
 export const createProjectSchema = z.object({ name: z.string().trim().min(1).max(100), scope: z.string().trim().min(10).max(12000), messages: z.string().trim().min(10).max(16000) }).strict();
-export const analyzeSchema = z.object({ clarification: z.string().trim().min(1).max(1000).optional() }).strict();
+export const analyzeSchema = z.object({
+  clarification: z.string().trim().min(1).max(1000).optional(),
+  requestId: z.string().uuid().optional(),
+  retryOf: z.string().uuid().optional(),
+  resumeOnly: z.literal(true).optional()
+}).strict()
+  .refine(input => !input.retryOf || Boolean(input.requestId && input.requestId !== input.retryOf))
+  .refine(input => !input.resumeOnly || Boolean(input.requestId && input.clarification === undefined && input.retryOf === undefined));
 export const proposalSchema = z.object({ quantity: z.number().int().min(1).max(1000), unitPricePaise: z.number().int().min(1).max(100000000), requestId: z.string().uuid(), description: z.string().trim().min(1).max(300).optional() }).strict();
 export const analysisSchema = z.object({
   summary: z.string().min(1).max(1500),

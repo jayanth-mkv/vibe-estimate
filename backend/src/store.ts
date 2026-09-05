@@ -1,14 +1,18 @@
 import { randomUUID } from "node:crypto";
 import type { Firestore } from "firebase-admin/firestore";
-import { AppError, notFound } from "./errors.js";
+import { notFound } from "./errors.js";
 import { reviseProposal } from "./domain.js";
-import type { Analysis, ConversationTurn, CreateProjectInput, ProposalInput, StoredProject } from "./types.js";
+import { beginAnalysis, completeAnalysis, failAnalysis, stageAnalysis, type AnalysisDecision } from "./analysis-requests.js";
+import type { Analysis, AnalyzeInput, ConversationTurn, CreateProjectInput, ProposalInput, StoredProject } from "./types.js";
 
 export interface ProjectStore {
   list(uid: string): Promise<StoredProject[]>;
   create(uid: string, input: CreateProjectInput): Promise<StoredProject>;
   get(uid: string, id: string): Promise<StoredProject>;
-  saveAnalysis(uid: string, id: string, expectedVersion: number, analysis: Analysis, conversation: ConversationTurn[]): Promise<StoredProject>;
+  beginAnalysis(uid: string, id: string, input: AnalyzeInput): Promise<AnalysisDecision>;
+  stageAnalysis(uid: string, id: string, requestId: string, analysis: Analysis, conversation: ConversationTurn[]): Promise<AnalysisDecision>;
+  completeAnalysis(uid: string, id: string, requestId: string): Promise<AnalysisDecision>;
+  failAnalysis(uid: string, id: string, requestId: string, status: "failed" | "unknown"): Promise<StoredProject>;
   appendProposal(uid: string, id: string, input: ProposalInput): Promise<StoredProject>;
 }
 
@@ -38,18 +42,29 @@ export class FirestoreProjectStore implements ProjectStore {
     assertOwner(project, uid);
     return project;
   }
-  async saveAnalysis(uid: string, id: string, expectedVersion: number, analysis: Analysis, conversation: ConversationTurn[]) {
+  private async reviewTransaction(uid: string, id: string, operation: (project: StoredProject) => AnalysisDecision) {
     const reference = this.collection(uid).doc(id);
     return this.db.runTransaction(async transaction => {
       const snapshot = await transaction.get(reference);
       const project = snapshot.exists ? snapshot.data() as StoredProject : undefined;
       assertOwner(project, uid);
-      if (project.version !== expectedVersion) throw new AppError(409, "PROJECT_CHANGED", "The project changed while the review was running. Reload it and retry.");
-      // A fresh review changes the basis for future drafts. Existing revision values remain historical.
-      const updated: StoredProject = { ...project, analysis, conversation, proposals: project.proposals.map(proposal => ({ ...proposal, status: "superseded" })), version: project.version + 1, updatedAt: new Date().toISOString() };
-      transaction.set(reference, updated);
-      return updated;
+      const decision = operation(project);
+      if (decision.project !== project) transaction.set(reference, decision.project);
+      return decision;
     });
+  }
+  beginAnalysis(uid: string, id: string, input: AnalyzeInput) {
+    return this.reviewTransaction(uid, id, project => beginAnalysis(project, input));
+  }
+  stageAnalysis(uid: string, id: string, requestId: string, analysis: Analysis, conversation: ConversationTurn[]) {
+    return this.reviewTransaction(uid, id, project => stageAnalysis(project, requestId, analysis, conversation));
+  }
+  completeAnalysis(uid: string, id: string, requestId: string) {
+    return this.reviewTransaction(uid, id, project => completeAnalysis(project, requestId));
+  }
+  async failAnalysis(uid: string, id: string, requestId: string, status: "failed" | "unknown") {
+    const decision = await this.reviewTransaction(uid, id, project => ({ kind: "complete", requestId, project: failAnalysis(project, requestId, status) }));
+    return decision.project;
   }
   async appendProposal(uid: string, id: string, input: ProposalInput) {
     const reference = this.collection(uid).doc(id);

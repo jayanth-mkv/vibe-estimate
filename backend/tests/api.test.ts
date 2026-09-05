@@ -108,11 +108,12 @@ describe("authenticated project API (explicit in-memory test store)", () => {
   });
   it("returns a safe save failure without claiming the review was saved", async () => {
     const id = await create();
-    vi.spyOn(store, "saveAnalysis").mockRejectedValue(new Error("private database credentials"));
+    vi.spyOn(store, "completeAnalysis").mockRejectedValue(new Error("private database credentials"));
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const response = await analyze(id).expect(503);
     expect(JSON.stringify(response.body)).not.toContain("credentials");
     expect((await store.get("owner", id)).analysis).toBeUndefined();
+    expect(response.body.error).toMatchObject({ code: "REVIEW_SAVE_PENDING", reviewRequest: { status: "save_pending", retryAllowed: false } });
     expect(JSON.stringify(log.mock.calls)).not.toContain(input.messages);
     log.mockRestore();
   });
