@@ -15,7 +15,7 @@ Start with: "Asha thinks lighting was included. Her designer agrees about the ki
 
 To use your own sources, choose **Start a project**. First name it and paste the agreed scope; continue to client messages. Back preserves your text. Source persistence happens on **Save project**. The project then guides you through Review and Draft, while returning visits show each saved project's next step. In connected mode, **Save access with Google** optionally links the guest identity so its work can be reopened across devices.
 
-For a real submission, repeat the flow with live Gemini enabled and show a context-dependent follow-up. Retain genuine AI Studio enhancement history, deployed authentication/persistence checks, and Cloud Run evidence. A local fixture cannot substitute for those requirements.
+For a real submission, show the flow with live Gemini and a context-dependent follow-up. Retain this repository's authentic enhancement history, deployed authentication/persistence checks, and Cloud Run evidence. The recorded production journeys already passed; use their evidence or a genuine new recording. A local fixture cannot substitute for a live demonstration.
 
 The product's useful difference is the connected workflow: evidence, ambiguity, owner-entered commercial terms, safe revisions, and private persistence. Whether that is valuable enough for designers to adopt needs interviews and actual usage; a generic chat response or a fictional demonstration does not establish demand.
 

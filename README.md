@@ -34,7 +34,7 @@ For the separately authorized real Firebase workspace, follow [connected setup](
 
 The sample demonstrates included kitchen lighting, a proposed display-light addition, a six-light draft at ₹12,000, and a four-light revision at ₹8,000. Amounts are fictional item subtotals. Client approval is not collected.
 
-Follow the [demo walkthrough](docs/demo-walkthrough.md) for the complete story. For live Gemini with local Firebase emulators, use the private Vertex configuration in [local setup](docs/local-setup.md). The later connected and production journeys passed with real Firebase guests, Firestore and Gemini 3.7 Flash, including multi-turn reviews, draft creation, preserved revisions, explicit sharing, persistence and export. The [quick test checklist](docs/quick-test-checklist.md) covers the current routes and remaining limits. The [verification record](docs/verification.md) separates deployed-image results from source fixes, and retains bounded call counts and outstanding Google consent/AI Studio evidence.
+Follow the [demo walkthrough](docs/demo-walkthrough.md) for the complete story. For live Gemini with local Firebase emulators, use the private Vertex configuration in [local setup](docs/local-setup.md). The later connected and production journeys passed with real Firebase guests, Firestore and Gemini 3.7 Flash, including multi-turn reviews, draft creation, preserved revisions, explicit sharing, persistence and export. The [quick test checklist](docs/quick-test-checklist.md) covers the current routes and remaining limits. The [verification record](docs/verification.md) separates deployed-image results from source fixes; [build provenance and evidence](docs/ai-studio-evidence.md) identifies this repository as the authentic agent-assisted build history.
 
 ![Connected guest home with a guided project flow, room joining and fictional examples](docs/screenshots/connected-home.png)
 
@@ -81,6 +81,6 @@ Deployment is deferred. Real account/project configuration and secrets belong ou
 
 The frontend and backend can use different cloud projects. Supply the actual Firebase web configuration to the frontend and the matching Firebase project to the backend. Backend CORS must allow the exact frontend origin. Terraform handles resource management and Cloud Run revisions; Cloud Build only builds/pushes the image.
 
-Follow [Terraform setup](docs/terraform-setup.md), [infrastructure inventory](docs/infrastructure-inventory.md), and the [challenge checklist](docs/hackathon-checklist.md). Actual AI Studio configuration/build evidence and live-service validation are still required.
+Follow [Terraform setup](docs/terraform-setup.md), [infrastructure inventory](docs/infrastructure-inventory.md), and the [challenge checklist](docs/hackathon-checklist.md). Production journeys are verified; the checklist distinguishes remaining service confirmations and publication steps from completed repository build evidence.
 
 The app has no WhatsApp integration, client signature collection, payment processing, or verified savings claims.
