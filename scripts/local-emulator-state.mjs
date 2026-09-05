@@ -5,6 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { localEnv, root } from "./local-env.mjs";
 import { nodeChild, completion } from "./processes.mjs";
+import { authValidityState, planAuthValidityRestore } from "./emulator-auth-continuity.mjs";
 
 const PROJECT = "demo-vibeestimate";
 const stateRoot = path.join(root, ".cache", "firebase");
@@ -67,7 +68,7 @@ export function verifyEmulatorWorkspace() {
   if (!fs.existsSync(workspace)) return null;
   const marker = readJson(path.join(workspace, markerName));
   const inventory = verifyExportFiles();
-  if (![1, 2].includes(marker.version) || marker.projectId !== PROJECT || !marker.liveState ||
+  if (![1, 2, 3].includes(marker.version) || marker.projectId !== PROJECT || !marker.liveState ||
       JSON.stringify(marker.files) !== JSON.stringify(inventory)) {
     throw new Error("The saved local workspace does not match its verified demo-project export.");
   }
@@ -107,7 +108,7 @@ function canonical(value) {
 }
 const fingerprint = value => createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
 
-async function liveState(includeRooms = true) {
+async function liveState(includeRooms = true, includeAuthValidity = true) {
   await verifyLocalHub();
   const accounts = await localJson(`http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:batchGet?maxResults=-1`, true);
   const users = (accounts.users ?? []).map(user => ({
@@ -123,6 +124,7 @@ async function liveState(includeRooms = true) {
   if (documents.length > 10000) throw new Error("The local verification document limit was reached.");
   documents.sort((left, right) => left.name.localeCompare(right.name));
   const state = { authUsers: users.length, projects: documents.length, authDigest: fingerprint(users), projectDigest: fingerprint(documents) };
+  if (includeAuthValidity) state.authValidityDigest = fingerprint(authValidityState(accounts.users ?? []));
   if (includeRooms) {
     for (const collectionId of ["rooms", "roomOwners"]) {
       const result = await localJson(`http://127.0.0.1:8085/v1/projects/${PROJECT}/databases/(default)/documents:runQuery`, true, {
@@ -156,7 +158,7 @@ export async function exportEmulatorWorkspace() {
   const inventory = verifyExportFiles();
   const after = await liveState();
   if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error("Local data changed during export. Export again before stopping the stack.");
-  const marker = { version: 2, projectId: PROJECT, exportedAtUtc: new Date().toISOString(), liveState: after, files: inventory };
+  const marker = { version: 3, projectId: PROJECT, exportedAtUtc: new Date().toISOString(), liveState: after, files: inventory };
   fs.writeFileSync(localPath(path.join(workspace, markerName)), JSON.stringify(marker, null, 2) + "\n", { flag: "wx" });
   verifyEmulatorWorkspace();
   return { status: "export_verified", projectId: PROJECT, files: inventory.length, authUsers: after.authUsers, projects: after.projects, rooms: after.rooms };
@@ -165,9 +167,31 @@ export async function exportEmulatorWorkspace() {
 export async function verifyRestoredWorkspace() {
   const marker = verifyEmulatorWorkspace();
   if (!marker) throw new Error("Export the running local workspace before restarting it.");
-  const current = await liveState(marker.version >= 2);
+  const current = await liveState(marker.version >= 2, marker.version >= 3);
   if (JSON.stringify(current) !== JSON.stringify(marker.liveState)) throw new Error("The running emulator data does not match the saved local workspace.");
   return { status: "restore_verified", projectId: PROJECT, authUsers: current.authUsers, projects: current.projects, ...(marker.version >= 2 ? { rooms: current.rooms } : {}) };
+}
+
+// Startup-only repair for firebase-tools importing every account with a new
+// validSince value. Restore the verified snapshot's own security boundary before
+// starting the application; never bypass Firebase Admin token verification.
+export async function restoreEmulatorAuthContinuity() {
+  const marker = verifyEmulatorWorkspace();
+  if (!marker) return { status: "no_snapshot", authUsers: 0, updated: 0 };
+  await verifyLocalHub();
+  const saved = readJson(path.join(workspace, "auth_export/accounts.json"));
+  const endpoint = `http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:batchGet?maxResults=-1`;
+  const current = await localJson(endpoint, true);
+  const updates = planAuthValidityRestore(saved.users, current.users ?? []);
+  for (const update of updates) {
+    await localJson("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:update", true, update);
+  }
+  const restored = await localJson(endpoint, true);
+  if (planAuthValidityRestore(saved.users, restored.users ?? []).length ||
+      fingerprint(authValidityState(saved.users)) !== fingerprint(authValidityState(restored.users ?? []))) {
+    throw new Error("The saved local Auth continuity state could not be restored.");
+  }
+  return { status: "auth_continuity_restored", authUsers: saved.users.length, updated: updates.length };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

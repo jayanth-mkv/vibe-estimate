@@ -2,7 +2,7 @@ import path from "node:path";
 import { localEnv, root } from "./local-env.mjs";
 import { geminiBackendEnv } from "./gemini-config.mjs";
 import { nodeChild, portOpen, waitPort, stopChild } from "./processes.mjs";
-import { emulatorImportArgs } from "./local-emulator-state.mjs";
+import { emulatorImportArgs, restoreEmulatorAuthContinuity, verifyRestoredWorkspace } from "./local-emulator-state.mjs";
 
 const env = localEnv();
 let backendEnv = env;
@@ -38,6 +38,12 @@ try {
   start("node_modules/firebase-tools/lib/bin/firebase.js", ["emulators:start", "--only", "auth,firestore", "--project", "demo-vibeestimate", "--config", path.join(root, "firebase.json"), "--non-interactive", ...importArgs], path.join(root, ".cache/firebase"));
   // The first run downloads Google's emulator binaries into the project cache.
   await Promise.all([waitPort(9099, 300000), waitPort(8085, 300000)]);
+  if (importArgs.length) {
+    await waitPort(4400);
+    await restoreEmulatorAuthContinuity();
+    await verifyRestoredWorkspace();
+    console.log("Verified saved identities, token validity, projects and rooms before starting the app.");
+  }
   start("node_modules/tsx/dist/cli.mjs", ["watch", "src/index.ts"], path.join(root, "backend"), backendEnv);
   await waitPort(8080);
   start("node_modules/next/dist/bin/next", ["dev", "--hostname", "127.0.0.1", "--port", "3000"], path.join(root, "frontend"));
