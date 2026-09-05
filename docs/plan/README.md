@@ -2,22 +2,22 @@
 
 Three releases take VibeEstimate from a text-shaped local app to a deployed spatial platform where a designer publishes an agent onto their own website, a homeowner talks to it, and the agent builds their home in 3D.
 
-| | [v1 — Standing up](v1.md) | [v2 — The crew](v2.md) | [v3 — Depth](v3.md) |
+| | [v1 — Home to agreement](v1.md) | [v2 — The crew](v2.md) | [v3 — Depth](v3.md) |
 | --- | --- | --- | --- |
-| Goal | Verified runtime and an editable 3D foundation | Complete autonomous single-floor product | Expand the ecosystem |
-| Proves | The editing and deployment foundations work | Website intake through visual design and optional human review works | Multiple floors and deeper integrations work |
-| New AI surface | None | Most of it | Voice, more roles, more MCP |
+| Goal | Complete shared home design and draft agreement | Complete autonomous single-floor product | Expand the ecosystem |
+| Proves | Gemini edits, shared decisions and saved agreement work | Website intake through visual design and optional human review works | Multiple floors and deeper integrations work |
+| New AI surface | Selected edits, briefs and agreements | Image interpretation and wider orchestration | Voice, more roles, more MCP |
 | Risk | Low | High — deliver incrementally using the [cut line](v2.md#the-cut-line) | Later extensions with separate gates |
 
 Two documents are cross-cutting. [Who controls what](controls.md) covers the settings each party gets, the problem each one solves, and the server-side access matrix. [Foundations](foundations.md) covers what to reuse rather than rebuild, the pinned libraries, the security controls and the verification categories.
 
 ## Why this order
 
-**v1 establishes the deployed runtime and manual 3D foundation; v2 delivers the complete product journey.** Competition evidence is a separate delivery checklist and does not determine which core product capabilities may be omitted.
+**The September 6 direction moves the complete shared design journey into v1.** Competition evidence is a separate delivery checklist and does not determine which core product capabilities may be omitted.
 
-That deployment is now largely delivered: a Cloud Run application, a bounded review queue and recovery scheduler, dedicated identities and a public `/health` returning HTTP 200 against production Firebase, cloud Firestore and live Vertex. See [production readiness](../production-readiness.md) and the [v1 record](v1.md#deploy-what-already-works). Full public user journeys remain the release gate.
+That deployment is now largely delivered: a Cloud Run application, a bounded review queue and recovery scheduler, dedicated identities and a public `/health` returning HTTP 200 against production Firebase, cloud Firestore and live Vertex. See [production readiness](../production-readiness.md) and the [v1 record](v1.md#verification-videos-and-release). Full public user journeys remain the release gate.
 
-v1 also deliberately contains **no AI in the studio**. A complete authored sample home proves the 3D editing environment first, which means v2's plan recognition is measured against a known-good environment rather than debugged against a moving one.
+V1 now includes real Gemini edits and the designer/homeowner review flow. The isolated Pascal proof established the renderer; the current v1 plan supersedes earlier manual-only boundaries.
 
 ## Relationship to the existing plan
 
@@ -39,7 +39,7 @@ Three parties:
 
 Mandatory: a deployed Cloud Run URL, Firebase Authentication, multi-turn Gemini, user-isolated Firestore, keys via Secret Manager, the Cloud Run label `dev-tutorial=cloud-run-ai-challenge`, a public repository with a deployment README, and a demo post tagged `#AccelerateAIwithCloudRun`. Judging is on **Authenticity, Usability, Stability, Security**.
 
-Track each requirement and its genuine evidence separately from product completion. [v1](v1.md#deploy-what-already-works) records remaining readiness work; posting or submission requires explicit authorization and is never automatic.
+Track each requirement and its genuine evidence separately from product completion. [v1](v1.md#verification-videos-and-release) records remaining readiness work; posting or submission requires explicit authorization and is never automatic.
 
 ## Product coverage
 
