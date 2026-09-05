@@ -17,6 +17,7 @@ export interface Proposal {
 }
 export interface Project {
   id: string;
+  roomId?: string;
   name: string;
   scope: string;
   messages: string;

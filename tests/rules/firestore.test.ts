@@ -24,3 +24,16 @@ test("another account and unauthenticated clients cannot read or list data", asy
   await assertFails(getDocs(collection(other, "users/owner-a/projects")));
   await assertFails(getDoc(doc(guest, "users/owner-a/projects/project-a")));
 });
+test("room and invitation membership records are only accessible through the verified backend", async () => {
+  const designer = environment.authenticatedContext("owner-a").firestore();
+  const client = environment.authenticatedContext("client-a").firestore();
+  const guest = environment.unauthenticatedContext().firestore();
+  for (const db of [designer, client, guest]) {
+    for (const path of ["rooms/room-a", "roomOwners/owner-a"]) {
+      await assertFails(getDoc(doc(db, path)));
+      await assertFails(setDoc(doc(db, path), { ownerUid: "owner-a", clientUid: "client-a" }));
+    }
+    await assertFails(getDocs(collection(db, "rooms")));
+    await assertFails(getDocs(collection(db, "roomOwners")));
+  }
+});

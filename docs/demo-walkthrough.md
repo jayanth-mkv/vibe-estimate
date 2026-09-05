@@ -16,3 +16,15 @@ To use your own sources, choose **Start a project**. First name it and paste the
 For a real submission, repeat the flow with live Gemini enabled and show a context-dependent follow-up. Retain genuine AI Studio enhancement history, deployed authentication/persistence checks, and Cloud Run evidence. A local fixture cannot substitute for those requirements.
 
 The product's useful difference is the connected workflow: evidence, ambiguity, owner-entered commercial terms, safe revisions, and private persistence. Whether that is valuable enough for designers to adopt needs interviews and actual usage; a generic chat response or a fictional demonstration does not establish demand.
+
+## Shared-room demonstration
+
+1. From home, choose **Try a shared room**. It creates a fictional lighting project and its designer room.
+2. Choose **Invite client**, **Create invite link**, then **Open client demo**. Keep both tabs visible. The second tab is a separately authenticated client; room membership is enforced by the API.
+3. In the client tab, send **Could we quote 6 display lights?**. The designer receives it, and the agent checks the conversation after messages settle. The fixture labels this as a local sample; live Gemini uses the configured real model.
+4. In the designer tab, send **I will prepare a draft for 6 display lights at ₹2,000 each.**. Wait for the current review. On mobile, use **Scope agent** to see the findings and their original source quotes.
+5. Choose **Prepare draft**, then **Continue to draft**. Enter 6 lights at 2000 and save. The room transcript is frozen into this private project; original messages stay unchanged.
+6. Choose **Back to room**, then **Share saved draft** (under **Drafts** on mobile). The client's **Drafts** tab now shows the saved ₹12,000 version, with approval uncollected.
+7. Open the private draft workspace, change quantity to 4 and save a revision. Return and share it. Both people see the ₹8,000 version and the previous ₹12,000 shared version. Reload both tabs; download/export stays in the designer workspace.
+
+The source context, conversation and saved draft are visible together on a wide desktop. The client has a focused chat/review/draft view and cannot change the designer's prices or access private projects. Each room has a ten-review limit and an explicit pause/retry control. Ordinary polling never invokes Gemini. Use the supplied demo suggestions in fixture mode; arbitrary messages require Gemini. A room keeps the provider mode in which it was created, so create a new demonstration room after switching from fixture to live mode.

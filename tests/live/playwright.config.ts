@@ -12,7 +12,7 @@ const evidenceRoot = path.resolve(__dirname, "../../.cache/live-gemini-runs", ru
 // never creates credentials, starts services, or retries paid model requests.
 export default defineConfig({
   testDir: ".",
-  testMatch: "**/gemini.spec.ts",
+  testMatch: ["**/gemini.spec.ts", "**/rooms.spec.ts"],
   outputDir: path.join(evidenceRoot, "test-results"),
   fullyParallel: false,
   workers: 1,
@@ -30,6 +30,6 @@ export default defineConfig({
   },
   projects: [
     { name: "live-desktop-chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 1000 } } },
-    { name: "live-mobile-chromium", use: { ...devices["Pixel 7"] } }
+    { name: "live-mobile-chromium", use: { ...devices["Pixel 7"] }, testMatch: "**/gemini.spec.ts" }
   ]
 });

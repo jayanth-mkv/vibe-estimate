@@ -18,6 +18,10 @@ Open **http://127.0.0.1:3000**. The API is at **http://127.0.0.1:8080/health**, 
 
 The home workspace explains Sources → Review → Draft. Choose **Start a project** for the two-step source form, or **Try the lighting example** to explore immediately. Saved projects show where to resume. The original navy/red landing page, illustrations and interactive product story remain at **http://127.0.0.1:3000/welcome**, linked from home.
 
+For the complete collaborative demo, choose **Try a shared room**. In the room, choose **Invite client → Create invite link → Open client demo**. The new tab uses a separate client identity. Exchange messages between both tabs and watch the source-linked agent review update. The designer can prepare a private draft, return with **Back to room**, and **Share saved draft** so the client receives that saved version. Both interfaces run on port 3000 with the same authenticated API; no second server is needed.
+
+![Fictional shared-room demonstration: conversation, source-linked agent and explicitly shared draft](docs/screenshots/room.png)
+
 The default runner uses a demo Firebase project and local Auth/Firestore emulators. Its AI provider is a clearly labeled, deterministic lighting fixture. It does not call paid Gemini services and does not access production Firebase data. Arbitrary scope analysis requires the real Gemini provider and server credentials.
 
 The sample demonstrates included kitchen lighting, a proposed display-light addition, a six-light draft at ₹12,000, and a four-light revision at ₹8,000. Amounts are fictional item subtotals. Client approval is not collected.

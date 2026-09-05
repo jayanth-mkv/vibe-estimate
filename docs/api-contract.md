@@ -19,4 +19,6 @@ The first fixture represents display-light quantities only. Arbitrary user input
 
 Every new proposal supersedes the previous current draft and leaves its values intact. Retrying the same requestId returns the same result without adding a proposal. A successful reanalysis supersedes existing drafts; export returns 409 until the owner reviews and saves a new draft. Each proposal stores its own work description. The backend verifies ownership on all operations and returns no foreign project content (404 for a foreign identifier). Unauthenticated requests return 401. Errors: { error: { code, message } } with safe text.
 
-The API is intentionally small for a tested setup. Editing arbitrary line items, signatures, external sharing, file OCR, payment collection, and WhatsApp integration are outside this foundation.
+The user-requested [shared-room extension](room-contract.md) adds authenticated designer/client chat, bounded agent observation, frozen private review projects and explicit draft sharing. Derived Project records include optional server-assigned roomId metadata for returning to their room; original private project access stays owner-only. Public links do not grant project access.
+
+Editing arbitrary line items, signatures, file OCR, payment collection, and WhatsApp integration remain outside this foundation.

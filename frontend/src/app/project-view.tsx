@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckCheck, ChevronDown, CircleHelp, Download, FileText, MessageSquareText, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCheck, ChevronDown, CircleHelp, Download, FileText, MessageSquareText, Plus, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,11 +14,12 @@ type Props = {
   fields: Fields; setters: Record<keyof Fields, (value: string) => void>;
   onLeave: () => void; onAnalyze: (event?: FormEvent) => void;
   onSave: (event: FormEvent) => void; onDownload: () => void;
+  roomId: string | null; onRoom: () => void;
 };
 const rupees = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: paise % 100 ? 2 : 0 }).format(paise / 100);
 const date = (value: string) => new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 
-export function ProjectView({ project, health, busy, hasUnsavedChanges, draftChanged, fields, setters, onLeave, onAnalyze, onSave, onDownload }: Props) {
+export function ProjectView({ project, health, busy, hasUnsavedChanges, draftChanged, fields, setters, onLeave, onAnalyze, onSave, onDownload, roomId, onRoom }: Props) {
   const { quantity, unitPrice, description, clarification } = fields;
   const draft = project.proposals.find((proposal) => proposal.status === "draft");
   const [workStep, setWorkStep] = useState<"review" | "draft">(draft ? "draft" : "review");
@@ -52,7 +53,7 @@ export function ProjectView({ project, health, busy, hasUnsavedChanges, draftCha
   return <>
     <section className="project-heading">
       <div className="project-identity"><Button variant="ghost" className="button back-button" disabled={!!busy} onClick={onLeave}><ArrowLeft size={17} />All projects</Button><h1 tabIndex={-1} ref={headingRef}>{project.name}</h1></div>
-      <span className={`saved-state ${hasUnsavedChanges ? "is-unsaved" : ""}`}><span className="status-dot" aria-hidden="true" />{busy ? "Working…" : hasUnsavedChanges ? "Changes not saved" : "Project saved"}</span>
+      <div className="project-actions"><span className={`saved-state ${hasUnsavedChanges ? "is-unsaved" : ""}`}><span className="status-dot" aria-hidden="true" />{busy ? "Working…" : hasUnsavedChanges ? "Changes not saved" : "Project saved"}</span><Button variant="outline" className="button secondary" onClick={onRoom} disabled={!!busy}><UsersRound size={16} aria-hidden="true" />{roomId ? "Back to room" : "Start shared room"}</Button></div>
     </section>
     <Tabs value={workStep} onValueChange={(value) => setWorkStep(value as "review" | "draft")} className="project-tabs">
       <div className="workflow-navigation">

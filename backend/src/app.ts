@@ -9,15 +9,18 @@ import { analyzeSchema, createProjectSchema, exportProposal, proposalSchema } fr
 import { AppError } from "./errors.js";
 import type { ProjectStore } from "./store.js";
 import { publicProject } from "./types.js";
+import { registerRoomRoutes } from "./room-routes.js";
+import type { RoomStore } from "./room-store.js";
 
 export type AppDependencies = {
   config: AppConfig;
   store: ProjectStore;
   provider: AnalysisProvider;
   verifyToken: (token: string) => Promise<{ uid: string }>;
+  rooms?: RoomStore;
 };
 
-export function createApp({ config, store, provider, verifyToken }: AppDependencies) {
+export function createApp({ config, store, provider, verifyToken, rooms }: AppDependencies) {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
@@ -74,6 +77,7 @@ export function createApp({ config, store, provider, verifyToken }: AppDependenc
     response.setHeader("Content-Disposition", 'attachment; filename="vibeestimate-draft.txt"');
     response.type("text/plain").send(exportProposal(project));
   });
+  if (rooms) registerRoomRoutes(app, rooms);
   app.use((_request, _response, next) => next(new AppError(404, "NOT_FOUND", "This endpoint could not be found.")));
   const errors: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
     if (error instanceof AppError) { response.status(error.status).json({ error: { code: error.code, message: error.message } }); return; }

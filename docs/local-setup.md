@@ -58,6 +58,10 @@ In a second terminal, `rtk npm run test:live` exercises desktop and mobile with 
 
 Each live run retains screenshots, synthetic model responses, exports and its HTML report under ignored `.cache/live-gemini-runs/<UTC-timestamp>-<process-id>/`. Ordinary fixture runs cannot clear these artifacts. They are real execution evidence, not AI Studio configuration/build evidence. The explicit local workspace export above preserves emulator data across a complete stack restart.
 
+The live suite now includes one desktop shared-room journey in addition to the original desktop/mobile reviews: a maximum of six model calls overall. It uses two separate Firebase identities, two room messages/observations, a frozen private draft and two explicitly shared versions. All ordinary room tests refuse live mode before posting a message. Local workspace snapshots now fingerprint room and membership records as well as projects and Auth users.
+
+Designer rooms use `/rooms/:id`; invited clients use `/client/rooms/:id`. Both pages run on the existing frontend port. The backend polls its persisted work queue and the browsers poll authenticated room state every 1.5 seconds. Rooms retain their initial fixture/Gemini mode; use a fresh room when changing mode. These local timers and loopback OAuth do not establish a deployed background-worker configuration.
+
 ## Project-local tooling
 
 - npm packages and lockfile: root workspace; downloads cached under .cache/npm.

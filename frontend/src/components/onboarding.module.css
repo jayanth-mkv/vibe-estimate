@@ -34,6 +34,20 @@
 
 .welcomeArt { position: absolute; right: 0; top: 14px; width: 300px; height: 200px; object-fit: cover; border-radius: 16px; background: var(--ve-navy); }
 .tourLink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 18px; color: var(--ve-accent-hover); font-size: .875rem; text-decoration: underline; text-underline-offset: 4px; }
+.roomIntro { display: flex; align-items: center; gap: 24px; margin: 4px 0 28px; padding: 24px; border-radius: 12px; background: var(--ve-navy); color: white; }
+.roomPeople { display: flex; align-items: flex-start; gap: 10px; flex-shrink: 0; padding-bottom: 24px; }
+.roomPeople > span { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #8098a8; border-radius: 50%; font-size: 13px; font-weight: 600; }
+.roomPeople > span:last-child { background: var(--ve-accent); border-color: #ef8b97; }
+.roomPeople small { position: absolute; top: 38px; font-size: 11px; font-weight: 400; color: #d2e1eb; }
+.roomPeople i { font-style: normal; line-height: 32px; color: #b5cbd9; }
+.roomIntroCopy { flex: 1; }
+.roomIntroCopy h2 { font-size: 1rem; }
+.roomIntroCopy p { margin-top: 6px; color: #c6d8e4; font-size: .8125rem; line-height: 1.6; }
+.roomButton { min-height: 44px; height: auto; gap: 8px; padding: 10px 14px; border-radius: 8px; background: white; color: var(--ve-navy); font-size: .8125rem; flex-shrink: 0; }
+.roomButton:hover:not(:disabled) { background: #eaf2f5; color: var(--ve-navy); }
+.roomButton:focus-visible { outline-color: white; }
+@media (max-width: 900px) { .roomIntro { flex-wrap: wrap; gap: 20px; } .roomIntroCopy { flex-basis: calc(100% - 200px); } }
+@media (max-width: 600px) { .roomIntro { padding: 20px; } .roomIntroCopy { flex-basis: 100%; } .roomButton { width: 100%; } }
 @media (max-width: 900px) {
   .welcome { padding-right: 0; }
   .welcomeArt { display: none; }

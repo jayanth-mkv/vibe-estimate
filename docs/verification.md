@@ -7,9 +7,9 @@ Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the pr
 | Terraform main/adoption formatting and schema validation | Passed in local tooling |
 | Terraform behavior checks | Main/adoption baseline: 7 mock tests passed. Gemini root: 6 mock tests and 3 provider loopback checks passed; saved-plan guards passed and authenticated final plan clean |
 | TypeScript and production build | Backend and frontend typechecks/builds passed after the guided workspace changes; frontend ESLint passed |
-| Backend unit/API tests | 74 passed in the complete suite, including four Gemini 3.7 request-compatibility checks |
-| Firebase emulator access checks | 2 Firestore Rules tests passed again against the running local emulator after the live Vertex journeys |
-| Playwright desktop/mobile and accessibility | Guided workspace: 12 distinct checks passed (10 workflow/API checks, then 2 added illustrated-tour navigation checks) |
+| Backend unit/API tests | 100 passed: 74 existing + 26 room authorization, observation, snapshot/sharing and strict fixture-follow-up checks |
+| Firebase emulator access checks | 3 Firestore Rules tests passed, including direct room/membership denial for designer, client and guest |
+| Playwright desktop/mobile and accessibility | 18 distinct checks passed: original 12 rerun after integration, plus 6 new shared-room journeys/API checks |
 | Project-local MCP handshake/browser launch | Playwright: 24 tools and successful isolated Chromium launch; shadcn: 7 tools |
 | Impeccable detector / visual review | Guided workspace: one completed-pass detector run, zero findings; Playwright MCP desktop/mobile tour, home, source and saved-draft inspection passed |
 | Public/private configuration scan | Passed across 139 publishable text files; separate exact-key/OAuth scan passed across 310 publishable/compiled/browser/log files; 2 private state files contained no Gemini key |
@@ -20,6 +20,16 @@ Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the pr
 | AI Studio initial settings and enhancement evidence | Prepared instructions; actual setup not verified |
 
 ## Live Gemini enablement: 5 September 2026
+
+### Shared-room working checkpoint
+
+The designer and client now have separate authenticated pages backed by the same emulator-persisted room. Desktop shows Conversation, Scope agent and Shared drafts together; mobile has three accessible tabs. The backend observes debounced new messages with persisted per-room budgets/leases, one active call per owner and four globally. Polling never calls a model. Invitations are hashed, expiring and restricted to one client. Read/write roles are derived from verified Firebase identities; clients cannot access private projects or control pricing, observation and sharing.
+
+A current source-linked room review freezes into a new private project without modifying original sources. The owner prepares/revises/exports its draft, then explicitly shares a saved snapshot. Previous shared versions are immutable. Prepared room projects retain their room link and support strict lighting-fixture follow-up as well as live Gemini. Rooms retain their initial provider mode; changing the stack's provider fails closed for old rooms rather than silently invoking a different provider.
+
+Executed: **100 backend tests and backend build passed**; frontend production build, typecheck and ESLint passed. **Six room integration checks passed** (four API/failure passes, then both full journeys after fixing a test selector that also matched Next's route announcer). Full desktop/mobile room journeys took 1.4 minutes and 50.4 seconds. They used independent identities, recovered a lost successful message response without duplication, followed observation into private draft creation, shared and revised it, verified both retained shared versions, reloaded/exported and denied unauthorized roles. All **three Firestore rules checks** passed. The existing **12 browser/API checks passed again in 2.7 minutes** after room integration. The room report is retained in ignored `.cache/room-fixture-report`; the final original-flow report is in `playwright-report`.
+
+Playwright MCP additionally verified two different identities in tabs of the same browser, real messages in both directions, a current room review and a ₹12,000 saved draft appearing in the client view. Client controls excluded designer actions. Client layouts had no horizontal overflow at 320, 390 and 768 pixels. The desktop uses three adjacent work panes. The consumed invite was removed using Next-compatible history updates; only still-unshared drafts retain the sharing action. A completed room UI detector run returned zero findings, and the shadcn checklist was reviewed. Screenshots remain under `.cache/mcp-output/` with `shared-room-*` and `client-*` names. This is fixture evidence; the new three-journey live Gemini suite is prepared but unexecuted at this checkpoint.
 
 ### Guided workspace checkpoint
 

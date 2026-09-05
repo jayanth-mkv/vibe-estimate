@@ -22,6 +22,7 @@ type HomeProps = {
   onOpen: (project: Project) => void;
   onRefresh: () => void;
   onSignIn: () => void;
+  onRoomDemo: () => void;
 };
 
 function projectNextStep(project: Project) {
@@ -55,6 +56,7 @@ export function Home({
   onOpen,
   onRefresh,
   onSignIn,
+  onRoomDemo,
 }: HomeProps) {
   const returning = signedIn && projects.length > 0;
   const recentProjects = [...projects].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -174,6 +176,11 @@ export function Home({
           </div>
         </section>
       )}
+      <section className={styles.roomIntro} aria-labelledby="room-intro-heading">
+        <div className={styles.roomPeople} aria-label="Designer, client and observing agent"><span>D<small>Designer</small></span><i aria-hidden="true">↔</i><span>C<small>Client</small></span><i aria-hidden="true">+</i><span>V<small>Agent</small></span></div>
+        <div className={styles.roomIntroCopy}><h2 id="room-intro-heading">Make the change clear, together.</h2><p>A shared room for you and your client, with an agent keeping track of scope and open questions.</p></div>
+        <Button type="button" className={styles.roomButton} disabled={busy || !available} onClick={onRoomDemo}>Try a shared room<ArrowRight size={16} aria-hidden="true" /></Button>
+      </section>
       {returning ? (
         <details className={styles.exampleDisclosure}>
           <summary>Try a fictional example</summary>

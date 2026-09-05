@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, CheckCheck, CircleHelp } from "lucide-react";
 import { Home, SourceWizard } from "@/components/onboarding";
 import { ProjectView } from "./project-view";
-import type { SourceInput } from "@/lib/examples";
+import { examples, type SourceInput } from "@/lib/examples";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { api } from "@/lib/api";
+import { roomApi } from "@/lib/room-api";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { clientAuth, startSession, usesEmulators } from "@/lib/firebase";
@@ -27,6 +29,7 @@ function Brand() {
 }
 
 export default function Workspace() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [health, setHealth] = useState<Health | null>(null);
@@ -43,7 +46,8 @@ export default function Workspace() {
   const [unitPrice, setUnitPrice] = useState("");
   const [description, setDescription] = useState("");
   const [newProject, setNewProject] = useState<SourceInput>(emptySource);
-  const [leaveAction, setLeaveAction] = useState<"projects" | "signout" | null>(null);
+  const [leaveAction, setLeaveAction] = useState<"projects" | "signout" | "room" | null>(null);
+  const [sourceRoomId, setSourceRoomId] = useState<string | null>(null);
   const [reloadProjects, setReloadProjects] = useState(0);
   const requestRef = useRef<{ key: string; id: string } | null>(null);
   const startingProjectRef = useRef(false);
@@ -67,7 +71,11 @@ export default function Workspace() {
     setUnitPrice(draft ? String(draft.unitPricePaise / 100) : "");
     setDescription(draft?.description || (project?.analysis?.provider === "fixture" ? "Display lights" : ""));
     requestRef.current = null;
-    window.history.replaceState(null, "", project ? `?project=${encodeURIComponent(project.id)}` : "/");
+    const params = new URLSearchParams(window.location.search);
+    const candidate = project?.roomId || (project && params.get("project") === project.id ? params.get("room") : null);
+    const roomId = candidate && /^[a-f0-9-]{36}$/i.test(candidate) ? candidate : null;
+    setSourceRoomId(roomId);
+    window.history.replaceState(null, "", project ? `?project=${encodeURIComponent(project.id)}${roomId ? `&room=${encodeURIComponent(roomId)}` : ""}` : "/");
   };
 
   const acceptProject = (project: Project) => {
@@ -151,14 +159,34 @@ export default function Workspace() {
     } finally { startingProjectRef.current = false; setLoadingProjects(false); }
   });
 
-  const finishLeave = (destination: "projects" | "signout") => {
+  const openRoom = () => {
+    if (!selected) return;
+    if (sourceRoomId) { router.push(`/rooms/${sourceRoomId}`); return; }
+    void action("room", async () => {
+      const result = await roomApi.create(selected.id);
+      router.push(`/rooms/${result.room.id}`);
+    });
+  };
+
+  const startRoomDemo = () => action("room-demo", async () => {
+    startingProjectRef.current = true;
+    try {
+      if (!clientAuth().currentUser) await startSession();
+      const result = await api.create({ ...examples[0].source });
+      const shared = await roomApi.create(result.project.id);
+      router.push(`/rooms/${shared.room.id}`);
+    } finally { startingProjectRef.current = false; setLoadingProjects(false); }
+  });
+
+  const finishLeave = (destination: "projects" | "signout" | "room") => {
     setLeaveAction(null);
+    if (destination === "room") { openRoom(); return; }
     setNewProject({ name: "", scope: "", messages: "" });
     if (destination === "signout") void action("signout", async () => { await signOut(clientAuth()); choose(null); });
     else { choose(null); if (user) { setLoadingProjects(true); setReloadProjects((value) => value + 1); } }
   };
 
-  const requestLeave = (destination: "projects" | "signout") => {
+  const requestLeave = (destination: "projects" | "signout" | "room") => {
     if (busy) return;
     if (hasUnsavedChanges) setLeaveAction(destination);
     else finishLeave(destination);
@@ -240,9 +268,9 @@ export default function Workspace() {
       {error && <div className="alert" role="alert"><span>{error}</span><Button variant="ghost" className="button text-button" aria-label="Dismiss error" onClick={() => setError("")}>Dismiss</Button></div>}
       <div className={notice ? "notice visible" : "notice"} role="status" aria-live="polite">{notice && <><Check size={17} aria-hidden="true" />{notice}</>}</div>
       {isLoading ? <div className="loading-state" aria-label={authReady ? "Loading projects" : "Loading sign-in"}><div className="skeleton" /><div className="skeleton short" /><p>Opening your workspace…</p></div> : <>
-        {!selected && !creating && <Home projects={projects} signedIn={!!user} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} onNew={startNew} onExample={(source) => void create(source)} onOpen={choose} onRefresh={() => { setLoadingProjects(true); setReloadProjects((value) => value + 1); }} onSignIn={() => void action("signin", async () => { await startSession(); })} />}
+        {!selected && !creating && <Home onRoomDemo={() => void startRoomDemo()} projects={projects} signedIn={!!user} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} onNew={startNew} onExample={(source) => void create(source)} onOpen={choose} onRefresh={() => { setLoadingProjects(true); setReloadProjects((value) => value + 1); }} onSignIn={() => void action("signin", async () => { await startSession(); })} />}
         {creating && <><Button variant="ghost" className="button back-button" disabled={!!busy} onClick={() => requestLeave("projects")}><ArrowLeft size={17} />All projects</Button><SourceWizard value={newProject} onChange={setNewProject} onSave={() => void create(newProject)} onCancel={() => requestLeave("projects")} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} /></>}
-        {selected && <ProjectView key={selected.id} project={selected} health={health} busy={busy} hasUnsavedChanges={hasUnsavedChanges} draftChanged={draftChanged} fields={{ quantity, unitPrice, description, clarification }} setters={{ quantity: setQuantity, unitPrice: setUnitPrice, description: setDescription, clarification: setClarification }} onLeave={() => requestLeave("projects")} onAnalyze={(event) => void analyze(event)} onSave={(event) => void save(event)} onDownload={() => void download()} />}
+        {selected && <ProjectView roomId={sourceRoomId} onRoom={() => requestLeave("room")} key={selected.id} project={selected} health={health} busy={busy} hasUnsavedChanges={hasUnsavedChanges} draftChanged={draftChanged} fields={{ quantity, unitPrice, description, clarification }} setters={{ quantity: setQuantity, unitPrice: setUnitPrice, description: setDescription, clarification: setClarification }} onLeave={() => requestLeave("projects")} onAnalyze={(event) => void analyze(event)} onSave={(event) => void save(event)} onDownload={() => void download()} />}
       </>}
       {serviceChecked && !health && <div className="service-status" role="status"><span>The project service is unavailable. Your text stays here. Reconnect to save or review.</span><Button className="button secondary" onClick={() => void refreshHealth()}>Check connection</Button></div>}
     </main>

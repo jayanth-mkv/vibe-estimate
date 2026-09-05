@@ -6,7 +6,7 @@ try {
   if (health.aiProvider !== "gemini" || health.auth !== "emulator" || health.storage !== "firestore") {
     throw new Error("Start the explicit Gemini + Firebase emulator stack before live verification.");
   }
-  console.log("Live Gemini verification: at most two review requests per viewport; no automatic test retries.");
+  console.log("Live Gemini verification: two reviews per standard viewport, plus at most two shared-room observations; no automatic test retries.");
   await completion(nodeChild("node_modules/@playwright/test/cli.js", ["test", "--config", "tests/live/playwright.config.ts", ...process.argv.slice(2)], { ...localEnv(), LIVE_GEMINI_TEST: "1" }));
 } catch (error) {
   console.error(error.message);

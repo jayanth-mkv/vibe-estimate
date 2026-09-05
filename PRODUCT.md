@@ -8,7 +8,7 @@ web
 
 ## Users
 
-An independent interior designer reviewing client-requested changes before ordering materials or starting extra work. A homeowner reads the resulting proposal. The initial app has one project owner; it does not collect client signatures or approvals.
+An independent interior designer reviewing client-requested changes before ordering materials or starting extra work. An invited homeowner joins a shared room to discuss changes and read explicitly shared draft proposals. The designer retains one private project workspace; room membership does not grant access to private projects. The app does not collect client signatures or approvals.
 
 ## Product Purpose
 
@@ -27,6 +27,8 @@ Text supplied by the user, INR example amounts, project review at a desk or on a
 Confirmed direction: Next.js frontend suitable for Vercel, backend suitable for Cloud Run, Firebase sign-in, multi-turn Gemini, private Firestore persistence, production Secret Manager, Terraform-managed infrastructure, local testing first.
 
 The user approved the selected product and delegated implementation/setup choices. The home and working screens should explain the task quickly, minimize header space, and guide Sources → Review → Draft with familiar Google/NotebookLM interaction patterns. Keep the existing illustrated landing page as an optional product tour at /welcome; / opens the compact workspace. Use the official Next.js and shadcn setup. Actual cloud identifiers are operator configuration outside the public repository; Firebase and backend projects can differ.
+
+The user subsequently requested a live shared conversation connecting the designer, client and observing agent. Separate designer/client pages must use independent authenticated identities, including in the local demo. The agent follows conversation changes and identifies scope questions. The designer freezes a reviewed conversation into a private draft project, chooses commercial terms, and explicitly shares the saved draft to the room. Messages and shared versions remain preserved. This is real local interaction, not a simulated second speaker or fabricated agent feed. See docs/room-contract.md for the agreed extension.
 
 ## Brand Commitments
 

@@ -18,6 +18,8 @@ export type Proposal = {
 };
 export type Project = {
   id: string;
+  /** Server-assigned origin for a frozen shared-room review. It grants no room membership. */
+  roomId?: string;
   name: string;
   scope: string;
   messages: string;

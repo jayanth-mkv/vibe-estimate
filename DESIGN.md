@@ -10,6 +10,8 @@ On 5 September 2026 the user requested [Petpooja's](https://www.petpooja.com/) c
 | --- | --- | --- |
 | / | Start or resume a real project | Compact header, concise explanation, Sources → Review → Draft, useful fictional examples, and recent saved projects |
 | /welcome | Optional product tour | Retained navy hero, red actions, overlapping laptop/phone preview, workflow tabs, illustrated feature sections, and final workspace action |
+| /rooms/:id | Designer's shared project room | Compact conversation, visible designer/client/agent roles, source context and current agent findings, explicit draft preparation and sharing |
+| /client/rooms/:id | Invited client's separate view | Independent sign-in, shared conversation and explicitly shared draft snapshots; no designer pricing or project-management controls |
 
 The workspace exposes a Product tour link; the tour leads back to the workspace. Users can begin without scrolling through marketing sections. Preserve the tour as a complete, findable route and isolate its styles so navigation does not alter the workspace layout.
 
@@ -47,6 +49,16 @@ Keep Sources → Review → Draft visible. The first review screen states what t
 Continue to draft introduces commercial terms after the review. The owner enters the work description, quantity, and confirmed unit price. A later review must retain the owner's entered draft values. Compute totals in integer minor units, exclude included work from the additional-work total, and never derive approval from a source message or owner review.
 
 Use actual progress as the reward: sources saved, review saved, draft saved, and earlier versions preserved. Confirm a completed write briefly and offer the next useful action. Keep Approval not collected visible on the draft and export. Do not fabricate completion percentages, streaks, urgency, adoption, savings, or client approval.
+
+## Shared conversation rooms
+
+Make both people and the observing agent visible from the first screen. The home offers a fictional shared-room demonstration with designer, client and agent participants; every saved project can also start a room. Keep the existing solo workflow intact. An invited client opens a separate page and auth identity, including in two tabs on the same demo browser. Label the local role switch clearly; do not describe a joined member as currently online without presence evidence.
+
+The conversation is the primary work surface. Pair it with agreed scope, source-linked agent findings and shared drafts; use accessible tabs on narrow screens. Expose current observer status, a quiet call budget and pause/retry controls, so ongoing observation is understandable and bounded. Send messages only from explicit user action. Suggested demo messages fill or send clearly labeled synthetic examples; the agent never impersonates either person.
+
+Prepare draft freezes a reviewed conversation into a private owner workspace. The owner can enter confirmed commercial terms and return with Back to room. Share saved draft is a separate explicit action; new messages cannot mutate a previously shared version or imply approval. The client can discuss a draft, while prices, revisions and exports stay under the designer's control. Keep role boundaries and pending/saved/reconnect states clear without putting authentication or infrastructure details into the client's product flow.
+
+Retain the navy/red theme, local typography, compact header and original artwork. Conversation controls must have visible focus and labels, composer text survives failures, and polling must not steal focus or repeatedly announce the whole transcript. Verify independent browser identities, both directions of messaging, current/stale agent findings, frozen evidence, draft sharing and revision continuity.
 
 ## Retained product tour and assets
 

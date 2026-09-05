@@ -188,6 +188,8 @@ input::placeholder, textarea::placeholder { color: #65717d; opacity: 1; }
 input:disabled, textarea:disabled { background: var(--ve-surface-muted); }
 .form-actions { display: flex; gap: 12px; align-items: center; margin-top: 14px; }
 .back-button { background: transparent; color: var(--ve-muted); padding: 6px 8px; margin-left: -8px; }
+.project-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+@media (max-width: 600px) { .project-actions { width: 100%; justify-content: space-between; gap: 10px; } .project-actions .button { font-size: .8125rem; padding-inline: 10px; } }
 .back-button:hover:not(:disabled) { background: var(--ve-surface-muted); color: var(--ve-navy); }
 .project-heading { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 16px; }
 .project-identity { min-width: 0; }
