@@ -1,29 +1,46 @@
 # Verification status
 
-Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the project-local packages. **Real Gemini 3.7 Flash through Vertex passed the desktop review, mobile review and two-person shared-room journeys**, with Firebase Authentication and Firestore kept on local demo emulators. The desktop accessibility failure and its successful fix, fixture regression, and earlier Developer API billing failures are recorded separately below.
+Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the project-local packages. **The connected two-person journey now passes with real Firebase Authentication, the operator's existing Firestore database, and Gemini 3.7 Flash through Vertex.** Earlier desktop/mobile live reviews and shared-room checks with local emulators remain separate evidence below. Guest entry requires no login form, and deployment remains deferred.
 
 | Check | Current state |
 | --- | --- |
 | Terraform main/adoption formatting and schema validation | Passed in local tooling |
 | Terraform behavior checks | Main/adoption baseline: 7 mock tests passed. Gemini root: 6 mock tests and 3 provider loopback checks passed; saved-plan guards passed and authenticated final plan clean |
-| TypeScript and production build | Backend and frontend typechecks/builds passed after room integration; frontend production build, TypeScript and ESLint passed again after the live accessibility fix |
-| Backend unit/API tests | 150 passed after connected Firebase authentication and room-code enforcement; earlier 100-test checkpoint below retained as history |
+| TypeScript and production build | Backend build passed after the quota fix; frontend production build, TypeScript and ESLint passed after Google room recovery |
+| Backend unit/API tests | 152 passed, including installed Firebase Admin quota-header and fail-closed credential regressions |
+| Configuration and guest recovery | 25 environment/path/continuity tests and 17 frontend authentication/recovery tests passed |
 | Firebase emulator access checks | 3 Firestore Rules tests passed, including direct room/membership denial for designer, client and guest |
 | Playwright desktop/mobile and accessibility | Full updated fixture suite: 20/20 passed in 5.8 minutes (11 desktop, 9 mobile), including QR decoding and room-code joining |
 | Project-local MCP handshake/browser launch | Playwright: 24 tools and successful isolated Chromium launch; shadcn: 7 tools |
 | Impeccable detector / visual review | Guided workspace and shared room: one detector run per completed UI pass, zero findings; Playwright MCP desktop/mobile inspection and shadcn checklist passed |
-| Public/private configuration scan | Final: 170 publishable text files passed; exact-key/OAuth scan passed across 358 publishable/compiled/browser/log files; 2 private state files contained no Gemini key |
-| Dependency audit | Rechecked after the explicit OAuth dependency: zero high/critical findings; 13 moderate upstream package reports remain. See dependency-review.md |
+| Public/private configuration scan | 195 publishable text files passed; exact-key/OAuth scan passed across 391 publishable/compiled/log files; 2 private state files contained no Gemini key |
+| Dependency audit | Rechecked after QR/decoder dependencies: zero high/critical findings; 13 moderate upstream package reports remain. See dependency-review.md |
 | Docker image build | Not run: Docker Desktop engine is not running; Dockerfile and Cloud Build definition are prepared |
-| Live Gemini | Requested Vertex `gemini-3.7-flash`: catalog and structured smoke check passed; all 3 distinct live browser journeys passed across the initial run and targeted accessibility-fix rerun |
-| Real Firebase, Cloud Run, Vercel | Not tested or deployed |
+| Live Gemini | Requested Vertex `gemini-3.7-flash`: connected guest-room journey passed with 2 real observations; earlier 3 emulator-backed live journeys also passed |
+| Real Firebase | Guest identities, source/room saving, code join, draft/revision, sharing, reload/export and client denial passed; cloud record fingerprints matched across an app restart |
+| Google SSO | Real Google popup reached from home and client recovery; cancellation retained guest sessions. Completed personal account consent/sign-in remains unverified |
+| Cloud Run and Vercel | Deployment deferred; no deployed application URL |
 | AI Studio initial settings and enhancement evidence | Prepared instructions; actual setup not verified |
 
 ## Live Gemini enablement: 5 September 2026
 
+### Connected Firebase and Gemini checkpoint
+
+The active app is **http://localhost:3000**, started with `dev:connected` and external private configuration. The backend reports `runtime=connected`, `auth=firebase`, `storageConnection=cloud`, `aiProvider=gemini`, and `geminiTransport=vertex`. The private model setting is `gemini-3.7-flash`. No emulator is started in this mode, and the earlier local workspace remains in its verified ignored snapshot. Firebase and Vertex use their separately authorized projects. No infrastructure or billing changes were needed for this connection.
+
+**One complete connected browser journey passed in 1.8 minutes**, using two real, independent anonymous Firebase identities. It decoded the actual QR image, joined through a formatted room code, exchanged two messages, and waited for each real Gemini observation separately. It verified included kitchen lighting, a six-light matte-white addition, a missing-price question, then the owner's ₹2,000.50 confirmation and exact source quotations. The designer prepared a private **₹12,003** draft, explicitly shared it, saved a four-light **₹8,002** revision, and shared the second version. Both saved shared versions survived reload with the same guest identities. Replay did not duplicate saves or shares. Client access to private projects, export, draft preparation and sharing was denied. The owner downloaded revision 2 with correct integer-paise totals and preserved original evidence; approval remains uncollected. Keyboard and targeted axe checks passed.
+
+This run made **two real model calls**, with no automatic retries or fixture fallback. The observer was paused afterward. A separate read of the exact synthetic room, owner membership record, original project and revised project produced identical content fingerprints before and after a complete app stop/build/restart. Both revisions, both messages and both shared versions remained intact. Shared ADC hashes matched across the live test, credential diagnostics and persistence restart check.
+
+Evidence is retained in `.cache/connected-firebase-runs/2026-09-05T09-23-39-001Z-15264/`: HTML report, inline synthetic observation/verification/export attachments, and explicit completed-room screenshots. Automatic failure screenshots, video and traces were disabled. Only completed synthetic room views without an invitation dialog or URL fragment were captured. Public copies show the [designer](screenshots/connected-designer-room.png), [client](screenshots/connected-client-room.png), and [guest home](screenshots/connected-home.png).
+
+Google linking keeps existing guest UIDs. Returning clients use a separate Firebase app for the requested room; server-confirmed client membership is required before remembering that choice and on subsequent reload/polling. **17 frontend tests** cover popup/network failure, wrong account/room/role, multiple recovered rooms and preservation of existing guest identities. Playwright MCP reached the real Google sign-in page from both home and client recovery, cancelled it, and verified the same guest token was retained. The recovery page passed axe at 320 and 1440 pixels with no horizontal overflow and a 56-pixel header; the connected home header is 57 pixels. Final frontend build, TypeScript, ESLint and a completed Impeccable detector pass succeeded. The operator's own completed Google consent remains a separate pending check.
+
+Working stages: `ecf1832` preserves emulator sessions; `152cc45` adds explicit connected Auth/storage and room codes; `1ed16c4` adds guest entry and QR invitations; `6b9f326` fixes real Auth quota routing; `a30aaea` preserves guest sessions during Google room recovery. The connected stages are on `feat/connected-firebase-rooms`; nothing was pushed or deployed.
+
 ### Guest access and room-code fixture checkpoint
 
-Guest entry, `/join`, QR/link/code invitations, invitation replacement and optional Google account access are implemented. The default demo remains on emulators. The separate connected launcher requires matching private Firebase/Vertex configuration and passes only public Firebase SDK settings to the frontend; it never starts emulators or discovers shared ADC. Its real private settings were validated without displaying values, and the connected service started successfully. Real cloud application verification is recorded separately when executed.
+Guest entry, `/join`, QR/link/code invitations, invitation replacement and optional Google account access are implemented. The default demo remains on emulators. The separate connected launcher requires matching private Firebase/Vertex configuration and passes only public Firebase SDK settings to the frontend; it never starts emulators or discovers shared ADC. Its real private settings were validated without displaying values, and the connected service started successfully. The later connected application results are recorded above.
 
 Executed: **150 backend tests**, backend/frontend production builds, frontend TypeScript/ESLint, **25 configuration tests**, **20 fixture browser checks** and **3 Firestore Rules checks** passed. The QR checks decoded actual rendered pixels, verified invite replacement and stale-code rejection, joined with a formatted code, and checked same-client replay and stranger denial. Desktop and mobile included 320-pixel layout, keyboard/Escape focus and accessibility. Those QR-only checks made zero observer calls. The remaining full journeys retained the source, pricing, draft/revision, sharing, persistence, export and failure assertions. The final emulator snapshot preserves **92 users, 71 projects and 21 rooms**.
 

@@ -4,14 +4,16 @@ Reviewed on 5 September 2026 against the [official challenge](https://codelabs.d
 
 Genuine Vertex runs now verify two-turn Gemini reviews and the resulting draft/revision, persistence and export flow on desktop and mobile, using `gemini-3.7-flash` with local Firebase emulators. A separate live two-person room journey verifies two observations, independent client/designer identities, private draft preparation and immutable shared revisions. The reports and fixed desktop accessibility failure are recorded in [verification.md](verification.md). This satisfies the local model-integration check only; the OAuth transport does not demonstrate the codelab's deployed Secret Manager API-key integration or original AI Studio build workflow.
 
+The later connected journey also passed against **real Firebase Authentication and the existing Firestore database**, including QR/code joining, two genuine Gemini observations, private draft/revision sharing, reload/export and client denial. Four cloud record fingerprints matched across a complete app restart. Google sign-in pages were reached from home and client recovery, and cancellation preserved existing guest identities. Completed personal Google consent/sign-in remains unverified.
+
 ## Still required
 
 | Evidence | What to retain | Verified now? |
 | --- | --- | --- |
 | AI Studio custom instructions | A genuine settings record showing the security instructions, app identity, and date before the relevant build | No settings or build-history evidence available in this checkout |
 | Original enhancement through AI Studio | Actual prompt, response/build history, resulting source change, and before/after walkthrough for source review, clarification, or revisions | The app implements these features; AI Studio authorship is not established |
-| Live Firebase and Firestore | Real identities, reload, cross-user denial and deployed frontend configuration | Anonymous and Google providers verified enabled; connected application verification tracked separately in verification.md; deployment deferred |
-| Google SSO | Genuine Google consent/sign-in and retained ownership in the application | Optional guest-to-Google linking and returning account entry implemented; real consent not yet verified |
+| Live Firebase and Firestore | Real identities, reload, cross-user denial and deployed frontend configuration | Connected anonymous workflow and restart persistence passed; deployed-domain verification remains deferred |
+| Google SSO | Genuine Google consent/sign-in and retained ownership in the application | Providers enabled; home and client recovery reach Google and preserve guests on cancellation; completed personal consent/sign-in still pending |
 | Secret Manager runtime use | Terraform-managed Gemini API-key secret version, narrow runtime access, and working injection into the deployed backend | Deferred; local Vertex OAuth and private JSON are not this evidence |
 | Cloud Run | Verified deployed service, image digest, health/task checks, and `dev-tutorial=cloud-run-ai-challenge` | Deferred |
 | Submission assets | Public source, working URL or genuine walkthrough, social/demo link, and required hashtag | No publication or submission performed |

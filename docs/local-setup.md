@@ -2,6 +2,8 @@
 
 The repository is an npm workspace with frontend/ and backend/. Use Node.js 22.17+ and the already installed Java 21 runtime for Firestore emulation.
 
+The user also authorized a separate [connected development mode](connected-setup.md) using their existing real Firebase database, guest access and live Gemini. The default commands below retain the emulator-only test setup.
+
 ## One local stack
 
 Run npm ci, then npm run setup, then npm run dev from the repository root. The scripts bind services to 127.0.0.1 and refuse to overwrite a process already occupying one of the required ports.
@@ -20,7 +22,7 @@ The dev runner sets emulator endpoints and demo-vibeestimate explicitly and remo
 rtk proxy node scripts/local-emulator-state.mjs export
 ```
 
-The helper exports only the running `demo-vibeestimate` Auth and Firestore emulators, verifies file hashes and unchanged account/project fingerprints, and keeps any previous snapshot under ignored `.cache/firebase/workspace-backups`. It prints counts, never account payloads or tokens. The next `rtk npm run dev` automatically restores that fixed snapshot; arbitrary import paths and linked export entries are rejected. Run `rtk proxy node scripts/local-emulator-state.mjs verify-restored` immediately after restart to compare the restored data. Changes made after the last export still require another export before shutdown; forced termination does not create a new checkpoint.
+The helper exports only the running `demo-vibeestimate` Auth and Firestore emulators, verifies file hashes and unchanged account/project/room fingerprints, and keeps any previous snapshot under ignored `.cache/firebase/workspace-backups`. It prints counts, never account payloads or tokens. The next `rtk npm run dev` restores that fixed snapshot, repairs the emulator import's token-validity reset from verified original metadata, and checks the complete workspace before starting the app. Revoked/disabled accounts remain denied; arbitrary import paths and linked export entries are rejected. Run `rtk proxy node scripts/local-emulator-state.mjs verify-restored` immediately after restart to compare the restored data. Changes made after the last export still require another export before shutdown; forced termination does not create a new checkpoint.
 
 The deterministic fixture tests the interaction and calculation path without pretending to be live Gemini. Use the sample button for this mode. The real provider remains a separate opt-in using server configuration outside the repository; do not enter a server API key in a browser field.
 
@@ -39,7 +41,7 @@ rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File scripts/configure-
 rtk npm run dev -- --gemini-config ../docs/private/vertex-local.json
 ```
 
-The helper verifies the authorized named profile, account, project and enabled API. The backend obtains a fresh short-lived OAuth token from that same profile for each review, with an explicit private gcloud configuration directory and quota project. No API key, service-account key, refresh token or ADC file is copied. This transport is local-only; production authentication and deployment remain a separate task. `gemini-3.6-flash` was verified with the global Vertex endpoint and API version `v1`; the model can be selected explicitly with the helper's `-Model` option.
+The helper verifies the authorized named profile, account, project and enabled API. The backend obtains a fresh short-lived OAuth token from that same profile for each review, with an explicit private gcloud configuration directory and quota project. No API key, service-account key, refresh token or ADC file is copied. This transport is available in explicit local/connected development; production authentication and deployment remain separate. `gemini-3.7-flash` is the latest verified selection with the global Vertex endpoint and API version `v1`; the model can be selected explicitly with the helper's `-Model` option.
 
 Google Cloud welcome credits can apply to Gemini on [Vertex AI / Agent Platform](https://cloud.google.com/products/gemini-enterprise-agent-platform). They do not establish a positive Gemini Developer API prepaid balance; that API has [separate billing requirements](https://ai.google.dev/gemini-api/docs/billing). The executed results and any remaining billing limitation are recorded in [verification.md](verification.md).
 

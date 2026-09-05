@@ -20,15 +20,19 @@ The home workspace explains Sources → Review → Draft. Choose **Start a proje
 
 For the complete collaborative demo, choose **Try a shared room**. In the room, choose **Invite client → Create invite link → Open client demo**. The new tab uses a separate client identity. Exchange messages between both tabs and watch the source-linked agent review update. The designer can prepare a private draft, return with **Back to room**, and **Share saved draft** so the client receives that saved version. Both interfaces run on port 3000 with the same authenticated API; no second server is needed.
 
-![Fictional shared-room demonstration: conversation, source-linked agent and explicitly shared draft](docs/screenshots/room.png)
+![Connected synthetic designer room: live Gemini review and two explicitly shared draft revisions](docs/screenshots/connected-designer-room.png)
+
+The [client's separate view](docs/screenshots/connected-client-room.png) shows the same saved conversation and shared drafts with its own identity and permissions.
 
 The default runner uses a demo Firebase project and local Auth/Firestore emulators. Its AI provider is a clearly labeled, deterministic lighting fixture. It does not call paid Gemini services and does not access production Firebase data. Arbitrary scope analysis requires the real Gemini provider and server credentials.
 
+For the separately authorized real Firebase workspace, follow [connected setup](docs/connected-setup.md) and open **http://localhost:3000**. Guests can start without a login form, join by QR/link/room code, and optionally link Google to keep access across devices. The existing database and auth providers are used unchanged; deployment remains deferred. A localhost QR supports this computer's demo and needs a reachable app address for another phone.
+
 The sample demonstrates included kitchen lighting, a proposed display-light addition, a six-light draft at ₹12,000, and a four-light revision at ₹8,000. Amounts are fictional item subtotals. Client approval is not collected.
 
-Follow the [demo walkthrough](docs/demo-walkthrough.md) for the complete story. For live Gemini with local Firebase emulators, use the private Vertex configuration in [local setup](docs/local-setup.md). Real Gemini 3.7 Flash passed desktop and mobile review flows and a two-person room journey, including draft creation, revisions, sharing, persistence and export. The [verification record](docs/verification.md) records the fixed desktop accessibility failure, bounded live calls, fixture tests and the Developer API's separate prepaid-balance limitation.
+Follow the [demo walkthrough](docs/demo-walkthrough.md) for the complete story. For live Gemini with local Firebase emulators, use the private Vertex configuration in [local setup](docs/local-setup.md). Real Gemini 3.7 Flash passed desktop/mobile reviews and a two-person room journey. The later connected journey also passed with real Firebase guests and Firestore, including two observations, draft creation, preserved revisions, explicit sharing, persistence and export. The [verification record](docs/verification.md) records executed results, fixes, bounded calls and remaining Google consent/AI Studio/deployment evidence.
 
-![Compact VibeEstimate home with a guided project flow and fictional examples](docs/screenshots/home.png)
+![Connected guest home with a guided project flow, room joining and fictional examples](docs/screenshots/connected-home.png)
 
 The illustrated product tour is preserved:
 
@@ -39,6 +43,7 @@ The illustrated product tour is preserved:
 ~~~sh
 npm run typecheck
 npm test
+npm run test:auth --workspace @vibeestimate/frontend
 npm run build
 npm run test:local
 npm run mcp:verify

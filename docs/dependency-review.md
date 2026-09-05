@@ -2,6 +2,8 @@
 
 Checked 5 September 2026 against the installed npm lockfile. Vitest was updated to 3.2.6 and the compatible automated fixes were applied. The subsequent audit reports no critical or high findings; 13 moderate package reports remain across upstream dependency branches. This is an installed-source review, not exploit testing or proof of complete security.
 
+The audit was repeated after adding `qrcode.react` for local QR rendering and `jsqr` for independent pixel-decoding tests. It still reports zero high/critical findings and the same 13 moderate reports below.
+
 | Dependency | Scope and inspected path | Follow-up |
 | --- | --- | --- |
 | uuid 9 through gaxios and Cloud Storage | Present in runtime dependencies, but inspected callers use v4 without a buffer. The application uses node:crypto.randomUUID and does not call Firebase Storage. The advisory targets v3/v5/v6 with a supplied buffer. | Track upstream releases; reassess if Storage or UUID call sites change. |

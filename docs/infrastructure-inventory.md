@@ -50,6 +50,8 @@ The user explicitly requested using the existing database after the emulator-onl
 
 An initial auth discovery query returned an unnecessary password-hashing parameter in tool output. The query was restricted immediately to explicit provider flags, the private metadata record was replaced with sanitized fields, and no such parameter was written to repository files. Subsequent discovery prints only safe configuration flags and counts.
 
+Connected verification subsequently passed with real guest identities, two live Vertex observations, code joining, two private proposal revisions and two explicitly shared copies. The exact synthetic room and related project/membership records matched across an app restart. Firebase Admin requires an explicit Firebase quota-project header with the custom short-lived OAuth credential; this was fixed in application initialization, without changing any cloud resource or shared ADC. Actual Google consent and hosted-domain checks remain separate from provider enablement.
+
 ## Prepared Terraform resources
 
 | Resource | Planned scope | Cost/control notes | Actual status |

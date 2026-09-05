@@ -12,6 +12,7 @@ On 5 September 2026 the user requested [Petpooja's](https://www.petpooja.com/) c
 | /welcome | Optional product tour | Retained navy hero, red actions, overlapping laptop/phone preview, workflow tabs, illustrated feature sections, and final workspace action |
 | /rooms/:id | Designer's shared project room | Compact conversation, visible designer/client/agent roles, source context and current agent findings, explicit draft preparation and sharing |
 | /client/rooms/:id | Invited client's separate view | Independent sign-in, shared conversation and explicitly shared draft snapshots; no designer pricing or project-management controls |
+| /join | Join a room without a login wall | One labeled room-code field, concise context, retained input on failure, and a clear return to the workspace |
 
 The workspace exposes a Product tour link; the tour leads back to the workspace. Users can begin without scrolling through marketing sections. Preserve the tour as a complete, findable route and isolate its styles so navigation does not alter the workspace layout.
 
@@ -38,7 +39,7 @@ The workspace shell has a maximum width of 1240px and 28px desktop / 16px phone 
 
 At /, explain the outcome directly: Turn client changes into clear drafts. Show the three concepts and Start a project. The fictional lighting example creates a real sample project through the same save/review flow. Additional wardrobe and finish examples use their own synthetic sources; only the supported lighting example is available in fixture mode.
 
-The source form has two small steps: project name and agreed scope, then client messages. Continue validates the current step; Back retains text. Sign-in is required when saving the project, not before typing. Save project is the single persistence action. Fields remain editable when the project service is unavailable, with a visible reconnection path before save.
+The source form has two small steps: project name and agreed scope, then client messages. Continue validates the current step; Back retains text. A Firebase guest identity enables private saving without a login wall. Save project is the single source persistence action. Fields remain editable when the project service is unavailable, with a visible reconnection path before save. Guest access stays quiet in the header; Google linking is optional and must preserve existing guest work.
 
 Returning owners see recent project rows before examples. Each row uses the real project name, saved update date, and a helpful next action derived from persisted state. Opening a saved draft resumes the draft pane. Do not add inactive search or view controls, decorative project metrics, or a repeated mandatory tour.
 
@@ -60,6 +61,10 @@ Prepare draft freezes a reviewed conversation into a private owner workspace. Th
 
 Retain the navy/red theme, local typography, compact header and original artwork. Conversation controls must have visible focus and labels, composer text survives failures, and polling must not steal focus or repeatedly announce the whole transcript. Verify independent browser identities, both directions of messaging, current/stale agent findings, frozen evidence, draft sharing and revision continuity.
 
+Use the generated shadcn Dialog for invitations. Pair a locally rendered navy-on-white QR with a grouped, copyable 12-character code and link action. Explain one-client access and expiry, and make replacing an invitation explicit. Once the client joins, show the joined state instead of another usable invitation. A localhost notice helps the user choose the immediate two-tab demonstration or a later reachable address for phones. Invalid code entry keeps the text and focuses the field.
+
+On a returning client's inaccessible room page, offer the room-code path and a quiet **Saved access with Google?** recovery section. Google recovery must preserve the browser's other guest rooms and verify access to this exact room before showing it. Reusing a route component for another room must reset its state. Never present a designer's controls through a recovered client identity.
+
 ## Retained product tour and assets
 
 The tour preserves the previous centered white headline, red action, HTML/CSS device preview, four workflow tabs, navy illustrated features, and final action. Its device preview uses readable HTML and clearly marked fictional data with no fake interactive controls. The sequence explains included kitchen lighting, proposed display lights, owner review, and a revision that retains the earlier draft.
@@ -68,7 +73,7 @@ Original raster illustrations show a designer comparing a floor plan with client
 
 ## Components, accessibility, and recovery
 
-Use officially generated shadcn Button, Input, Textarea, AlertDialog, and Tabs with Radix Nova. Preserve their keyboard behavior. Review/Draft tabs and the tour's workflow tabs support arrow-key navigation. Keep the skip link, named regions, visible 3px focus outlines, source focus targets, and jump-to-draft action. Use light focus indicators on navy surfaces and respect reduced motion.
+Use officially generated shadcn Button, Input, Textarea, Dialog, AlertDialog, and Tabs with Radix Nova. Preserve their keyboard behavior. Review/Draft tabs and the tour's workflow tabs support arrow-key navigation. Keep the skip link, named regions, visible 3px focus outlines, source focus targets, and jump-to-draft action. Use light focus indicators on navy surfaces and respect reduced motion.
 
 Preserve server-confirmed saved states, original evidence, prior revisions, safe retry, unsaved-change warnings, leave confirmation, and disabled conflicting actions. Download uses the saved revision and stays disabled while the draft differs. Model/save failures retain input and previously saved content. The local status explicitly distinguishes Local sample · Gemini not connected from Local workspace · Gemini enabled; live failures never silently become fixture results.
 
