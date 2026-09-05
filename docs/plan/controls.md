@@ -4,9 +4,9 @@ Cross-cutting across [v1](v1.md), [v2](v2.md) and [v3](v3.md). Related: [release
 
 **Principle: every setting names the problem it solves and has a safe default. No setting exists to demonstrate flexibility.**
 
-A designer who never opens settings must still get a crew that is safe on day one — nothing sent without them, no price ever stated, the client's plan private. **Defaults are the product; settings exist for the cases where the default is wrong for this particular person.**
+A designer who never opens settings gets an autonomous crew: it answers the homeowner, researches, builds the home, updates the brief and saves reversible working options. New client-facing project activity is shared with that studio by default; professional notes remain private. **Defaults are the product; settings exist for the cases where the default is wrong for this particular person.**
 
-Three rules the whole document encodes, and the tests must prove: **the crew can never share, never set a price, and never read an unsubmitted client attachment.**
+Three rules the tests must prove: **the crew cannot expand an audience, commit a price or structural change, or bypass project permissions and user locks.** Automatic replies and working-option updates within the established project audience need no per-action approval.
 
 ---
 
@@ -14,18 +14,18 @@ Three rules the whole document encodes, and the tests must prove: **the crew can
 
 | Real problem | What they control | Safe default | Release |
 | --- | --- | --- | --- |
-| *"I can't watch this all day, but I can't let it loose either."* | **Autonomy per action class** — not a global slider. Answer general questions · build the 3D home · propose furniture and material changes · send anything to the client · state a price · change a wall. Each is `auto`, `preview for me`, or `always me`. | Answer, build and propose are `auto` and preview-only. Send, price and wall changes are `always me`. | v2 |
-| *"It must never quote a number I haven't agreed."* | **Pricing authority** — the crew never states a price, or may cite my rate card as indicative, or may quote from my rate card. Plus the rate card itself. | Never states a price. | v2 |
+| *"I can't watch this all day, but I can't let it loose either."* | **Autonomy per action class** — answer in the project, research, build 3D, maintain the brief, and edit working options can be `auto` or `preview for me`. Commercial commitments, structural changes, external sending and audience expansion remain `always me`. | Routine work is `auto`: validated edits save to a working option with compare/undo. No Apply for every edit. | v2 |
+| *"It must never quote a number I haven't agreed."* | **Pricing authority** — no client-facing prices, or permitted indicative rate-card figures. The crew can prepare commercial drafts from authorized sources; confirmation and formal sharing remain human actions. | No client-facing prices until configured; no invented rates. | v2 |
 | *"Bad leads waste more of my time than no leads."* | **Intake qualification** — service area, minimum budget band, project types I take. Out-of-scope enquiries are declined politely or captured and flagged, not pushed at me as if they were work. | Capture and flag. Never auto-decline. | v2 |
 | *"How much is this costing me?"* | **Budget caps** per month and per conversation, with an explicit exhausted-action: queue for me, tell the client I'll follow up, or stop. Visible spend per conversation. | A conservative monthly cap; on exhaustion, queue for me. | v2 |
-| *"I want to know when to step in — and not before."* | **Handoff triggers** — the client mentions budget · uploads a plan · requests a structural change · asks for a call · repeats themselves. Each independently on or off. | Plan upload, structural change and call request on. | v2 |
+| *"I want to know when to step in — and not before."* | **Handoff triggers** — structural change, commercial decision, explicit request for a person, or an unresolved blocker. An escalation creates a queue item; it does not stop independent routine work. | Plan upload and ordinary edits continue automatically. Actual takeover pauses public replies and scene commits; private analysis may continue within budget until explicit Resume assistant. | v2 |
 | *"It should sound like me."* | **`designer-voice`** skill — editable, versioned, revocable, in their private namespace. | A neutral house voice until they write one. | v2 |
 | *"Don't imply I'm sitting here at 11pm."* | **Availability** — the crew states honestly when a human reply will realistically come. | Says a person will reply; never implies immediacy. | v2 |
 | *"First proposals shouldn't look generic."* | **House style defaults** — the materials and finishes they actually use. Later, their own catalog through a vendor MCP server. | The admitted CC0 catalog. | v2 / v3 |
 | *"Prove the crew didn't do something odd."* | **Fleet Ribbon and `AgentTrace`**, plus a daily digest: what the crew did, what it declined, what is waiting on me. | Ribbon on; digest opt-in. | v2 |
 | *"Units and tax."* | mm or ft, INR, GST treatment. | mm, INR, and **no tax added silently, ever**. | v3 |
 
-**Why autonomy per action class rather than a slider.** A single "how autonomous?" control forces a solo designer to choose between an agent that is useless and one they cannot trust. The real question is not *how much* but *which things* — and the honest answer is that answering questions and building a 3D home are safe to automate, while sending a message, stating a price and moving a wall are not. Splitting the control along that line is what makes the product usable without supervision.
+**Autonomy follows the consequence of the action.** The crew completes routine work and requests clarification only for missing information that blocks it. It can cite permitted indicative rates, but the designer confirms commercial terms and explicitly shares formal proposals. Source calibration is distinct from proposing a structural alteration. Selecting a working option records a design preference, never a signature or commercial approval.
 
 ---
 
@@ -33,11 +33,12 @@ Three rules the whole document encodes, and the tests must prove: **the crew can
 
 | Real problem | What they control | Safe default | Release |
 | --- | --- | --- | --- |
-| *"I don't want an account just to ask a question."* | Nothing — already solved by the anonymous identity. Optionally: keep my work on this device, or save it across devices through Google linking. | Anonymous; work kept on this device. | v1 |
-| *"Where does my floor plan end up?"* | **Explicit sharing state, visible rather than buried** — the plan and each photo shown as shared-with-this-designer or private. Reference photos in a private option stay private until sent. | The plan is shared with the designer they are talking to, which is the point. Private-option photos stay private until sent. | v2 |
+| *"I don't want an account just to ask a question."* | Anonymous identity for cloud persistence; optional Google linking keeps access across devices. | Guest access on this browser; cloud saving is labelled accurately. | v1 |
+| *"Where does my floor plan end up?"* | **Visible project audience** — entry explains that messages, uploads, options and decisions are available to this studio. Existing-room images and inspiration have explicit roles. | Shared with project members and task-authorized agents; no public access. Existing private records retain their grants. | v2 |
 | *"My phone can't run this."* | **Quality mode** — auto, smooth, or plan-only. When the device struggles it says so and drops to plan view instead of freezing. | Auto, with an honest downgrade notice. | v1 |
 | *"Am I talking to a person?"* | Nothing to configure — the crew is always labelled, and **get a human** is always available. It creates a *Needs you* item rather than promising a call. | Always labelled; the button is always present. | v2 |
-| *"I want to try things without committing."* | Private options with an explicit **Send to designer**. Stated plainly: nothing here is seen until you send it. | Private. | v2 |
+| *"I want to try things without committing."* | Shared working options with compare, undo and **Use this option**. **Keep this** locks an object or material against agent changes. | Reversible and visible to the studio; choosing an option is not a commercial commitment. No new private scratchpad in v2. | v2 |
+| *"Remember what I like."* | Preferences are saved automatically within the project, with edit/forget controls. **Remember for future projects** opts into reuse within this studio. | Project-scoped; no cross-project reuse without opt-in and no cross-studio reuse. | v2 |
 | *"Don't flood me."* | Notifications — when the designer replies, all crew updates, or none. | Designer replies only. | v2 |
 | *"I don't know what things cost."* | A budget band **with a "not sure" option**. The crew never treats a band as a quote. | Not sure. | v2 |
 | *"The interface fights me."* | **Reduced motion, larger targets, keyboard-first and plan-only as real settings**, not only OS media queries — someone may want them regardless of their system setting. | Follow the OS, overridable. | v1 |
@@ -60,20 +61,21 @@ Operational controls, not product surface:
 
 Enforced server-side on every route. This is a security artifact, not a description of the UI. Rows are what exists; columns are who may reach it.
 
-| | Designer | Homeowner | Crew | Anonymous visitor |
+| | Designer | Homeowner (including signed-in guests) | Crew | Unauthenticated visitor |
 | --- | --- | --- | --- | --- |
-| Their own scene revisions | full | — | via context bundle only | — |
-| Shared scene snapshot | full | read | via context bundle only | — |
-| Original plan file | read | read (their own upload) | Surveyor only, via bundle | — |
-| Client's unsent private option | — | full | via bundle, that client's tasks only | — |
-| Client's unsubmitted photos | **no** | full | no | — |
-| Rate card and prices | full | — | cite only if permitted; never set | — |
-| Agent traces | own tenant | — | write own | — |
-| Sharing a scene or draft | yes | — | **never** | — |
+| New project's client-facing revisions and working options | full | read and edit permitted working options | scoped tools; validated working-option commits | — |
+| Frozen scene snapshot | read if granted | read if granted | via authorized bundle only | — |
+| Project plans and reference photos | read if project member | upload/read in own project | role-relevant images via authorized bundle | — |
+| Professional notes | owning designer only | — | only for an authorized private task; no client-facing disclosure | — |
+| Existing private records | existing grants only | existing grants only | existing task grants only; no audience expansion | — |
+| Private rate-card records | owning designer | — | task-scoped; cite only if permitted, never commit a price | — |
+| Agent traces | project-authorized projection | own project's public progress and artifacts | append through API; scoped task context | — |
+| Routine replies and working-option updates in the established audience | yes | yes | automatic | — |
+| Expanding an audience or sharing a formal proposal | explicit authorized action | — | **never** | — |
 | Wall or opening changes | yes | request only | propose only | — |
-| Export | yes | not in v2 | — | — |
+| Export | authorized project content | authorized client-facing scene/change sheet and shared proposal | prepare through scoped tools; no external sending | — |
 
-Ownership checks live in exactly two places and must be extended rather than duplicated: `assertOwner` in `backend/src/store.ts`, and `memberRole` / `requireDesigner` in `backend/src/room-domain.ts`. A foreign ID returns 404, never 403, so IDs stay indistinguishable.
+Extend the shared authorization layer rooted in `assertOwner` in `backend/src/store.ts` and `memberRole` / `requireDesigner` in `backend/src/room-domain.ts` with studio/project grants; do not scatter checks across agents. A foreign ID returns 404; a known member lacking an action permission may receive 403. Traces, summaries, memories and exports inherit source audiences and never expose private professional content through derived output.
 
 ---
 
@@ -84,6 +86,9 @@ Every cell of the matrix, plus:
 - The [v2 defaults](#the-designer) hold for a designer who never opens settings.
 - Changing an autonomy class takes effect on the next task and cannot be changed by the crew itself.
 - A budget cap cannot be reset by creating a new conversation, option or request ID.
-- A homeowner's private-option attachment is unreachable by the designer before submission, and only the selected versions become reachable after it.
-- Pricing authority set to *never states a price* survives a direct request from the homeowner to state one.
+- An authorized reference image can drive an automatic working-option edit; another project cannot retrieve it directly or through traces, summaries or memory.
+- Compare/undo/Use this option works without per-edit Apply; locked objects and materials cannot be changed by an agent.
+- Takeover rejects stale public replies and scene writes; Resume assistant uses fresh context. Private analysis cannot appear in client-facing output.
+- Preference edits/deletion invalidate derived memory and caches; cross-project recall requires opt-in within the same studio.
+- Pricing authority set to *no client-facing prices* survives a direct request from the homeowner to state one.
 - The kill switch removes a role from dispatch without restarting other services.

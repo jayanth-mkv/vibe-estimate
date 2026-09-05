@@ -1,6 +1,6 @@
 # Spatial studio surface brief
 
-Status: proposed design brief for the next version, 5 September 2026. Planning only. This expands the established visual world; it does not replace [DESIGN.md](../DESIGN.md). [The full plan](spatial-home-studio-plan.md) specifies architecture, sequence and tests.
+Status: proposed design brief for the next version, 5 September 2026. Planning only. This expands the established visual world; it does not replace [DESIGN.md](../DESIGN.md). The [release plan](plan/README.md), [controls](plan/controls.md) and [platform contracts](plan/v2.md#platform-contracts) specify current behavior, architecture and tests.
 
 ## Job, audience and mode
 
@@ -22,15 +22,17 @@ The entry page says **Upload a home plan. Explore it in 3D. Plan changes togethe
 
 Inside the studio, a roughly 220px room navigator and optional 300px inspector surround a flexible canvas. The header contains project identity, saved state, undo/redo and Share. Canvas controls name Overview, Inside, Plan, Compare and Reset view. A bottom view strip contains the whole home and actual room bookmarks; Changes and Discussion open contextual content.
 
-The initial sequence is upload → check source/scale → whole-home reveal → choose a room → try an idea → compare → discuss/share → draft. A brief reveal may extrude the reviewed layout into the home; reduced-motion users get the final view directly. This is meaningful state change, not a loading performance.
+The initial sequence is website intake → same-project studio tab → upload → check source/scale → whole-home reveal → autonomous working option → compare/choose → walkthrough → optional designer review. A brief reveal may extrude the reviewed layout into the home; reduced-motion users get the final view directly. This is meaningful state change, not a loading performance.
 
 ## Editing and collaboration
 
-Clicking a room focuses it. Clicking a surface exposes Material and relevant additions; selecting an object exposes Move, Rotate, Size where supported, Replace and Remove. A catalog shows actual model previews and dimensions. Every placement also supports tap-to-place and numeric adjustment. Confirm an AI preview through Apply; Discard returns to the unchanged saved scene.
+Clicking a room focuses it. Clicking a surface exposes Material and relevant additions; selecting an object exposes Move, Rotate, Size where supported, Replace and Remove. A catalog shows actual model previews and dimensions. Every placement also supports tap-to-place and numeric adjustment. Validated AI edits save automatically to a working option; compare, undo and Use this option replace per-edit Apply. Keep this locks the selected object or material.
 
 Ask for a change is scoped to the selection and can accept a reference image. The response is visible geometry/material operations, questions or highlighted constraints. A short explanation supports the preview. Source references and missing-price prompts appear next to the relevant change, while detailed conversation remains available.
 
-Before/after uses the same viewpoint and names its baseline, such as Starting layout v1 or Shared version 3. The original may show a current home, planned design or unknown state; inferred materials and prior options must not be labelled as physically existing. A visual change card includes the room, changed objects and the exact saved revision. Discuss this attaches that context to a real message. Client options and their reference photos are private until explicitly sent. Adopting an option creates a designer revision, and sharing a scene does not automatically disclose original plans, all photos or private scope documents.
+Before/after uses the same viewpoint and names its baseline, such as Starting layout v1 or Shared version 3. The original may show a current home, planned design or unknown state; inferred materials and prior options must not be labelled as physically existing. A visual change card includes the room, changed objects and the exact saved revision. Discuss this attaches that context to a real message. New client-facing options, photos and decisions are visible to the studio by default, disclosed on entry. Professional notes and legacy private records retain their grants. Choosing an option records a preference; formal proposal sharing remains a separate human action.
+
+The Living Brief anchors requirements and their status to rooms and objects. The decision history preserves chosen/rejected options and reasons. Play briefing visits relevant saved views for the designer. Takeover pauses public assistant replies and scene commits while allowing authorized private analysis; Resume assistant starts from the latest state.
 
 Each person controls their own camera and selection. Following a presenter is explicit and easy to exit, bound to a shared snapshot accessible to both people. A different or unpublished revision cannot be opened silently; preserve the follower's work and offer the correct shared view. Receiving a comment or scene event must not steal focus. Client desk room lists and unread indicators come from authenticated memberships and per-identity read cursors, including the existing separate guest/Google identities. Read/presence/approval language is based on real events and existing product rules.
 
@@ -61,4 +63,4 @@ Walkthroughs offer room stops and previous/next before optional free movement. E
 
 Verify desktop, tablet, 390px and 320px; keyboard-only operation; tap-only placement; assistive names and focus; all viewpoint controls; source checks; edits/undo; separate identities; compare/share; failure recovery and exact saved export. Run shadcn review and one Impeccable detector after each completed UI pass, plus actual visual inspection. Planning does not count as executed UI verification.
 
-The first scope assumes a complete single-floor home and private homeowner options. Floor count, real input quality, actual asset taste and hardware performance remain to be confirmed through the first benchmark and user feedback. The larger plan explicitly includes multiple floors, walkthroughs, visual estimates and a separate client inbox.
+The first complete product covers one floor, shared working options, native image edits and room-stop walkthroughs. Real input quality, actual asset taste and hardware performance are checked through the benchmark and user feedback. Multiple floors and free movement extend this later.
