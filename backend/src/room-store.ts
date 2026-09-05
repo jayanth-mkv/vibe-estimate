@@ -4,7 +4,7 @@ import { AppError } from "./errors.js";
 import { assertOwner } from "./store.js";
 import type { Analysis, StoredProject } from "./types.js";
 import {
-  assertInvite, checkedSharedDraft, currentSnapshot, frozenProject, memberRole, newInvite, newRoom,
+  assertInvite, assertJoinCodeHash, checkedSharedDraft, currentSnapshot, frozenProject, joinCodeHash, memberRole, newInvite, newRoom,
   publicRoom, requireDesigner, ROOM_CALL_LIMIT, ROOM_DEBOUNCE_MS, ROOM_LEASE_MS, ROOM_MESSAGE_LIMIT,
   ROOM_OWNER_LIMIT, ROOM_TRANSCRIPT_LIMIT, roomNotFound, roomTranscript
 } from "./room-domain.js";
@@ -22,6 +22,7 @@ export interface RoomTransaction {
 export interface RoomDatabase {
   transaction<T>(operation: (transaction: RoomTransaction) => Promise<T>): Promise<T>;
   scheduledIds(): Promise<string[]>;
+  findRoomByJoinCodeHash(hash: string): Promise<string | undefined>;
 }
 export class FirestoreRoomDatabase implements RoomDatabase {
   constructor(private db: Firestore) {}
@@ -41,6 +42,10 @@ export class FirestoreRoomDatabase implements RoomDatabase {
   async scheduledIds() {
     const snapshot = await this.db.collection("rooms").where("observer.status", "in", ["queued", "thinking"]).get();
     return snapshot.docs.map(document => document.id);
+  }
+  async findRoomByJoinCodeHash(hash: string) {
+    const snapshot = await this.db.collection("rooms").where("invite.codeHash", "==", hash).limit(2).get();
+    return snapshot.docs.length === 1 ? snapshot.docs[0]!.id : undefined;
   }
 }
 
@@ -71,7 +76,7 @@ export class RoomStore {
       transaction.putOwner(uid, owner);
       return created;
     });
-    return { room: publicRoom(room, uid), inviteToken: invitation.token };
+    return { room: publicRoom(room, uid), inviteToken: invitation.token, joinCode: invitation.joinCode };
   }
 
   async get(uid: string, id: string) {
@@ -93,7 +98,31 @@ export class RoomStore {
       room.updatedAt = new Date(now).toISOString();
       transaction.putRoom(room);
     });
-    return invitation.token;
+    return { inviteToken: invitation.token, joinCode: invitation.joinCode };
+  }
+
+  async joinCode(uid: string, code: string) {
+    const hash = joinCodeHash(code);
+    const id = await this.database.findRoomByJoinCodeHash(hash);
+    if (!id) throw new AppError(403, "INVITE_INVALID", "This room code is invalid or has expired. Ask the designer for a new invitation.");
+    await this.database.transaction(async transaction => {
+      const room = await transaction.getRoom(id);
+      if (!room) throw new AppError(403, "INVITE_INVALID", "This room code is invalid or has expired. Ask the designer for a new invitation.");
+      // The query is only a lookup. Rotation/expiry and membership are checked
+      // again inside the binding transaction, so a lookup cannot authorize a join.
+      assertJoinCodeHash(room, hash, this.clock());
+      this.bindClient(room, uid);
+      transaction.putRoom(room);
+    });
+    return this.get(uid, id);
+  }
+
+  private bindClient(room: StoredRoom, uid: string) {
+    if (room.ownerId === uid) throw new AppError(403, "CLIENT_IDENTITY_REQUIRED", "Open this invitation using the separate client view, with a client identity.");
+    if (room.clientId && room.clientId !== uid) throw new AppError(403, "ROOM_FULL", "This room already has its invited client.");
+    if (room.clientId === uid) return;
+    room.clientId = uid;
+    room.updatedAt = new Date(this.clock()).toISOString();
   }
 
   async join(uid: string, id: string, token: string) {
@@ -101,11 +130,7 @@ export class RoomStore {
       const room = await transaction.getRoom(id);
       if (!room) throw roomNotFound();
       assertInvite(room, token, this.clock());
-      if (room.ownerId === uid) throw new AppError(403, "CLIENT_IDENTITY_REQUIRED", "Open this invitation using the separate client view, with a client identity.");
-      if (room.clientId && room.clientId !== uid) throw new AppError(403, "ROOM_FULL", "This room already has its invited client.");
-      if (room.clientId === uid) return;
-      room.clientId = uid;
-      room.updatedAt = new Date(this.clock()).toISOString();
+      this.bindClient(room, uid);
       transaction.putRoom(room);
     });
     return this.get(uid, id);

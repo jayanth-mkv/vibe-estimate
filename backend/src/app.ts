@@ -28,7 +28,7 @@ export function createApp({ config, store, provider, verifyToken, rooms }: AppDe
   app.use(express.json({ limit: "48kb" }));
   app.use((_request, response, next) => { response.setHeader("Cache-Control", "no-store"); next(); });
   app.get("/health", (_request, response) => {
-    response.json({ status: "ok", aiProvider: provider.kind, storage: "firestore", auth: config.appEnv === "local" ? "emulator" : "firebase", ...(provider.kind === "gemini" ? { geminiTransport: config.geminiTransport ?? "developer" } : {}) });
+    response.json({ status: "ok", aiProvider: provider.kind, storage: "firestore", auth: config.appEnv === "local" ? "emulator" : "firebase", storageConnection: config.appEnv === "local" ? "emulator" : "cloud", runtime: config.appEnv, ...(provider.kind === "gemini" ? { geminiTransport: config.geminiTransport ?? "developer" } : {}) });
   });
   const authenticate: RequestHandler = async (request, response, next) => {
     const header = request.header("authorization");
@@ -39,7 +39,12 @@ export function createApp({ config, store, provider, verifyToken, rooms }: AppDe
       if (!identity.uid || identity.uid.includes("/")) throw new Error("Invalid identity");
       response.locals.uid = identity.uid;
       next();
-    } catch { next(new AppError(401, "AUTH_REQUIRED", "Your session could not be verified. Please sign in again.")); }
+    } catch (error) {
+      const code = typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+      if (typeof code === "string" && ["CONNECTED_AUTH_UNAVAILABLE", "auth/internal-error", "auth/insufficient-permission", "auth/invalid-credential", "app/invalid-credential", "app/network-error", "app/network-timeout"].includes(code)) {
+        next(new AppError(503, "AUTH_UNAVAILABLE", "Your sign-in could not be checked right now. Keep this session and retry shortly."));
+      } else next(new AppError(401, "AUTH_REQUIRED", "Your session could not be verified. Please sign in again."));
+    }
   };
   app.use("/api", authenticate);
   app.use("/api", rateLimit({ windowMs: 60000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false, keyGenerator: (_request, response) => String(response.locals.uid), message: { error: { code: "RATE_LIMIT", message: "Too many requests. Please wait a minute and try again." } } }));

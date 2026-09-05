@@ -5,8 +5,8 @@ import { obtainLocalVertexToken } from "./vertex-auth.js";
 import { validateVertexTarget, type LocalVertexTarget } from "./vertex-config.js";
 
 export function localVertexTarget(config: AppConfig): LocalVertexTarget {
-  if (config.appEnv !== "local" || config.aiProvider !== "gemini" || config.geminiTransport !== "vertex" || !config.geminiModel || config.geminiApiKey) {
-    throw new Error("Vertex transport requires an explicit local Gemini configuration without an API key.");
+  if (!["local", "connected"].includes(config.appEnv) || config.aiProvider !== "gemini" || config.geminiTransport !== "vertex" || !config.geminiModel || config.geminiApiKey) {
+    throw new Error("Vertex transport requires an explicit local or connected Gemini configuration without an API key.");
   }
   return validateVertexTarget({
     projectId: config.vertexProjectId, location: config.vertexLocation,

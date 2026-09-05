@@ -37,4 +37,8 @@ export class MemoryRoomDatabase implements RoomDatabase {
     return result;
   }
   async scheduledIds() { return [...this.rooms.values()].filter(room => ["queued", "thinking"].includes(room.observer.status)).map(room => room.id); }
+  async findRoomByJoinCodeHash(hash: string) {
+    const rooms = [...this.rooms.values()].filter(room => room.invite.codeHash === hash);
+    return rooms.length === 1 ? rooms[0]!.id : undefined;
+  }
 }

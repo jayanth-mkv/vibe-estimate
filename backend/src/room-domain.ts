@@ -16,6 +16,8 @@ export const ROOM_TRANSCRIPT_MARKER = "\n\n--- Shared room conversation ---\n";
 export const emptyRoomBody = z.object({}).strict();
 export const roomMessageSchema = z.object({ text: z.string().trim().min(1).max(1000), requestId: z.string().uuid() }).strict();
 export const roomJoinSchema = z.object({ inviteToken: z.string().min(32).max(128).regex(/^[A-Za-z0-9_-]+$/) }).strict();
+const normalizedJoinCode = z.string().min(12).max(32).transform(value => value.replace(/[\s-]/g, "").toUpperCase()).pipe(z.string().regex(/^[0-9A-HJKMNP-TV-Z]{12}$/));
+export const roomJoinCodeSchema = z.object({ joinCode: normalizedJoinCode }).strict();
 export const roomObserverSchema = z.object({ action: z.enum(["retry", "pause", "resume"]) }).strict();
 export const roomNotFound = () => new AppError(404, "ROOM_NOT_FOUND", "This room could not be found.");
 
@@ -30,7 +32,21 @@ export function requireDesigner(room: StoredRoom | undefined, uid: string): asse
 }
 export function newInvite(now: number) {
   const token = randomBytes(32).toString("base64url");
-  return { token, stored: { hash: createHash("sha256").update(token).digest("hex"), expiresAt: now + ROOM_INVITE_MS } };
+  const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+  // Twelve independent five-bit symbols provide 60 bits of random invitation entropy.
+  const compactCode = [...randomBytes(12)].map(value => alphabet[value & 31]).join("");
+  const joinCode = `${compactCode.slice(0, 4)}-${compactCode.slice(4, 8)}-${compactCode.slice(8)}`;
+  return { token, joinCode, stored: { hash: createHash("sha256").update(token).digest("hex"), codeHash: joinCodeHash(compactCode), expiresAt: now + ROOM_INVITE_MS } };
+}
+export function joinCodeHash(value: string) {
+  return createHash("sha256").update("vibeestimate-room-code:" + normalizedJoinCode.parse(value)).digest("hex");
+}
+export function assertJoinCodeHash(room: StoredRoom, suppliedHash: string, now: number) {
+  const expected = Buffer.from(room.invite.codeHash ?? "", "hex");
+  const supplied = Buffer.from(suppliedHash, "hex");
+  if (now >= room.invite.expiresAt || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+    throw new AppError(403, "INVITE_INVALID", "This room code is invalid or has expired. Ask the designer for a new invitation.");
+  }
 }
 export function assertInvite(room: StoredRoom, token: string, now: number) {
   const supplied = createHash("sha256").update(token).digest();

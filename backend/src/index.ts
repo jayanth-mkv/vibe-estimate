@@ -1,12 +1,10 @@
-import { applicationDefault, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
 import { createApp } from "./app.js";
 import { createProvider } from "./ai.js";
 import { readConfig } from "./config.js";
 import { FirestoreProjectStore } from "./store.js";
 import { FirestoreRoomDatabase, RoomStore } from "./room-store.js";
 import { RoomObserver } from "./room-observer.js";
+import { apiHost, createFirebaseRuntime } from "./firebase-runtime.js";
 
 const config = readConfig(process.env);
 if (config.appEnv === "local") {
@@ -14,14 +12,13 @@ if (config.appEnv === "local") {
   process.env.FIRESTORE_EMULATOR_HOST = config.firestoreEmulatorHost;
   process.env.GCLOUD_PROJECT = config.projectId;
 }
-const firebase = initializeApp({ projectId: config.projectId, ...(config.appEnv === "production" ? { credential: applicationDefault() } : {}) });
-const firestore = getFirestore(firebase, config.firestoreDatabaseId);
+const { firestore, verifyToken } = createFirebaseRuntime(config);
 const store = new FirestoreProjectStore(firestore);
 const provider = createProvider(config);
 const rooms = new RoomStore(new FirestoreRoomDatabase(firestore), provider.kind);
 const observer = new RoomObserver(rooms, provider);
-const app = createApp({ config, store, provider, rooms, verifyToken: token => getAuth(firebase).verifyIdToken(token) });
-const host = config.appEnv === "local" ? "127.0.0.1" : "0.0.0.0";
+const app = createApp({ config, store, provider, rooms, verifyToken });
+const host = apiHost(config);
 const server = app.listen(config.port, host, () => {
   console.info(JSON.stringify({ event: "server_ready", port: config.port, mode: config.appEnv, aiProvider: config.aiProvider }));
 });

@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { AppError } from "./errors.js";
-import { validateVertexTarget, type LocalVertexTarget } from "./vertex-config.js";
+import { validateNamedGcloudTarget, validateVertexTarget, type LocalVertexTarget, type NamedGcloudTarget } from "./vertex-config.js";
 
 type CommandOptions = {
   env: NodeJS.ProcessEnv;
@@ -52,13 +52,13 @@ function assertNoCredentialOverrides(env: NodeJS.ProcessEnv) {
   if (Object.keys(env).some(key => (key.toUpperCase().startsWith("CLOUDSDK_AUTH_") || forbidden.has(key.toUpperCase())) && Boolean(env[key]?.trim()))) throw authUnavailable();
 }
 
-export async function obtainLocalVertexToken(
-  input: LocalVertexTarget,
+export async function obtainNamedProfileToken(
+  input: NamedGcloudTarget,
   execute: GcloudExecutor = createGcloudExecutor(),
   env: NodeJS.ProcessEnv = process.env
 ): Promise<string> {
   try {
-    const target = validateVertexTarget(input);
+    const target = validateNamedGcloudTarget(input);
     assertNoCredentialOverrides(env);
     const controlled = new Set(["CLOUDSDK_CONFIG", "CLOUDSDK_ACTIVE_CONFIG_NAME", "CLOUDSDK_CORE_ACCOUNT", "CLOUDSDK_CORE_PROJECT", "CLOUDSDK_CORE_DISABLE_PROMPTS", "CLOUDSDK_CORE_LOG_HTTP", "CLOUDSDK_CORE_VERBOSITY"]);
     const childEnv: NodeJS.ProcessEnv = Object.fromEntries(Object.entries(env).filter(([key]) => !controlled.has(key.toUpperCase())));
@@ -78,4 +78,9 @@ export async function obtainLocalVertexToken(
     // Tokens remain in memory and never become error causes, logs, or CLI args.
     throw authUnavailable();
   }
+}
+
+export async function obtainLocalVertexToken(input: LocalVertexTarget, execute: GcloudExecutor = createGcloudExecutor(), env: NodeJS.ProcessEnv = process.env): Promise<string> {
+  try { return await obtainNamedProfileToken(validateVertexTarget(input), execute, env); }
+  catch { throw authUnavailable(); }
 }

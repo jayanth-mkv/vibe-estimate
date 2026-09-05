@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { z } from "zod";
-import { emptyRoomBody, roomJoinSchema, roomMessageSchema, roomNotFound, roomObserverSchema } from "./room-domain.js";
+import { emptyRoomBody, roomJoinCodeSchema, roomJoinSchema, roomMessageSchema, roomNotFound, roomObserverSchema } from "./room-domain.js";
 import type { RoomStore } from "./room-store.js";
 import { publicProject } from "./types.js";
 
@@ -20,7 +20,11 @@ export function registerRoomRoutes(app: Express, store: RoomStore) {
   });
   app.post("/api/rooms/:roomId/invite", async (request, response) => {
     emptyRoomBody.parse(request.body ?? {});
-    response.json({ inviteToken: await store.invite(response.locals.uid as string, request.params.roomId as string) });
+    response.json(await store.invite(response.locals.uid as string, request.params.roomId as string));
+  });
+  app.post("/api/rooms/join", async (request, response) => {
+    const input = roomJoinCodeSchema.parse(request.body);
+    response.json({ room: await store.joinCode(response.locals.uid as string, input.joinCode) });
   });
   app.post("/api/rooms/:roomId/join", async (request, response) => {
     const input = roomJoinSchema.parse(request.body);

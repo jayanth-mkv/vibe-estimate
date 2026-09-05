@@ -52,7 +52,7 @@ export type ObserverRun = { id: string; messageCount: number; leaseUntil: number
 export type StoredRoom = Omit<Room, "role" | "clientJoined" | "messages" | "shareableDraft"> & {
   ownerId: string;
   clientId?: string;
-  invite: { hash: string; expiresAt: number };
+  invite: { hash: string; codeHash?: string; expiresAt: number };
   messages: StoredRoomMessage[];
   paused: boolean;
   nextRunAt: number;
