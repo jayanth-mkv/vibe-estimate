@@ -8,6 +8,15 @@ export const apiHost = (config: AppConfig) => config.appEnv === "production" ? "
 
 export function createFirebaseRuntime(config: AppConfig, tokenDependencies?: ConnectedTokenDependencies) {
   const connected = config.appEnv === "connected" ? createConnectedCredentials(config, tokenDependencies) : undefined;
+  if (connected) {
+    // Admin adds x-goog-user-project for custom credentials only through this
+    // process setting. Pin it to the validated Firebase resource project so
+    // revocation/account checks use its enabled API and authorized quota.
+    for (const key of Object.keys(process.env)) {
+      if (key.toUpperCase() === "GOOGLE_CLOUD_QUOTA_PROJECT" && key !== "GOOGLE_CLOUD_QUOTA_PROJECT") delete process.env[key];
+    }
+    process.env.GOOGLE_CLOUD_QUOTA_PROJECT = config.projectId;
+  }
   const firebase = initializeApp({
     projectId: config.projectId,
     ...(connected ? { credential: connected.credential } : config.appEnv === "production" ? { credential: applicationDefault() } : {})

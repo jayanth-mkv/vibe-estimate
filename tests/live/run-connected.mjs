@@ -18,14 +18,14 @@ try {
   }
   if (!discovery) {
     const response = await fetch("http://127.0.0.1:8080/health", { signal: AbortSignal.timeout(10000) });
-    if (!response.ok()) throw new PreflightError("The connected backend is unavailable.");
+    if (!response.ok) throw new PreflightError("The connected backend is unavailable.");
     const health = await response.json();
     if (health.status !== "ok" || health.aiProvider !== "gemini" || health.geminiTransport !== "vertex" ||
         health.auth !== "firebase" || health.storage !== "firestore" || health.storageConnection !== "cloud" || health.runtime !== "connected") {
       throw new PreflightError("Start the explicit connected Firebase + Vertex stack before this verification.");
     }
     const frontend = await fetch("http://localhost:3000", { signal: AbortSignal.timeout(15000) });
-    if (!frontend.ok() || new URL(frontend.url).origin !== "http://localhost:3000") throw new PreflightError("The connected frontend must be available on localhost:3000.");
+    if (!frontend.ok || new URL(frontend.url).origin !== "http://localhost:3000") throw new PreflightError("The connected frontend must be available on localhost:3000.");
   }
 
   // The browser obtains its anonymous Firebase identity through the product UI.
