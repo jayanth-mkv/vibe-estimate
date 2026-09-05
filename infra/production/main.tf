@@ -1,6 +1,10 @@
 terraform {
   required_version = ">= 1.13.5, < 2.0.0"
-  backend "local" {}
+  # Foundation IAM, secrets, queue and Firebase settings are the highest-value state in this repository.
+  # Versioned, locked, private GCS state; supply only the bucket name at init.
+  backend "gcs" {
+    prefix = "production"
+  }
   required_providers {
     google = {
       source  = "hashicorp/google"

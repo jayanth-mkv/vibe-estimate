@@ -3,10 +3,13 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { obtainNamedProfileToken } from '../backend/src/vertex-auth.ts';
+// The built module is imported rather than the TypeScript source: Node's type
+// stripping does not resolve that source's own `.js` specifiers. Build the
+// backend workspace before running this launcher.
+import { obtainNamedProfileToken } from '../backend/dist/vertex-auth.js';
 
 /** Optional extra domains belong to the same explicitly authorized Firebase
- * project. Other private Vercel configuration fields are intentionally ignored. */
+ * project. Other private frontend configuration fields are intentionally ignored. */
 export function extraAuthDomains(config: unknown, firebaseProjectId: string): string[] {
   if(config === undefined)return [];
   if(!config||typeof config!=='object'||Array.isArray(config))throw new Error('Invalid private frontend domain configuration');
@@ -19,7 +22,7 @@ export function extraAuthDomains(config: unknown, firebaseProjectId: string): st
 }
 
 function privateExtraAuthDomains(privateRoot: string, firebaseProjectId: string): string[] {
-  const file=path.join(privateRoot,'vercel-config.json');
+  const file=path.join(privateRoot,'frontend-hosting.json');
   try {fs.lstatSync(file);}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return [];throw new Error('Private frontend domain configuration is unavailable');}
   const canonical=fs.realpathSync(file);
   const relative=path.relative(privateRoot,canonical);
@@ -47,6 +50,9 @@ async function main() {
   const before=adcHash();
   const infra=path.join(root,'infra/production');
   const stateDir=path.join(privateRoot,'production-terraform');fs.mkdirSync(stateDir,{recursive:true});
+  // Foundation state lives in the private, versioned GCS bucket owned by infra/delivery.
+  const stateBucket=JSON.parse(fs.readFileSync(path.join(privateRoot,'delivery-outputs.json'),'utf8')).state_bucket.value;
+  if(!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(stateBucket))throw new Error('Invalid private state bucket name');
   const toolDir=path.join(root,'infra/.tools');
   const cache=path.join(toolDir,'production-provider-cache');fs.mkdirSync(cache,{recursive:true});
   const dataDir=path.join(toolDir,'production-data');fs.mkdirSync(dataDir,{recursive:true});
@@ -68,10 +74,15 @@ async function main() {
   const manifest=path.join(stateDir,'plan-manifest.json');
   const sourceHash=()=>digest(fs.readdirSync(infra).filter(n=>n.endsWith('.tf')).sort().map(n=>fs.readFileSync(path.join(infra,n))).join('\n'));
   try {
-    if(['plan','apply','outputs'].includes(action))env.TF_VAR_access_token=await obtainNamedProfileToken({projectId:vertex.projectId,gcloudConfiguration:vertex.gcloudConfiguration,gcloudAccount:vertex.account,gcloudConfigDir:vertex.gcloudConfigDir});
+    if(['init','plan','apply','outputs'].includes(action)) {
+      const token=await obtainNamedProfileToken({projectId:vertex.projectId,gcloudConfiguration:vertex.gcloudConfiguration,gcloudAccount:vertex.account,gcloudConfigDir:vertex.gcloudConfigDir});
+      // The remote backend takes its own credential from the environment, so the
+      // ephemeral token never becomes a command-line argument or a stored value.
+      env.TF_VAR_access_token=token;env.GOOGLE_OAUTH_ACCESS_TOKEN=token;
+    }
     else env.TF_VAR_access_token='unused-validation-placeholder';
     let args:string[];
-    if(action==='init')args=['init','-input=false','-no-color','-backend-config=path='+path.join(stateDir,'terraform.tfstate')];
+    if(action==='init')args=['init','-input=false','-no-color','-backend-config=bucket='+stateBucket,...(process.argv[3]==='--migrate-state'?['-migrate-state','-force-copy']:[])];
     else if(action==='validate')args=['validate','-json'];
     else if(action==='fmt')args=['fmt','-no-color'];
     else if(action==='plan')args=['plan','-input=false','-no-color','-var-file='+varsFile,'-out='+plan,...(process.argv[3]==='--bootstrap'?['-target=google_project_service.required']:[])];

@@ -14,6 +14,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:connected": "node scripts/dev-connected.mjs",
     "build": "npm run build --workspaces --if-present",
+    "terraform:production": "node --experimental-strip-types scripts/terraform-production.mts",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspace @vibeestimate/backend",
     "test:rules": "node scripts/rules.mjs",

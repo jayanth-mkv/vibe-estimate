@@ -4,7 +4,7 @@ The original local setup created no cloud resources. Live Gemini setup and the l
 
 ## Native GitHub delivery — 6 September 2026
 
-The operator authorized Terraform-managed GitHub `main` delivery for both hosts. Discovery verified the existing Google GitHub connection was installed, with no repository children or build triggers. Its OAuth secret and installation remain unchanged.
+The operator authorized Terraform-managed GitHub `main` delivery. Discovery verified the existing Google GitHub connection was installed, with no repository children or build triggers. Its OAuth secret and installation remain unchanged.
 
 | Component | Executed action | Ownership |
 | --- | --- | --- |
@@ -14,11 +14,18 @@ The operator authorized Terraform-managed GitHub `main` delivery for both hosts.
 | Release IAM | Two custom roles and four bindings created: service-only get/update, operation polling/API use, runtime identity act-as, bucket-only state objects | `infra/delivery` |
 | Existing Cloud Run service | Imported into shared GCS state; forgotten from the old state with `destroy=false` | `infra/runtime` |
 | Existing IAM, queue, scheduler, APIs, SDK secret and Firebase authorized domains | Preserved in the original production state | `infra/production` |
-| Vercel project and seven write-only production environment values | Configuration and mock checks completed; initial apply rejected the missing GitHub App installation and created no project | `infra/vercel`, pending GitHub authorization |
 
 The delivery apply created **nine resources**, with no replacements or deletions. Runtime adoption preserved the exact container template, deployed image and effective labels. The old production apply performed only one state `forget`, after the service import succeeded. The separate state bucket does not use the build-source bucket's seven-day expiration policy. Application releases will apply only the imported Cloud Run service; the builder receives no secret-payload, Firebase administration, service-creation/deletion or IAM-administration permissions.
 
-Exact targets, configuration, state backups, reviewed plans and discovery/apply records are retained outside the checkout under `../docs/private/`. Google credentials remained ephemeral and shared ADC hashes matched. Vercel CLI login was verified and preserved; its credential copy and state are private. The [deployment guide](deployment.md) documents the native release path. Push-trigger execution and public-host verification are recorded separately in [verification](verification.md).
+Exact targets, configuration, state backups, reviewed plans and discovery/apply records are retained outside the checkout under `../docs/private/`. Google credentials remained ephemeral and shared ADC hashes matched. The [deployment guide](deployment.md) documents the native release path. Push-trigger execution and public-host verification are recorded separately in [verification](verification.md).
+
+## State consolidation — 6 September 2026
+
+The legacy root Terraform stack was removed from the repository. It had never been applied: every provisioning flag was false and no state ever existed for it. It duplicated the identities, image repository and Cloud Build trigger that `infra/production` and `infra/delivery` already own, and its trigger would have supplied incomplete substitutions to the same `cloudbuild.yaml`.
+
+`infra/production` and `infra/delivery` now declare the shared private, versioned GCS backend under the `production` and `delivery` prefixes, matching `infra/runtime`. **The one-time state migration has not been executed**, so the authoritative state for those two roots is still the local file under `../docs/private/`, backed up at serial 30 with 22 resources and serial 10 with 9 resources respectively. Run the [migration](../infra/production/README.md#moving-existing-local-state-into-the-bucket) and confirm matching resource counts and a clean plan before treating the bucket as authoritative.
+
+Every Terraform root now carries a mock-provider suite: production 10, runtime 10, gemini-local 6, delivery 3 and firebase-adoption 2, run together by `npm run check:infra` and by the pull-request workflow. Because a push to main applies Terraform, these checks now gate merges.
 
 ## Production audit: observed, no resource changes
 
@@ -43,7 +50,7 @@ The [production journey audit](verification.md#production-journey-audit--5-septe
 
 The first apply enabled two APIs and created the identity, then its post-create reads failed because Cloud Resource Manager was disabled. A reviewed one-resource Terraform bootstrap enabled that prerequisite. After verifying all three APIs were enabled, Terraform cleared the two failed-create state markers without disabling or replacing the APIs. A full refreshed plan then created only the remaining authorization key. That stage managed five resources: three API services, one service account and one bound key. No imports, replacements, or destroys were performed.
 
-Shared ADC is preserved, checked by SHA256 before/after each authenticated operation. Terraform uses an ephemeral token from the explicitly verified profile, with the authorized project as quota project. The private state, saved plans, plan-context manifest and credential JSON stay outside the checkout. No Firebase, Cloud Build, Cloud Run, or Vercel configuration is changed by this isolated root.
+Shared ADC is preserved, checked by SHA256 before/after each authenticated operation. Terraform uses an ephemeral token from the explicitly verified profile, with the authorized project as quota project. The private state, saved plans, plan-context manifest and credential JSON stay outside the checkout. No Firebase, Cloud Build or Cloud Run configuration is changed by this isolated root.
 
 The subsequent Cloud-credit recheck added the optional Vertex API through a reviewed **1 add, 0 change, 0 destroy** plan. The root now manages **six resources** (four API services, one service account, one bound key), and the full post-apply plan is clean. Six mock Terraform tests and the updated saved-plan opt-in guards passed. The private `enableVertexAi` boolean is persisted and bound into saved plans. Existing Gemini key restrictions and service-account roles were not broadened; local Vertex calls use the authorized user's existing prediction/service-use permissions and short-lived OAuth tokens. One real `gemini-3.6-flash` structured-response smoke check and both complete desktop/mobile application journeys succeeded through Vertex's global endpoint. The browser run made four real review calls and left shared ADC unchanged; see [verification.md](verification.md).
 
@@ -93,7 +100,7 @@ Connected verification subsequently passed with real guest identities, two live 
 | Firebase core import | Existing project/database; separate adoption state | Import-or-fail declarations, prevent-destroy, exact existing database location | Disabled; no import executed |
 | Firestore rules release | Import existing release and publish checked-in rules | Client SDK denied; authenticated backend authorizes all data operations | Disabled; no production rules changed |
 
-No Vercel project, hosted frontend, state bucket, load balancer, custom domain, Redis, Cloud SQL, VPC connector, document bucket, BigQuery dataset, or ADK infrastructure is created by these definitions.
+No separate frontend host, state bucket, load balancer, custom domain, Redis, Cloud SQL, VPC connector, document bucket, BigQuery dataset, or ADK infrastructure is created by these definitions. Cloud Run serves the frontend and the API from one image.
 
 ## Spatial studio proposals: research only
 
@@ -123,7 +130,7 @@ Firebase Storage now requires the [Blaze plan](https://firebase.google.com/docs/
 1. Record existing resources and their exact IDs privately; import any matching Terraform-managed resource before applying. Stop on replacement/destroy plans.
 2. Confirm Firebase sign-in providers, authorized domains, Firestore database/location, and rules release. Preserve existing configuration; review authentication changes separately.
 3. Verify the intended Gemini model and key, then provision a Secret Manager version through the write-only Terraform path. Run a real Gemini test explicitly.
-4. Set the actual frontend HTTPS origin. Vercel hosting and Auth authorized domains are pending a chosen deployment URL.
+4. Confirm the Cloud Run origin is the frontend origin and appears in the Terraform-managed Firebase authorized domains.
 5. Review one complete Terraform plan with private project mapping, import actions and estimated billing surfaces. Then use the reviewed plan for deployment when authorized.
 6. Record created/imported resource IDs privately and update this status table with dates, image digest, tests, and teardown/retention decisions.
 

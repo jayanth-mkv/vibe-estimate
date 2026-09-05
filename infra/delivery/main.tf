@@ -1,6 +1,10 @@
 terraform {
   required_version = ">= 1.13.5, < 2.0.0"
-  backend "local" {}
+  # This root provisions the bucket below; the bucket already exists, so its own state lives there too.
+  # Versioned, locked, private GCS state; supply only the bucket name at init.
+  backend "gcs" {
+    prefix = "delivery"
+  }
   required_providers {
     google = {
       source  = "hashicorp/google"
