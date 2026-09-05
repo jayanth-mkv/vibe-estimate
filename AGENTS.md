@@ -4,7 +4,7 @@
 
 Build VibeEstimate for an independent interior designer: agreed scope and client messages → source-linked review → useful clarification → owner-reviewed draft proposal → revision → private persistence and export. Read PRODUCT.md and the docs before changing behavior.
 
-The user requests a simple, modern, accessible interface; Next.js frontend suitable for Vercel; a backend suitable for Google Cloud Run; a complete local testing setup now; deployment later. Preserve frontend/ and backend/ as the application boundaries.
+The user requests a simple, modern, accessible interface, a Next.js frontend suitable for Vercel, a Google Cloud Run backend and a complete local testing setup. The deployed app's native GitHub delivery is documented in docs/deployment.md. Preserve frontend/ and backend/ as the application boundaries.
 
 The [release plan](docs/plan/README.md) widens this deliberately: shared schema and context packages under packages/, and in v2 three additional agent services deployed beside the existing API. Those are additions, not replacements — frontend/ and backend/ keep their current responsibilities, and the API remains the only holder of token verification, ownership and money.
 
@@ -14,7 +14,7 @@ Use the project-local Impeccable skill at .agents/skills/impeccable/SKILL.md for
 
 Cloud account/profile/project values belong in the operator's private configuration outside this repository. Verify explicit authorization and the intended account before cloud operations. Never infer a target from an unrelated default configuration. The outer workspace instructions, when present, hold private operational context and must not be copied here.
 
-Cloud resources must be managed with Terraform. Do not create or modify infrastructure using ad hoc gcloud, Firebase CLI, or Console commands. Cloud Build may build application images; Terraform owns Cloud Run service configuration. Deployment is deferred for this local setup. Record planned, existing, imported, and created resources separately in docs/infrastructure-inventory.md.
+Cloud resources and hosting connections, including Vercel, must be managed with Terraform. Do not create or modify infrastructure using ad hoc gcloud, Firebase CLI, or Console commands. Authorized pushes to GitHub main trigger Cloud Build checks, image building and the runtime Terraform apply; Vercel uses its native Git integration after account authorization. Do not restore manual source-upload release scripts or use gcloud run deploy. Record planned, existing, imported, and created resources separately in docs/infrastructure-inventory.md.
 
 Firebase and backend projects can differ. Configure Firebase identity/storage, backend resources, and the Cloud Build connection independently. Likewise the backend region can differ from the existing connection location. Existing resources must be discovered and imported into Terraform before management; do not replace them. Use only placeholders and emulator identifiers in committed examples.
 

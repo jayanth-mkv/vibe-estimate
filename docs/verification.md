@@ -14,6 +14,8 @@ Vercel CLI authentication succeeded. The reviewed project/environment plan conta
 
 Manual image-build/upload release scripts were removed. `cloudbuild.yaml` now defines checks, immutable Git image build/push, guarded Terraform runtime apply and production health; ordinary releases use a `main` push. Project-local development and verification tools remain available.
 
+The first real `main` push (`d7d401f`) automatically created a matching Cloud Build job. Typechecks, backend/frontend tests, release checks, Docker build/push and immutable-digest binding passed. Terraform initialized the shared GCS backend but its validation stopped because the Windows-generated provider lockfile lacked the Linux package hash. No runtime apply occurred. Terraform then retrieved the signed Google provider for `linux_amd64` and `windows_amd64`, verified their checksums and added the missing Linux hash; the retry uses another ordinary main push. The original failed job and log remain in the private native-build record.
+
 ## Submission evidence clarification — 5 September 2026
 
 The operator confirmed that this repository is the authentic build history for the agent-assisted workflow, replacing a separate AI Studio app. Current [evidence](ai-studio-evidence.md) and the [challenge checklist](hackathon-checklist.md) now use repository instructions, source commits and executed tests; older AI Studio-specific pending notes below are historical. No AI Studio UI session is claimed.

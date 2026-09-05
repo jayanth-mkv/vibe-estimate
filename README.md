@@ -30,7 +30,7 @@ That work is sequenced as three releases — read the [release plan](docs/plan/R
 
 The default runner uses a demo Firebase project and local Auth/Firestore emulators. Its AI provider is a clearly labeled, deterministic lighting fixture. It does not call paid Gemini services and does not access production Firebase data. Arbitrary scope analysis requires the real Gemini provider and server credentials.
 
-For the separately authorized real Firebase workspace, follow [connected setup](docs/connected-setup.md) and open **http://localhost:3000**. Guests can start without a login form, join by QR/link/room code, and optionally link Google to keep access across devices. The existing database and auth providers are used unchanged; deployment remains deferred. A localhost QR supports this computer's demo and needs a reachable app address for another phone.
+For the separately authorized real Firebase workspace, follow [connected setup](docs/connected-setup.md) and open **http://localhost:3000**. Guests can start without a login form, join by QR/link/room code, and optionally link Google to keep access across devices. The existing database and auth providers are preserved. A localhost QR supports this computer's demo; use the deployed app for another phone.
 
 The sample demonstrates included kitchen lighting, a proposed display-light addition, a six-light draft at ₹12,000, and a four-light revision at ₹8,000. Amounts are fictional item subtotals. Client approval is not collected.
 
@@ -75,11 +75,11 @@ See [verification status](docs/verification.md) for executed results and [local 
 | PRODUCT.md / DESIGN.md | Durable product facts and UI design decisions |
 | docs/ | Public setup, architecture, challenge, and infrastructure records |
 
-## Before deployment
+## Automatic deployment
 
-Deployment is deferred. Real account/project configuration and secrets belong outside the public checkout. Examples contain placeholders or demo identifiers.
+The complete app is hosted on Cloud Run. The Terraform-managed GitHub `main` trigger runs checks, builds an immutable image and applies the Cloud Run runtime plan. Ordinary releases come from a reviewed push to `main`; follow the [deployment guide](docs/deployment.md). The optional Vercel frontend has its own Terraform Git connection and requires the operator's Vercel GitHub App authorization.
 
-The frontend and backend can use different cloud projects. Supply the actual Firebase web configuration to the frontend and the matching Firebase project to the backend. Backend CORS must allow the exact frontend origin. Terraform handles resource management and Cloud Run revisions; Cloud Build only builds/pushes the image.
+The frontend and backend can use different cloud projects. The frontend's same-origin gateway forwards to the verified Cloud Run origin. Terraform owns resource configuration and Cloud Run revisions; Cloud Build builds the image and applies only the runtime Terraform root. Real account/project configuration, credentials and operator state stay outside this checkout. Examples contain placeholders or demo identifiers.
 
 Follow [Terraform setup](docs/terraform-setup.md), [infrastructure inventory](docs/infrastructure-inventory.md), and the [challenge checklist](docs/hackathon-checklist.md). Production journeys are verified; the checklist distinguishes remaining service confirmations and publication steps from completed repository build evidence.
 
