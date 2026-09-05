@@ -32,3 +32,17 @@ jobs:
           name: browser-failure-report
           path: playwright-report/
           retention-days: 3
+
+  # A push to main applies Terraform, so every root is checked before merge.
+  # These checks are offline: no backend, no state, no cloud credential.
+  infrastructure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node infra/scripts/install-terraform.mjs
+      - run: node --test infra/runtime/tests/release.test.mjs
+      - run: npm run check:infra

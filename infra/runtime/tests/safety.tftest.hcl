@@ -1,0 +1,149 @@
+# Mock provider: these tests make no cloud API call and create no infrastructure.
+mock_provider "google" {}
+
+variables {
+  backend_project_id          = "example-backend"
+  firebase_project_id         = "example-firebase"
+  project_number              = "123456789012"
+  region                      = "asia-southeast1"
+  firestore_database_id       = "(default)"
+  gemini_model                = "synthetic-model"
+  runtime_service_account     = "example-runtime@example-backend.iam.gserviceaccount.com"
+  task_queue                  = "projects/example-backend/locations/asia-southeast1/queues/example-reviews"
+  task_service_account        = "example-task@example-backend.iam.gserviceaccount.com"
+  firebase_web_config_secret  = "example-web-config"
+  firebase_web_config_version = "1"
+  image                       = "asia-southeast1-docker.pkg.dev/example-backend/example/application@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}
+
+run "this_root_owns_only_the_protected_existing_service" {
+  command = plan
+
+  assert {
+    condition = (
+      google_cloud_run_v2_service.application.name == "vibeestimate" &&
+      google_cloud_run_v2_service.application.project == var.backend_project_id &&
+      google_cloud_run_v2_service.application.location == var.region &&
+      google_cloud_run_v2_service.application.deletion_protection &&
+      google_cloud_run_v2_service.application.ingress == "INGRESS_TRAFFIC_ALL"
+    )
+    error_message = "The release root must target the one existing protected service in the verified project and region."
+  }
+  assert {
+    condition     = google_cloud_run_v2_service.application.labels["dev-tutorial"] == "cloud-run-ai-challenge" && google_cloud_run_v2_service.application.labels["managed-by"] == "terraform"
+    error_message = "The challenge and ownership labels must stay on the deployed service."
+  }
+}
+
+run "only_an_immutable_digest_is_deployed" {
+  command = plan
+
+  assert {
+    condition     = google_cloud_run_v2_service.application.template[0].containers[0].image == var.image
+    error_message = "The service must deploy exactly the verified image input."
+  }
+  assert {
+    condition = (
+      google_cloud_run_v2_service.application.template[0].service_account == var.runtime_service_account &&
+      google_cloud_run_v2_service.application.template[0].scaling[0].min_instance_count == 0 &&
+      google_cloud_run_v2_service.application.template[0].scaling[0].max_instance_count == 2 &&
+      google_cloud_run_v2_service.application.template[0].containers[0].ports[0].container_port == 8080 &&
+      google_cloud_run_v2_service.application.template[0].containers[0].startup_probe[0].http_get[0].path == "/health"
+    )
+    error_message = "The existing runtime identity, scale-to-zero bound, container port and health probe must be preserved."
+  }
+}
+
+run "reject_a_mutable_image_reference" {
+  command = plan
+  variables {
+    image = "asia-southeast1-docker.pkg.dev/example-backend/example/application:latest"
+  }
+  expect_failures = [var.image]
+}
+
+run "reject_an_image_from_another_project" {
+  command = plan
+  variables {
+    image = "asia-southeast1-docker.pkg.dev/other-backend/example/application@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+  expect_failures = [var.image]
+}
+
+run "runtime_calls_vertex_with_its_own_identity_and_no_key" {
+  command = plan
+
+  assert {
+    condition = alltrue([
+      for name in ["APP_ENV", "NODE_ENV", "AI_PROVIDER", "GEMINI_TRANSPORT", "VERTEX_AUTH_MODE", "FRONTEND_ORIGIN"] :
+      length([for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env if env.name == name]) == 1
+    ])
+    error_message = "The production runtime settings must all be present exactly once."
+  }
+  assert {
+    condition = alltrue([
+      for env in google_cloud_run_v2_service.application.template[0].containers[0].env :
+      env.name == "GEMINI_TRANSPORT" ? env.value == "vertex" : true
+    ])
+    error_message = "Production must call Gemini through Vertex, not the Developer API."
+  }
+  assert {
+    condition = length([
+      for env in google_cloud_run_v2_service.application.template[0].containers[0].env :
+      env if can(regex("(?i)(api_key|apikey|token|password|credential|secret_data)", env.name)) && env.value != null && env.value != ""
+    ]) == 0
+    error_message = "No credential may be supplied to the service as a plain environment value."
+  }
+}
+
+run "the_frontend_origin_is_this_service_own_url" {
+  command = plan
+
+  assert {
+    condition = anytrue([
+      for env in google_cloud_run_v2_service.application.template[0].containers[0].env :
+      env.name == "FRONTEND_ORIGIN" && env.value == "https://vibeestimate-${var.project_number}.${var.region}.run.app"
+    ])
+    error_message = "One Cloud Run origin serves the frontend and the API, so FRONTEND_ORIGIN must be this service's own URL."
+  }
+}
+
+run "the_browser_sdk_config_arrives_by_pinned_secret_version" {
+  command = plan
+
+  assert {
+    condition = anytrue([
+      for env in google_cloud_run_v2_service.application.template[0].containers[0].env :
+      env.name == "FIREBASE_WEB_CONFIG" &&
+      length(env.value_source) == 1 &&
+      env.value_source[0].secret_key_ref[0].secret == var.firebase_web_config_secret &&
+      env.value_source[0].secret_key_ref[0].version == var.firebase_web_config_version &&
+      (env.value == null || env.value == "")
+    ])
+    error_message = "The browser SDK configuration must come from the existing secret at a pinned numeric version, never as an inline value."
+  }
+}
+
+run "reject_a_floating_secret_version" {
+  command = plan
+  variables {
+    firebase_web_config_version = "latest"
+  }
+  expect_failures = [var.firebase_web_config_version]
+}
+
+run "reject_a_placeholder_project" {
+  command = plan
+  variables {
+    backend_project_id = "demo-backend"
+  }
+  expect_failures = [var.backend_project_id]
+}
+
+run "reject_a_task_queue_outside_the_service_project_and_region" {
+  command = plan
+  variables {
+    task_queue = "projects/other-backend/locations/us-central1/queues/example-reviews"
+  }
+  expect_failures = [var.task_queue]
+}

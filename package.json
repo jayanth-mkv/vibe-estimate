@@ -28,7 +28,8 @@
     "mcp:playwright": "node scripts/start-playwright-mcp.mjs",
     "mcp:verify": "node scripts/verify-mcp.mjs",
     "check:public": "node scripts/check-public.mjs",
-    "check:design": "node .agents/skills/impeccable/scripts/detect.mjs --json frontend/src"
+    "check:design": "node .agents/skills/impeccable/scripts/detect.mjs --json frontend/src",
+    "check:infra": "node infra/scripts/check.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
