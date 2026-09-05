@@ -349,7 +349,7 @@ test("connected guests join by room code and preserve real Gemini shared draft r
     // disappeared. Automatic failure screenshots, traces and video stay off.
     for (const [label, current] of [["designer", page], ["client", clientPage]] as const) {
       await expect(current.getByRole("dialog")).toHaveCount(0);
-      expect(new URL(current.url()).hash).toBe("");
+      expect(new URL(current.url()).hash === "").toBe(true);
       const filename = testInfo.outputPath(`connected-${label}-room.png`);
       await current.screenshot({ path: filename, fullPage: true });
       await testInfo.attach(`connected-${label}-room`, { path: filename, contentType: "image/png" });

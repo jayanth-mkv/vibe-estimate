@@ -2,6 +2,32 @@
 
 This file records **executed** results only. The checks each future release must pass before it can be called done are specified separately, as gates in the [release plan](plan/README.md) — [v1](plan/v1.md#v1-gate), [v2](plan/v2.md#v2-gate) and [v3](plan/v3.md). A planned gate is not evidence; copy a result here only once it has actually run.
 
+## Production journey audit — 5 September 2026
+
+Audited the existing public Cloud Run service from `88f253f` on `feat/spatial-home-studio`. The runner resolved the canonical HTTPS origin from external operator configuration and checked it against the authorized backend project and region. Health returned HTTP 200, `runtime=production`, `auth=firebase`, `storageConnection=cloud`, `aiProvider=gemini`, and `geminiTransport=vertex`. These are production Firebase/Vertex results, separate from the historical emulator and connected-local results below.
+
+**All 15 distinct production Playwright checks have a passing result across the initial and targeted runs below. This was not a single all-green run.** The [quick checklist](quick-test-checklist.md) states the remaining coverage limits. Evidence, synthetic responses and exports are outside the checkout under `../docs/private/production-verification/`; browser traces, video and automatic screenshots are disabled. The runner now allowlists worker environment variables to exclude inherited credentials and debug capture, and validates canonical external evidence paths, including Windows case aliases and symlinks.
+
+| Private run directory | Executed result |
+| --- | --- |
+| `2026-09-05T15-10-26-087Z` | Two-person room passed with two real Gemini observations; 390px offline-save recovery passed. Solo review reached one real response, then the test failed on a collapsed clarification field. |
+| `2026-09-05T15-15-54-601Z` | Solo two-turn review, clarification, draft, revision, reload, export and ownership denial passed after opening the native clarification disclosure. |
+| `2026-09-05T16-31-10-158Z` | Source wizard, all three example source saves/reopens and desktop tour passed. Hidden lazy home-art checks failed at three narrower widths; expanded room test exceeded its initial 210-second budget. |
+| `2026-09-05T16-34-51-025Z` | Finish example passed one real Gemini review. Wardrobe stopped on an ambiguous alert selector after an injected outage, before a real call. |
+| `2026-09-05T16-37-27-928Z` | Wardrobe passed one real Gemini review and lost-successful-response draft retry. Google cancellation checks reached Google but failed on selectors also matching Next's route announcer. |
+| `2026-09-05T16-40-10-923Z` | Expanded room check passed in 4.4 minutes within an explicit six-minute budget; tour passed at 320, 390, 768 and 1440px after explicitly decoding the decorative lazy asset. Five checks passed. |
+| `2026-09-05T16-45-08-120Z` | Three Google popup-cancellation journeys passed after scoping alerts to the app's main region. |
+
+The audit made **seven real model calls**: two room observations, one solo call before the disclosure selector failure, two in its targeted rerun, and one each for wardrobe and finish. There were no automatic retries or fixture substitution. Invitation/access, Google, wizard and responsive checks made no model calls. Test rooms were paused before or after their bounded observations; the expanded message-recovery room remained paused throughout message writes.
+
+The solo and shared-room journeys confirmed source quotations, included kitchen lighting, missing-price handling, a context-dependent six-light matte-white proposal at the owner's ₹2,000.50 rate, a **₹12,003** saved draft and a four-light **₹8,002** revision. Revisions, original evidence and shared snapshots survived reload; the client could not prepare/share private drafts or read/export the private project. Exports retained correct integer-paise totals and approval-uncollected wording. Wardrobe asked for an unconfirmed drawer price; finish asked for missing veneer area and rate. Neither populated draft quantity or pricing. The wardrobe owner then explicitly supplied three units at ₹1,500.25; retrying a lost successful save retained exactly one **₹4,500.75** draft.
+
+Additional production checks decoded QR pixels, verified clipboard contents in memory, replaced invitations, denied stale links/codes, joined by direct link and formatted code, removed consumed fragments, and proved separate designer/client UIDs in one browser. Both directions of chat persisted. A lost successful message response retried the same request and retained one message. Connection loss preserved the composer; reconnection and unsent-navigation cancellation worked. Both room roles and all three mobile panes passed targeted WCAG A/AA axe checks and overflow checks at 320, 390, 768 and 1440px. Home, tour and checked draft states passed the same four-width checks. Playwright MCP also verified the live compact home, tour keyboard tabs/return, image decoding and a genuine Google handoff.
+
+Google handoff/cancellation passed from an empty home, a populated guest project and client recovery. Guest UIDs and saved work remained unchanged after cancellation and reload. **Completed personal Google sign-in/linking and account recovery still require the operator's consent check.** Resized Chromium and QR decoding do not establish physical-phone camera or assistive-technology coverage. Production persistence here means browser reload/reopen, not a controlled service restart.
+
+Supporting checks executed at this stage: 34 configuration/continuity/environment tests, 24 frontend authentication/runtime/request tests, frontend lint, frontend read-only TypeScript and production-harness TypeScript passed. The observer's pending-claim capacity race was reproduced locally and fixed in `359d71d`; 158 backend tests and backend build passed. That source fix is not yet a deployed-image result. A separate local reproduction found duplicate direct review dispatch and clarification replay superseding a draft; durable review-request recovery is being corrected before its own verification checkpoint. No infrastructure was changed during this audit.
+
 ## Initial production hardening — 5 September 2026
 
 Branch: `fix/initial-production`, isolated from spatial work. Connection stage committed as `6544aeb`.

@@ -21,7 +21,7 @@
     "test:local": "node scripts/test-local.mjs",
     "test:live": "node scripts/test-live.mjs",
     "test:connected": "node tests/live/run-connected.mjs",
-    "test:config": "node --test tests/local-env.test.mjs tests/emulator-auth-continuity.test.mjs tests/connected-config.test.mjs",
+    "test:config": "node --test tests/local-env.test.mjs tests/emulator-auth-continuity.test.mjs tests/connected-config.test.mjs tests/production-verification-env.test.mjs",
     "mcp:playwright": "node scripts/start-playwright-mcp.mjs",
     "mcp:verify": "node scripts/verify-mcp.mjs",
     "check:public": "node scripts/check-public.mjs",

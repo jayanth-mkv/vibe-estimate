@@ -62,6 +62,15 @@ test("production real multi-turn review, revision, reload, export and ownership 
   const projectPath = baseURL + "/api/projects/" + original.id;
   expect((await request.get(projectPath)).status()).toBe(401);
   expect((await request.post(baseURL + "/internal/observer", { headers: owner, data: { roomId: original.id } })).status()).toBe(401);
+  const firstResponse = page.waitForResponse(responseFor("/analyze"), { timeout: 65000 });
+  await page.getByRole("button", { name: "Review scope and messages", exact: true }).click();
+  const first = await firstResponse;
+  expect(first.status()).toBe(200);
+  const firstProject = (await first.json()).project;
+  expect(firstProject.analysis.provider).toBe("gemini");
+  expect(firstProject.analysis.questions.length).toBeGreaterThan(0);
+  // Test foreign-owner analysis only after an owner review exists. Even an
+  // ownership regression must not turn this assertion into another paid call.
   const strangerContext = await browser.newContext();
   try {
     const strangerPage = await strangerContext.newPage();
@@ -73,14 +82,8 @@ test("production real multi-turn review, revision, reload, export and ownership 
     expect((await request.post(projectPath + "/analyze", { headers: stranger, data: {} })).status()).toBe(404);
   } finally { await strangerContext.close(); }
 
-  const firstResponse = page.waitForResponse(responseFor("/analyze"), { timeout: 65000 });
-  await page.getByRole("button", { name: "Review scope and messages", exact: true }).click();
-  const first = await firstResponse;
-  expect(first.status()).toBe(200);
-  const firstProject = (await first.json()).project;
-  expect(firstProject.analysis.provider).toBe("gemini");
-  expect(firstProject.analysis.questions.length).toBeGreaterThan(0);
   const clarification = "Prepare a draft for exactly 6 matte white display lights. I confirm INR 2000.50 per light. The included kitchen strip must not be charged again. Client approval has not been collected.";
+  await page.getByText("Add a clarification", { exact: true }).click();
   await page.getByLabel("What should the review take into account?", { exact: true }).fill(clarification);
   const secondResponse = page.waitForResponse(responseFor("/analyze"), { timeout: 65000 });
   await page.getByRole("button", { name: "Update review", exact: true }).click();
