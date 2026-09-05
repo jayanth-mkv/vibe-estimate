@@ -4,6 +4,10 @@
   padding-block: 12px 32px;
   color: var(--ve-ink);
 }
+.studioIntro { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin: 4px 0 28px; padding: 20px 0; border-block: 1px solid var(--ve-border, #dce2e7); }
+.studioIntro h2 { font-size: 1rem; }
+.studioIntro p { max-width: 65ch; color: var(--ve-muted); font-size: .8125rem; line-height: 1.6; margin-top: 6px; }
+.studioIntro a { min-height: 44px; padding: 10px 14px; gap: 8px; }
 
 .home h1,
 .wizard h1 {

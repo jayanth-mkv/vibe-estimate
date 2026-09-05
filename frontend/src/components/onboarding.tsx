@@ -186,6 +186,10 @@ export function Home({
           {googleContinue && <div className={styles.returningGoogle}><p>Returning to work you saved with Google?</p><Button type="button" variant="ghost" className={styles.quietButton} disabled={busy || !available} onClick={onGoogleContinue}>Continue with Google</Button></div>}
         </section>
       )}
+      <div className={styles.studioIntro}>
+        <div><h2>Explore a home in 3D</h2><p>Try furniture, finishes and lighting in a sample single-floor house. Demo changes last for this session.</p></div>
+        <Button asChild variant="outline"><Link href="/studio" target="_blank" rel="noopener">Open house demo <ArrowRight size={16} aria-hidden="true" /></Link></Button>
+      </div>
       <section className={styles.roomIntro} aria-labelledby="room-intro-heading">
         <div className={styles.roomPeople} aria-label="Designer, client and observing agent"><span>D<small>Designer</small></span><i aria-hidden="true">↔</i><span>C<small>Client</small></span><i aria-hidden="true">+</i><span>V<small>Agent</small></span></div>
         <div className={styles.roomIntroCopy}><h2 id="room-intro-heading">Make the change clear, together.</h2><p>A shared room for you and your client, with an agent keeping track of scope and open questions.</p></div>

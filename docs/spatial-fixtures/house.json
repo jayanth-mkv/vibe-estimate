@@ -1,0 +1,811 @@
+{
+  "schemaVersion": 2,
+  "id": "single-floor-house",
+  "name": "Single-floor house",
+  "units": "mm",
+  "axes": "x-east-y-up-z-south",
+  "level": {
+    "id": "ground-floor",
+    "name": "Ground floor",
+    "elevation": 0,
+    "ceilingHeight": 2800,
+    "ceilingProvenance": "assumed"
+  },
+  "rooms": [
+    {
+      "id": "living",
+      "name": "Living & dining",
+      "x": 0,
+      "z": 0,
+      "width": 5300,
+      "depth": 3800,
+      "floorMaterialId": "wood-oak"
+    },
+    {
+      "id": "kitchen",
+      "name": "Kitchen",
+      "x": 5500,
+      "z": 0,
+      "width": 5300,
+      "depth": 3800,
+      "floorMaterialId": "tile-stone"
+    },
+    {
+      "id": "hall",
+      "name": "Hall",
+      "x": 0,
+      "z": 4000,
+      "width": 10800,
+      "depth": 1300,
+      "floorMaterialId": "wood-oak"
+    },
+    {
+      "id": "bedroom",
+      "name": "Bedroom",
+      "x": 0,
+      "z": 5500,
+      "width": 5300,
+      "depth": 3800,
+      "floorMaterialId": "wood-oak"
+    },
+    {
+      "id": "main-bedroom",
+      "name": "Main bedroom",
+      "x": 5500,
+      "z": 5500,
+      "width": 3300,
+      "depth": 3800,
+      "floorMaterialId": "wood-oak"
+    },
+    {
+      "id": "bathroom",
+      "name": "Bathroom",
+      "x": 9000,
+      "z": 5500,
+      "width": 1800,
+      "depth": 3800,
+      "floorMaterialId": "tile-stone"
+    }
+  ],
+  "walls": [
+    {
+      "id": "wall-h-n100-n100-5400",
+      "start": [
+        -100,
+        -100
+      ],
+      "end": [
+        5400,
+        -100
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "living",
+      "backRoomId": null,
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-n100-5400-10900",
+      "start": [
+        5400,
+        -100
+      ],
+      "end": [
+        10900,
+        -100
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "kitchen",
+      "backRoomId": null,
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-3900-n100-5400",
+      "start": [
+        -100,
+        3900
+      ],
+      "end": [
+        5400,
+        3900
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "hall",
+      "backRoomId": "living",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-3900-5400-10900",
+      "start": [
+        5400,
+        3900
+      ],
+      "end": [
+        10900,
+        3900
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "hall",
+      "backRoomId": "kitchen",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-5400-n100-5400",
+      "start": [
+        -100,
+        5400
+      ],
+      "end": [
+        5400,
+        5400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "bedroom",
+      "backRoomId": "hall",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-5400-5400-8900",
+      "start": [
+        5400,
+        5400
+      ],
+      "end": [
+        8900,
+        5400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "main-bedroom",
+      "backRoomId": "hall",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-5400-8900-10900",
+      "start": [
+        8900,
+        5400
+      ],
+      "end": [
+        10900,
+        5400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "bathroom",
+      "backRoomId": "hall",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-9400-n100-5400",
+      "start": [
+        -100,
+        9400
+      ],
+      "end": [
+        5400,
+        9400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": null,
+      "backRoomId": "bedroom",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-9400-5400-8900",
+      "start": [
+        5400,
+        9400
+      ],
+      "end": [
+        8900,
+        9400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": null,
+      "backRoomId": "main-bedroom",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-9400-8900-10900",
+      "start": [
+        8900,
+        9400
+      ],
+      "end": [
+        10900,
+        9400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": null,
+      "backRoomId": "bathroom",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-n100-n100-3900",
+      "start": [
+        -100,
+        -100
+      ],
+      "end": [
+        -100,
+        3900
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": null,
+      "backRoomId": "living",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-n100-3900-5400",
+      "start": [
+        -100,
+        3900
+      ],
+      "end": [
+        -100,
+        5400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": null,
+      "backRoomId": "hall",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-n100-5400-9400",
+      "start": [
+        -100,
+        5400
+      ],
+      "end": [
+        -100,
+        9400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": null,
+      "backRoomId": "bedroom",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-5400-n100-3900",
+      "start": [
+        5400,
+        -100
+      ],
+      "end": [
+        5400,
+        3900
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "living",
+      "backRoomId": "kitchen",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-5400-5400-9400",
+      "start": [
+        5400,
+        5400
+      ],
+      "end": [
+        5400,
+        9400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "bedroom",
+      "backRoomId": "main-bedroom",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-8900-5400-9400",
+      "start": [
+        8900,
+        5400
+      ],
+      "end": [
+        8900,
+        9400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "main-bedroom",
+      "backRoomId": "bathroom",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-10900-n100-3900",
+      "start": [
+        10900,
+        -100
+      ],
+      "end": [
+        10900,
+        3900
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "kitchen",
+      "backRoomId": null,
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-10900-3900-5400",
+      "start": [
+        10900,
+        3900
+      ],
+      "end": [
+        10900,
+        5400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "hall",
+      "backRoomId": null,
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-10900-5400-9400",
+      "start": [
+        10900,
+        5400
+      ],
+      "end": [
+        10900,
+        9400
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "bathroom",
+      "backRoomId": null,
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    }
+  ],
+  "openings": [
+    {
+      "id": "entry-door",
+      "wallId": "wall-v-n100-3900-5400",
+      "kind": "door",
+      "offset": 300,
+      "width": 900,
+      "height": 2100,
+      "sill": 0
+    },
+    {
+      "id": "living-door",
+      "wallId": "wall-h-3900-n100-5400",
+      "kind": "door",
+      "offset": 3900,
+      "width": 900,
+      "height": 2100,
+      "sill": 0
+    },
+    {
+      "id": "kitchen-door",
+      "wallId": "wall-h-3900-5400-10900",
+      "kind": "door",
+      "offset": 700,
+      "width": 900,
+      "height": 2100,
+      "sill": 0
+    },
+    {
+      "id": "bedroom-door",
+      "wallId": "wall-h-5400-n100-5400",
+      "kind": "door",
+      "offset": 3000,
+      "width": 900,
+      "height": 2100,
+      "sill": 0
+    },
+    {
+      "id": "main-bedroom-door",
+      "wallId": "wall-h-5400-5400-8900",
+      "kind": "door",
+      "offset": 400,
+      "width": 900,
+      "height": 2100,
+      "sill": 0
+    },
+    {
+      "id": "bathroom-door",
+      "wallId": "wall-h-5400-8900-10900",
+      "kind": "door",
+      "offset": 400,
+      "width": 800,
+      "height": 2100,
+      "sill": 0
+    },
+    {
+      "id": "living-window",
+      "wallId": "wall-h-n100-n100-5400",
+      "kind": "window",
+      "offset": 1700,
+      "width": 1800,
+      "height": 1200,
+      "sill": 900
+    },
+    {
+      "id": "kitchen-window",
+      "wallId": "wall-h-n100-5400-10900",
+      "kind": "window",
+      "offset": 1700,
+      "width": 1800,
+      "height": 1200,
+      "sill": 900
+    },
+    {
+      "id": "bedroom-window",
+      "wallId": "wall-h-9400-n100-5400",
+      "kind": "window",
+      "offset": 1700,
+      "width": 1800,
+      "height": 1200,
+      "sill": 900
+    },
+    {
+      "id": "main-bedroom-window",
+      "wallId": "wall-h-9400-5400-8900",
+      "kind": "window",
+      "offset": 900,
+      "width": 1800,
+      "height": 1200,
+      "sill": 900
+    },
+    {
+      "id": "bathroom-window",
+      "wallId": "wall-v-10900-5400-9400",
+      "kind": "window",
+      "offset": 1900,
+      "width": 900,
+      "height": 1200,
+      "sill": 900
+    }
+  ],
+  "materials": [
+    {
+      "id": "paint-white",
+      "name": "Warm white",
+      "color": "#e8e1d5",
+      "roughness": 0.85
+    },
+    {
+      "id": "paint-clay",
+      "name": "Soft clay",
+      "color": "#ba7761",
+      "roughness": 0.85
+    },
+    {
+      "id": "paint-sage",
+      "name": "Sage green",
+      "color": "#809b86",
+      "roughness": 0.85
+    },
+    {
+      "id": "paint-navy",
+      "name": "Deep blue",
+      "color": "#344e60",
+      "roughness": 0.8
+    },
+    {
+      "id": "wood-oak",
+      "name": "Natural oak",
+      "color": "#bb9666",
+      "roughness": 0.7
+    },
+    {
+      "id": "wood-dark",
+      "name": "Smoked oak",
+      "color": "#6f503c",
+      "roughness": 0.75
+    },
+    {
+      "id": "tile-stone",
+      "name": "Pale stone",
+      "color": "#b6b6af",
+      "roughness": 0.6
+    },
+    {
+      "id": "fabric-cream",
+      "name": "Linen cream",
+      "color": "#d9cdb7",
+      "roughness": 1
+    },
+    {
+      "id": "fabric-ochre",
+      "name": "Ochre fabric",
+      "color": "#c08d3a",
+      "roughness": 1
+    }
+  ],
+  "instances": [
+    {
+      "id": "sofa-living",
+      "roomId": "living",
+      "catalogId": "sofa",
+      "position": [
+        1700,
+        0,
+        2800
+      ],
+      "rotation": 0,
+      "dimensions": [
+        2200,
+        850,
+        900
+      ],
+      "materialId": "fabric-cream",
+      "locked": false
+    },
+    {
+      "id": "table-living",
+      "roomId": "living",
+      "catalogId": "table",
+      "position": [
+        3400,
+        0,
+        1300
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1400,
+        750,
+        800
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "chair-north",
+      "roomId": "living",
+      "catalogId": "chair",
+      "position": [
+        3400,
+        0,
+        450
+      ],
+      "rotation": 0,
+      "dimensions": [
+        500,
+        900,
+        550
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "chair-south",
+      "roomId": "living",
+      "catalogId": "chair",
+      "position": [
+        3400,
+        0,
+        2050
+      ],
+      "rotation": 180,
+      "dimensions": [
+        500,
+        900,
+        550
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "cabinet-living",
+      "roomId": "living",
+      "catalogId": "cabinet",
+      "position": [
+        700,
+        0,
+        300
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1200,
+        2100,
+        500
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "lamp-living",
+      "roomId": "living",
+      "catalogId": "floor-lamp",
+      "position": [
+        4800,
+        0,
+        900
+      ],
+      "rotation": 0,
+      "dimensions": [
+        400,
+        1600,
+        400
+      ],
+      "materialId": "paint-navy",
+      "locked": false,
+      "light": {
+        "enabled": true,
+        "intensity": 80,
+        "temperature": "warm"
+      }
+    },
+    {
+      "id": "counter-kitchen",
+      "roomId": "kitchen",
+      "catalogId": "cabinet",
+      "position": [
+        6300,
+        0,
+        400
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1200,
+        1050,
+        600
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "cabinet-kitchen",
+      "roomId": "kitchen",
+      "catalogId": "cabinet",
+      "position": [
+        7900,
+        0,
+        400
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1600,
+        1050,
+        600
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "table-kitchen",
+      "roomId": "kitchen",
+      "catalogId": "table",
+      "position": [
+        8500,
+        0,
+        2300
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1400,
+        750,
+        800
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "bed-bedroom",
+      "roomId": "bedroom",
+      "catalogId": "bed",
+      "position": [
+        1800,
+        0,
+        7800
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1600,
+        650,
+        2100
+      ],
+      "materialId": "fabric-cream",
+      "locked": true
+    },
+    {
+      "id": "cabinet-bedroom",
+      "roomId": "bedroom",
+      "catalogId": "cabinet",
+      "position": [
+        4400,
+        0,
+        5900
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1200,
+        2100,
+        500
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "bed-main",
+      "roomId": "main-bedroom",
+      "catalogId": "bed",
+      "position": [
+        7100,
+        0,
+        7800
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1600,
+        650,
+        2100
+      ],
+      "materialId": "fabric-cream",
+      "locked": true
+    },
+    {
+      "id": "cabinet-main",
+      "roomId": "main-bedroom",
+      "catalogId": "cabinet",
+      "position": [
+        8100,
+        0,
+        5900
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1200,
+        2100,
+        500
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "cabinet-bathroom",
+      "roomId": "bathroom",
+      "catalogId": "cabinet",
+      "position": [
+        9900,
+        0,
+        8850
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1200,
+        1050,
+        500
+      ],
+      "materialId": "paint-white",
+      "locked": false
+    }
+  ]
+}

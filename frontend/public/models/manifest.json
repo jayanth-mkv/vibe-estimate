@@ -1,0 +1,227 @@
+[
+  {
+    "id": "sofa",
+    "dimensionsMm": [
+      2200,
+      850,
+      900
+    ],
+    "boundsMm": {
+      "min": [
+        -1100,
+        0,
+        -450
+      ],
+      "max": [
+        1100,
+        850,
+        450
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "linen",
+      "oak"
+    ],
+    "bytes": 293388,
+    "sha256": "a397961014290831f09961772cdff6c9176118a4d0db2f60cb29ef4874e3ac09",
+    "meshes": 12,
+    "vertices": 7792,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+  },
+  {
+    "id": "table",
+    "dimensionsMm": [
+      1400,
+      750,
+      800
+    ],
+    "boundsMm": {
+      "min": [
+        -700,
+        0,
+        -400
+      ],
+      "max": [
+        700,
+        750,
+        400
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "oak"
+    ],
+    "bytes": 199868,
+    "sha256": "3ef21875791e6cbe1529ebc6cb0016052bcc83761d7582735d7c594c569624b1",
+    "meshes": 6,
+    "vertices": 5400,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+  },
+  {
+    "id": "chair",
+    "dimensionsMm": [
+      500,
+      900,
+      550
+    ],
+    "boundsMm": {
+      "min": [
+        -250,
+        0,
+        -275
+      ],
+      "max": [
+        250,
+        900,
+        275
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "oak"
+    ],
+    "bytes": 199908,
+    "sha256": "12b2280eb3b1dcaaa96f2402e76702b6d0c4dfa1e9f12262e14e3bcf73100002",
+    "meshes": 6,
+    "vertices": 5400,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+  },
+  {
+    "id": "bed",
+    "dimensionsMm": [
+      1600,
+      650,
+      2100
+    ],
+    "boundsMm": {
+      "min": [
+        -800,
+        0,
+        -1050
+      ],
+      "max": [
+        800,
+        650,
+        1050
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "linen",
+      "metal",
+      "oak"
+    ],
+    "bytes": 333104,
+    "sha256": "7cce9c76a9f12a9e4649e3b582952ac30d917c5770970575e3cbe44d39747c8b",
+    "meshes": 10,
+    "vertices": 9000,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+  },
+  {
+    "id": "cabinet",
+    "dimensionsMm": [
+      1200,
+      2100,
+      500
+    ],
+    "boundsMm": {
+      "min": [
+        -600,
+        0,
+        -250
+      ],
+      "max": [
+        600,
+        2100,
+        250
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "metal",
+      "oak"
+    ],
+    "bytes": 299784,
+    "sha256": "9aabeb8bd4d42143dd608f9d73d15c80d1ccfbfe3efea27a061b6d943ac09361",
+    "meshes": 9,
+    "vertices": 8100,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+  },
+  {
+    "id": "pendant",
+    "dimensionsMm": [
+      400,
+      300,
+      400
+    ],
+    "boundsMm": {
+      "min": [
+        -200,
+        0,
+        -200
+      ],
+      "max": [
+        200,
+        300,
+        200
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "bulb",
+      "linen",
+      "metal"
+    ],
+    "bytes": 38060,
+    "sha256": "a9c4cefc7c88a2dc7af9c85860157f240f92d10f7f537b3a43ef1cd96b517603",
+    "meshes": 5,
+    "vertices": 779,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+  },
+  {
+    "id": "floor-lamp",
+    "dimensionsMm": [
+      400,
+      1600,
+      400
+    ],
+    "boundsMm": {
+      "min": [
+        -200,
+        0,
+        -200
+      ],
+      "max": [
+        200,
+        1600,
+        200
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "bulb",
+      "linen",
+      "metal"
+    ],
+    "bytes": 38108,
+    "sha256": "0880dc493ccf08a0f29db224a40a678786a9c0b7434d1d72d9ed6b5cf37be895",
+    "meshes": 5,
+    "vertices": 779,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+  }
+]

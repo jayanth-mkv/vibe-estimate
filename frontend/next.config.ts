@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import path from "node:path";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@vibeestimate/scene-schema", "@vibeestimate/scene-core", "@vibeestimate/pascal-adapter", "@pascal-app/core", "@pascal-app/nodes", "@pascal-app/viewer", "@pascal-app/editor"],
+  experimental: { cpus: 2 },
   poweredByHeader: false,
   turbopack: { root: path.resolve(process.cwd(), "..") },
   async headers() {

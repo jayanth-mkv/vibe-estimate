@@ -1,5 +1,7 @@
 # VibeEstimate
 
+The integrated [house demo](docs/spatial-demo.md) is available at `/studio`: a sample single-floor home with selected furniture, material and lighting edits. Run `rtk npm run build:spatial`, then `rtk npm run start:spatial` to inspect the isolated demo at http://127.0.0.1:3100/studio. The normal workspace also opens it in a separate tab. Demo state lasts for the page session.
+
 Turn an agreed project scope and client messages into a reviewable change proposal. See what is included, clarify proposed additions, and revise a draft without losing its history.
 
 This repository is the local foundation for a Google Cloud Gen AI Academy submission. The frontend uses the official Next.js setup and shadcn/ui. A TypeScript API verifies Firebase identities, isolates Firestore records, and calls the Google GenAI SDK when live mode is configured.

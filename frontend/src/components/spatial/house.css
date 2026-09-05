@@ -1,0 +1,208 @@
+.house-app { --background: #f7f8fa; --foreground: #20303d; --card: #ffffff; --card-foreground: #20303d; --popover: #ffffff; --popover-foreground: #20303d; --primary: #102b3f; --primary-foreground: #ffffff; --secondary: #eef1f4; --secondary-foreground: #102b3f; --muted: #eef1f4; --muted-foreground: #586673; --accent: #edf1f4; --accent-foreground: #102b3f; --destructive: #c52031; --border: #dce2e7; --input: #cad3db; --ring: #c52031; --radius: 0.5rem; }
+
+.house-app * { box-sizing: border-box; }
+.house-app { color-scheme: light; }
+.house-app { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-dm-sans), Arial, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+.house-app button, .house-app summary { -webkit-tap-highlight-color: transparent; }
+.house-app button { cursor: pointer; }
+.house-app button:disabled { cursor: default; }
+.house-app a:focus-visible, .house-app button:focus-visible, .house-app summary:focus-visible, .house-app pre:focus-visible { outline: 2px solid #c52031; outline-offset: 4px; }
+.house-app h1, .house-app h2, .house-app h3, .house-app p { margin: 0; }
+.house-app h1, .house-app h2, .house-app h3 { color: #102b3f; }
+.house-app h1, .house-app h2 { font-family: var(--font-poppins), Arial, sans-serif; font-weight: 500; }
+.house-app .skip-link { position: fixed; top: -70px; left: 16px; z-index: 100; padding: 12px 18px; color: white; background: #102b3f; border-radius: 6px; }
+.house-app .skip-link:focus { top: 8px; }
+.house-app .site-header { height: 60px; padding: 0 32px; background: white; border-bottom: 1px solid #dce2e7; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.house-app .brand { display: flex; gap: 12px; align-items: center; color: #102b3f; font-size: 14px; font-weight: 700; }
+.house-app .brand-mark { font-family: var(--font-poppins), Arial, sans-serif; font-size: 27px; font-weight: 500; line-height: 1; letter-spacing: -4px; padding-right: 4px; }
+.house-app .brand-mark span { color: #c52031; }
+.house-app .brand-separator { margin: 0 12px; color: #b3bfc8; font-weight: 400; }
+.house-app .brand-context { color: #586673; font-weight: 400; }
+.house-app .local-label { display: flex; align-items: center; gap: 7px; color: #586673; font-size: 12px; white-space: nowrap; }
+.house-app .local-label > span { width: 6px; height: 6px; border-radius: 50%; background: #4b7169; }
+.house-app .workspace { max-width: 1600px; margin: 0 auto; padding: 30px 32px 18px; }
+.house-app .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.house-app .section-label { font-size: 12px; color: #586673; margin-bottom: 5px; }
+.house-app h1 { font-size: 26px; letter-spacing: -0.025em; line-height: 1.3; }
+.house-app .stage-label { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #dce2e7; border-radius: 5px; font-size: 12px; color: #586673; }
+.house-app .stage-label span { color: #8b99a4; }
+.house-app .work-area { display: grid; grid-template-columns: minmax(0, 1fr) 268px; align-items: stretch; gap: 24px; }
+.house-app .preview { min-width: 0; border: 1px solid #dce2e7; border-radius: 8px; background: #fff; }
+.house-app .view-toolbar { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #dce2e7; }
+.house-app .view-switch { display: flex; gap: 2px; }
+.house-app .view-button, .house-app .reset-button { height: 44px; min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px; border-radius: 5px; color: #586673; font-size: 13px; font-weight: 500; }
+.house-app .view-button:hover, .house-app .reset-button:hover { color: #102b3f; background: #edf1f4; }
+.house-app .view-button[aria-pressed="true"] { color: #102b3f; background: #e8edf1; box-shadow: inset 0 -2px 0 #102b3f; }
+.house-app .reset-button { padding: 0 10px; }
+.house-app .reset-button:disabled { opacity: 0.45; }
+.house-app .canvas-area { position: relative; width: 100%; height: min(63vh, 670px); min-height: 440px; background: #f4f6f8; overflow: hidden; isolation: isolate; }
+.house-app .canvas-area > div:not([class]) { width: 100%; height: 100%; }
+.house-app .canvas-area canvas { display: block; touch-action: none; }
+.house-app .canvas-caption { position: absolute; left: 22px; top: 20px; z-index: 3; pointer-events: none; display: grid; gap: 3px; font-size: 12px; color: #586673; }
+.house-app .canvas-caption span:last-child { color: #20303d; font-weight: 500; }
+.house-app .canvas-key { position: absolute; right: 24px; bottom: 20px; z-index: 3; display: grid; text-align: center; color: #647684; font-size: 10px; pointer-events: none; }
+.house-app .north-arrow { font-size: 27px; line-height: 1; }
+.house-app .canvas-footer { min-height: 48px; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 18px; color: #586673; font-size: 11px; }
+.house-app .canvas-footer p { text-align: right; }
+.house-app .renderer-status { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.house-app .renderer-status > span { width: 6px; height: 6px; border-radius: 50%; background: #4b7169; }
+.house-app .renderer-status.is-failed > span { background: #c52031; }
+.house-app .measurement-rail { padding: 5px 0 0; }
+.house-app .rail-heading { display: flex; flex-direction: column; gap: 5px; padding-bottom: 23px; }
+.house-app .rail-heading h2 { font-size: 16px; }
+.house-app .rail-heading > span { color: #586673; font-size: 12px; }
+.house-app dl { margin: 0; }
+.house-app .primary-dimensions { display: grid; gap: 20px; padding-bottom: 25px; border-bottom: 1px solid #dce2e7; }
+.house-app .primary-dimensions dt { color: #586673; font-size: 12px; margin-bottom: 4px; }
+.house-app .primary-dimensions dd { margin: 0; font-size: 25px; font-weight: 500; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; color: #102b3f; }
+.house-app .primary-dimensions dd > span { color: #7e8c96; font-size: 20px; margin: 0 3px; }
+.house-app .primary-dimensions small { font-size: 15px; color: #586673; font-weight: 400; }
+.house-app .dimension-list { padding: 22px 0; display: grid; gap: 14px; font-size: 12px; border-bottom: 1px solid #dce2e7; }
+.house-app .dimension-list > div { display: flex; justify-content: space-between; gap: 14px; }
+.house-app .dimension-list dt { color: #586673; }
+.house-app .dimension-list dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 500; }
+.house-app .assumptions { padding-top: 23px; font-size: 12px; line-height: 1.65; color: #586673; }
+.house-app .assumptions h3, .house-app .review-note h3 { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.house-app .assumptions > p + p { margin-top: 9px; }
+.house-app .assumptions p:first-of-type { display: flex; gap: 10px; justify-content: space-between; }
+.house-app .assumptions strong { color: #20303d; font-weight: 500; white-space: nowrap; }
+.house-app .review-note { padding-top: 25px; color: #586673; font-size: 12px; line-height: 1.65; }
+.house-app .review-note > p + p { margin-top: 8px; }
+.house-app .floor-plan { width: 100%; height: 100%; display: block; }
+.house-app .plan-label { font-family: var(--font-dm-sans), Arial, sans-serif; font-size: 150px; fill: #536775; }
+.house-app .plan-measure { font-family: var(--font-dm-sans), Arial, sans-serif; font-size: 200px; fill: #203e52; font-weight: 500; }
+.house-app .plan-room-name { font-family: var(--font-poppins), Arial, sans-serif; font-size: 225px; fill: #173447; }
+.house-app .plan-room-area { font-family: var(--font-dm-sans), Arial, sans-serif; font-size: 170px; fill: #536775; }
+.house-app .graphics-loading { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: #f4f6f8; padding: 24px; text-align: center; color: #586673; font-size: 12px; }
+.house-app .graphics-loading strong { color: #102b3f; font-size: 15px; font-weight: 500; }
+.house-app .loading-mark { width: 30px; height: 30px; margin-bottom: 12px; border: 2px solid #d2dbe2; border-top-color: #102b3f; border-radius: 50%; animation: spatial-loading-turn 1s linear infinite; }
+@keyframes spatial-loading-turn { to { transform: rotate(360deg); } }
+.house-app .graphics-fallback { height: 100%; position: relative; }
+.house-app .graphics-fallback > svg { opacity: 0.3; }
+.house-app .failure-message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(360px, calc(100% - 40px)); background: white; border: 1px solid #dce2e7; border-radius: 8px; padding: 24px; box-shadow: 0 10px 28px #102b3f0c; }
+.house-app .failure-message strong { font-family: var(--font-poppins), Arial, sans-serif; font-size: 15px; color: #102b3f; font-weight: 500; }
+.house-app .failure-message p { margin-top: 8px; color: #586673; line-height: 1.6; font-size: 12px; }
+.house-app .failure-message > div { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+.house-app .failure-message button { min-height: 44px; }
+.house-app .retry-button { background: #102b3f; color: white; }
+.house-app .developer-panel { margin-top: 23px; border-top: 1px solid #dce2e7; border-bottom: 1px solid #dce2e7; }
+.house-app .developer-panel summary { min-height: 52px; padding: 16px 4px; cursor: pointer; color: #20303d; font-size: 12px; }
+.house-app .developer-panel summary > span { float: right; color: #586673; }
+.house-app .developer-content { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 12px 4px 24px; }
+.house-app .developer-content h2 { font-size: 14px; margin-bottom: 12px; }
+.house-app .developer-content p { max-width: 62ch; font-size: 12px; line-height: 1.7; color: #586673; }
+.house-app .developer-content dl { margin: 20px 0; display: grid; gap: 10px; font-size: 12px; }
+.house-app .developer-content dl > div { display: grid; grid-template-columns: 80px 1fr; gap: 12px; }
+.house-app .developer-content dt { color: #586673; }
+.house-app .developer-content dd { margin: 0; overflow-wrap: anywhere; }
+.house-app .developer-content > div { min-width: 0; }
+.house-app .developer-content pre { margin: 0; border: 1px solid #dce2e7; border-radius: 5px; background: white; overflow: auto; max-height: 300px; padding: 16px; font-size: 11px; line-height: 1.65; }
+.house-app .workspace-footer { display: flex; justify-content: space-between; gap: 16px; padding-top: 16px; color: #586673; font-size: 11px; }
+
+@media (min-width: 1500px) { .house-app .work-area { grid-template-columns: minmax(0, 1fr) 288px; gap: 32px; } }
+@media (max-width: 1000px) { .house-app .site-header { padding-inline: 24px; } .house-app .workspace { padding-inline: 24px; } .house-app .work-area { grid-template-columns: minmax(0, 1fr) 228px; gap: 20px; } .house-app .view-toolbar { padding-inline: 10px; } .house-app .view-button { padding-inline: 10px; gap: 6px; } .house-app .reset-button { padding-inline: 7px; } .house-app .canvas-footer { flex-wrap: wrap; gap: 6px; } .house-app .canvas-footer p { text-align: left; } }
+@media (max-width: 760px) { .house-app .site-header { padding-inline: 20px; } .house-app .workspace { padding: 24px 20px 18px; } .house-app .work-area { grid-template-columns: minmax(0, 1fr); gap: 28px; } .house-app .page-heading { margin-bottom: 20px; } .house-app h1 { font-size: 24px; } .house-app .stage-label { align-self: flex-end; margin-bottom: 3px; } .house-app .stage-label > span { display: none; } .house-app .stage-label { font-size: 0; padding: 6px 9px; } .house-app .stage-label::before { content: "P0"; font-size: 12px; } .house-app .brand-context, .house-app .brand-separator { display: none; } .house-app .canvas-area { min-height: 400px; height: 56vh; max-height: 590px; } .house-app .measurement-rail { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; padding-top: 0; } .house-app .rail-heading { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; padding-bottom: 18px; } .house-app .primary-dimensions { border-bottom: 0; padding-bottom: 20px; gap: 14px; } .house-app .primary-dimensions dd { font-size: 23px; } .house-app .dimension-list { padding: 3px 0 20px; border-bottom: 0; gap: 13px; align-content: start; font-size: 11px; } .house-app .assumptions, .house-app .review-note { border-top: 1px solid #dce2e7; padding-top: 19px; } .house-app .assumptions p:first-of-type { display: block; } .house-app .assumptions strong { display: block; } .house-app .review-note { padding-top: 19px; } .house-app .developer-content { grid-template-columns: 1fr; gap: 28px; } .house-app .workspace-footer { flex-direction: column; gap: 5px; } }
+@media (max-width: 440px) { .house-app .site-header { height: 56px; padding-inline: 16px; } .house-app .brand { gap: 9px; font-size: 13px; } .house-app .local-label { font-size: 10px; } .house-app .workspace { padding: 22px 16px 16px; } .house-app .view-toolbar { padding: 8px; flex-wrap: wrap; gap: 3px; } .house-app .view-switch { width: 100%; justify-content: space-between; } .house-app .view-button { flex: 1; padding-inline: 10px; justify-content: center; font-size: 12px; } .house-app .reset-button { margin-left: auto; height: 44px; font-size: 11px; } .house-app .canvas-area { min-height: 360px; height: 50vh; } .house-app .canvas-caption { left: 16px; top: 16px; font-size: 11px; } .house-app .canvas-footer { min-height: 62px; padding: 11px 13px; flex-direction: column; align-items: flex-start; font-size: 10px; } .house-app .canvas-key { right: 15px; bottom: 15px; } .house-app .measurement-rail { column-gap: 20px; } .house-app .primary-dimensions dd { font-size: 20px; } .house-app .primary-dimensions dd > span { font-size: 16px; margin: 0; } .house-app .primary-dimensions small { font-size: 12px; } .house-app .primary-dimensions dt { font-size: 11px; } .house-app .dimension-list > div { gap: 7px; } .house-app .dimension-list dd { white-space: nowrap; } .house-app .assumptions, .house-app .review-note { font-size: 11px; } .house-app .developer-panel summary > span { font-size: 10px; } .house-app .plan-label { font-size: 165px; } .house-app .failure-message { padding: 18px; } }
+@media (prefers-reduced-motion: reduce) { .house-app *, .house-app *::before, .house-app *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+
+.house-app { min-height: 100vh; }
+.house-app .house-p0-link { min-height: 44px; display: inline-flex; align-items: center; color: #586673; font-size: 12px; text-decoration: none; }
+.house-app .house-p0-link:hover { color: #102b3f; text-decoration: underline; text-underline-offset: 4px; }
+.house-app .house-workspace { padding-top: 26px; }
+.house-app .house-session-label { color: #586673; font-size: 12px; }
+.house-app .house-project-toolbar { display: flex; align-items: flex-end; gap: 18px; margin-bottom: 22px; }
+.house-app .house-project-toolbar > .house-field { min-width: 205px; margin: 0; }
+.house-app .house-session-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.house-app button { min-height: 44px; }
+.house-app input, .house-app select, .house-app textarea { border: 1px solid #cbd5dd; border-radius: 5px; background: white; color: #20303d; font: inherit; font-size: 12px; min-width: 0; width: 100%; }
+.house-app input, .house-app select { min-height: 44px; padding: 8px 10px; }
+.house-app select { padding-right: 26px; text-overflow: ellipsis; }
+.house-app input:focus-visible, .house-app select:focus-visible, .house-app textarea:focus-visible { outline: 2px solid #c52031; outline-offset: 3px; }
+.house-app textarea { resize: vertical; padding: 12px; line-height: 1.65; font-family: Consolas, "Courier New", monospace; font-size: 11px; tab-size: 2; }
+.house-app .house-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-width: 0; }
+.house-app .house-field > span { font-size: 11px; font-weight: 500; color: #586673; }
+.house-app .house-layout { display: grid; grid-template-columns: minmax(0, 1fr) 302px; gap: 28px; align-items: start; }
+.house-app .house-stage-column { min-width: 0; }
+.house-app .house-view-toolbar { gap: 10px; padding-inline: 12px; }
+.house-app .house-lighting-switch { display: flex; gap: 2px; margin-left: auto; }
+.house-app .house-lighting-switch button { font-size: 11px; padding-inline: 11px; color: #586673; }
+.house-app .house-lighting-switch button[aria-pressed="true"] { background: #edf1f4; color: #102b3f; }
+.house-app .house-view-toolbar .view-button { padding-inline: 12px; }
+.house-app .house-view-toolbar .reset-button { font-size: 11px; }
+.house-app .house-canvas { height: min(62vh, 650px); min-height: 450px; }
+.house-app .house-canvas .canvas-caption { background: #f4f6f8; padding: 8px 11px; border-radius: 5px; }
+.house-app .house-canvas .failure-message p { overflow-wrap: anywhere; max-height: 140px; overflow: auto; }
+.house-app .house-plan { width: 100%; height: 100%; display: block; }
+.house-app .house-plan-inspection { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; padding: 10px 16px; border-bottom: 1px solid #dce2e7; background: #fff; }
+.house-app .house-plan-extent { display: flex; gap: 3px; }
+.house-app .house-plan-extent button { padding-inline: 12px; font-size: 12px; color: #586673; }
+.house-app .house-plan-extent button[aria-pressed="true"] { background: #e8edf1; color: #102b3f; }
+.house-app .house-plan-inspection > p { display: grid; gap: 3px; font-size: 12px; color: #586673; font-variant-numeric: tabular-nums; line-height: 1.5; }
+.house-app .house-plan-inspection strong { color: #102b3f; font-weight: 500; }
+.house-app .house-lighting-cue { padding: 9px 16px; border-bottom: 1px solid #dce2e7; font-size: 11px; line-height: 1.6; color: #586673; }
+.house-app .house-scene-facts { display: flex; flex-wrap: wrap; gap: 9px 22px; padding: 17px 0; color: #586673; border-bottom: 1px solid #dce2e7; font-size: 11px; }
+.house-app .house-scene-facts strong { color: #20303d; font-weight: 500; font-variant-numeric: tabular-nums; }
+.house-app .house-notice { margin-top: 15px; min-height: 36px; color: #586673; font-size: 12px; line-height: 1.6; }
+.house-app .house-error { margin-top: 10px; border: 1px solid #e3c3c8; background: #fff8f9; border-radius: 6px; padding: 16px; color: #892c3b; font-size: 12px; }
+.house-app .house-error strong { font-weight: 600; }
+.house-app .house-error pre { margin: 9px 0; max-height: 240px; white-space: pre-wrap; overflow: auto; overflow-wrap: anywhere; font-size: 11px; line-height: 1.6; }
+.house-app .house-error p { color: #754350; }
+.house-app .house-experiments { margin-top: 23px; }
+.house-app .house-section-heading h2 { font-size: 15px; margin-bottom: 5px; }
+.house-app .house-section-heading p { color: #586673; font-size: 12px; line-height: 1.6; }
+.house-app .house-example-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 15px; }
+.house-app .house-example { justify-content: space-between; white-space: normal; text-align: left; height: auto; padding: 11px 13px; font-size: 12px; gap: 12px; background: white; }
+.house-app .house-example > span:first-child { min-width: 0; }
+.house-app .house-example > span:last-child { flex: 0 0 auto; color: #647684; }
+.house-app .house-developer { border-top: 1px solid #dce2e7; border-bottom: 1px solid #dce2e7; margin-top: 25px; }
+.house-app .house-developer > summary { min-height: 52px; padding: 16px 2px; cursor: pointer; font-size: 12px; color: #20303d; }
+.house-app .house-patch-content { padding: 3px 2px 20px; }
+.house-app .house-patch-content > p { color: #586673; font-size: 12px; margin-bottom: 14px; line-height: 1.6; }
+.house-app .house-patch-actions { display: flex; align-items: center; gap: 15px; margin-bottom: 16px; }
+.house-app .house-patch-actions > span { color: #586673; font-size: 11px; }
+.house-app .house-patch-content details summary { min-height: 44px; padding-block: 12px; cursor: pointer; color: #586673; font-size: 11px; }
+.house-app .house-patch-content pre { padding: 12px; margin: 0; max-height: 320px; overflow: auto; font-size: 11px; line-height: 1.6; border: 1px solid #dce2e7; background: white; border-radius: 5px; }
+.house-app .house-downloads { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.house-app .house-downloads button { font-size: 11px; background: white; }
+.house-app .house-disclosure { color: #586673; font-size: 11px; line-height: 1.7; max-width: 75ch; margin-top: 16px; }
+.house-app .house-inspector { min-width: 0; background: white; border: 1px solid #dce2e7; border-radius: 8px; padding: 0 20px; }
+.house-app .house-inspector-section { padding: 20px 0; border-bottom: 1px solid #dce2e7; }
+.house-app .house-inspector-section:last-child { border-bottom: 0; }
+.house-app .house-inspector-section h2 { font-size: 14px; margin-bottom: 15px; }
+.house-app .house-inspector-section > p, .house-app .house-region-controls > p { color: #586673; font-size: 11px; line-height: 1.65; margin-bottom: 13px; }
+.house-app .house-inspector-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: -7px 0 10px; }
+.house-app .house-inspector-heading h2 { margin-bottom: 0; }
+.house-app .house-inspector-heading button { font-size: 11px; padding-inline: 9px; }
+.house-app .house-selection-summary { display: grid; gap: 5px; padding: 12px; border-radius: 5px; background: #f4f6f8; color: #586673; font-size: 11px; overflow-wrap: anywhere; }
+.house-app .house-selection-summary strong { color: #102b3f; font-weight: 500; font-size: 12px; }
+.house-app .house-selection-summary > span { line-height: 1.5; }
+.house-app .house-locked { color: #925023; }
+.house-app .house-multi-select { margin-top: 10px; }
+.house-app .house-multi-select summary, .house-app .house-region-controls summary { cursor: pointer; min-height: 44px; padding: 12px 0; font-size: 12px; color: #20303d; }
+.house-app .house-multi-select > div { max-height: 230px; overflow: auto; }
+.house-app .house-multi-select label, .house-app .house-check-field { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 11px; overflow-wrap: anywhere; }
+.house-app .house-multi-select input, .house-app .house-check-field input { min-height: 20px; height: 20px; width: 20px; flex: 0 0 20px; padding: 0; accent-color: #102b3f; }
+.house-app .house-check-field { margin-bottom: 13px; font-size: 12px; }
+.house-app .house-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+.house-app .house-inspector form > button { font-size: 11px; }
+.house-app .house-region-controls summary { padding-top: 1px; min-height: 25px; }
+.house-app .house-region-controls[open] summary { margin-bottom: 12px; }
+.house-app .house-region-members { margin-top: 15px; color: #586673; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.house-app .house-region-members > p + p { margin-top: 4px; }
+.house-app .house-region-members button { margin-top: 11px; font-size: 11px; }
+.house-app .house-spaced-form { border-top: 1px solid #e5e9ec; padding-top: 16px; margin-top: 18px; }
+.house-app .house-remove-button { margin-top: 12px; font-size: 11px; color: #a72536; padding-left: 0; }
+.house-app .house-catalog-preview { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; }
+.house-app .house-catalog-preview img { width: 76px; height: 76px; object-fit: contain; background: #f4f6f8; border: 1px solid #e2e7eb; border-radius: 5px; flex: 0 0 76px; }
+.house-app .house-catalog-preview > div { min-width: 0; display: grid; gap: 4px; font-size: 10px; color: #586673; }
+.house-app .house-catalog-preview strong { color: #20303d; font-size: 11px; font-weight: 500; }
+.house-app .house-catalog-preview p { line-height: 1.5; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 1180px) { .house-app .house-layout { grid-template-columns: minmax(0, 1fr) 272px; gap: 20px; } .house-app .house-inspector { padding-inline: 16px; } .house-app .house-view-toolbar { flex-wrap: wrap; } .house-app .house-view-toolbar .reset-button { margin-left: auto; } .house-app .house-project-toolbar { gap: 12px; } .house-app .house-project-toolbar > .house-field { min-width: 180px; } .house-app .house-session-actions { gap: 4px; } .house-app .house-session-actions button { font-size: 11px; } }
+@media (max-width: 900px) { .house-app .house-layout { grid-template-columns: minmax(0, 1fr) 250px; gap: 16px; } .house-app .house-workspace { padding-inline: 20px; } .house-app .house-project-toolbar { flex-wrap: wrap; } .house-app .house-project-toolbar > .house-field { flex: 1; } .house-app .house-session-actions { width: 100%; margin-left: 0; } .house-app .house-canvas { min-height: 400px; height: 54vh; } .house-app .house-view-toolbar .view-switch { width: 100%; } .house-app .house-view-toolbar .view-button { flex: 1; } .house-app .house-view-toolbar .house-lighting-switch { margin-left: 0; } .house-app .house-view-toolbar .reset-button { margin-left: auto; } .house-app .house-example-list { grid-template-columns: minmax(0, 1fr); } .house-app .house-inspector { padding-inline: 12px; } .house-app .house-field-grid { gap: 0 8px; } .house-app .house-inspector .house-field > span { font-size: 10px; } }
+@media (max-width: 760px) { .house-app .house-layout { display: flex; flex-direction: column; gap: 25px; } .house-app .house-stage-column { display: contents; } .house-app .house-stage-column > .preview, .house-app .house-scene-facts, .house-app .house-notice, .house-app .house-error, .house-app .house-experiments, .house-app .house-developer, .house-app .house-downloads, .house-app .house-disclosure, .house-app .house-inspector { width: 100%; } .house-app .house-stage-column > .preview { order: 0; } .house-app .house-scene-facts { order: 1; padding-top: 0; padding-bottom: 15px; margin-top: -10px; } .house-app .house-notice, .house-app .house-error { order: 2; margin-top: -12px; min-height: 0; } .house-app .house-inspector { order: 3; padding-inline: 20px; } .house-app .house-experiments { order: 4; margin-top: 0; } .house-app .house-developer { order: 5; margin-top: 0; } .house-app .house-downloads { order: 6; margin-top: 0; } .house-app .house-disclosure { order: 7; margin-top: -8px; } .house-app .house-inspector-section { padding-block: 19px; } .house-app .house-inspector .house-field > span { font-size: 11px; } .house-app .house-field-grid { gap: 0 14px; } .house-app .house-canvas { height: 55vh; min-height: 390px; max-height: 600px; } .house-app .house-view-toolbar .view-switch { width: auto; } .house-app .house-view-toolbar .house-lighting-switch { margin-left: auto; } .house-app .house-view-toolbar .reset-button { margin-left: 0; } .house-app .house-example-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } .house-app .house-selection-summary { padding: 13px; } }
+@media (max-width: 440px) { .house-app .house-workspace { padding: 20px 16px 20px; } .house-app .house-project-toolbar { gap: 12px; margin-bottom: 18px; } .house-app .house-project-toolbar > .house-field { min-width: 0; width: calc(50% - 6px); } .house-app .house-project-toolbar select { padding-left: 8px; padding-right: 18px; font-size: 11px; } .house-app .house-p0-link { font-size: 10px; max-width: 100px; text-align: right; line-height: 1.4; } .house-app .house-session-label { font-size: 10px; } .house-app .house-session-actions { justify-content: flex-start; gap: 5px; } .house-app .house-session-actions button { padding-inline: 10px; } .house-app .house-view-toolbar .view-switch { width: 100%; } .house-app .house-view-toolbar .house-lighting-switch { margin-left: 0; } .house-app .house-view-toolbar .reset-button { margin-left: auto; } .house-app .house-canvas { height: 49vh; min-height: 350px; } .house-app .house-view-toolbar { padding: 8px; } .house-app .house-scene-facts { gap: 8px 16px; font-size: 10px; } .house-app .house-example-list { grid-template-columns: minmax(0, 1fr); } .house-app .house-inspector { padding-inline: 16px; } .house-app .house-notice { font-size: 11px; } .house-app .house-downloads { gap: 7px; } .house-app .house-downloads button { width: 100%; } }
+@media (max-width: 440px) { .house-app .house-plan-inspection { padding: 10px 12px 13px; gap: 8px; } .house-app .house-plan-extent { width: 100%; } .house-app .house-plan-extent button { flex: 1; } .house-app .house-plan-inspection > p { font-size: 12px; } }
+@media (min-width: 761px) { .house-app .house-layout { row-gap: 0; } .house-app .house-stage-column { display: contents; } .house-app .house-stage-column > * { grid-column: 1; } .house-app .house-stage-column > .house-inspector { grid-column: 2; grid-row: 1 / span 9; align-self: start; } }
+
+.house-app .brand-mark { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: 8px; background: #c52031; color: white; letter-spacing: normal; }

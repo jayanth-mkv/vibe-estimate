@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 2,
+  "id": "room-study",
+  "name": "Measured room",
+  "units": "mm",
+  "axes": "x-east-y-up-z-south",
+  "level": {
+    "id": "ground-floor",
+    "name": "Ground floor",
+    "elevation": 0,
+    "ceilingHeight": 2800,
+    "ceilingProvenance": "assumed"
+  },
+  "rooms": [
+    {
+      "id": "living",
+      "name": "Living room",
+      "x": 0,
+      "z": 0,
+      "width": 5000,
+      "depth": 4000,
+      "floorMaterialId": "wood-oak"
+    }
+  ],
+  "walls": [
+    {
+      "id": "wall-h-n100-n100-5100",
+      "start": [
+        -100,
+        -100
+      ],
+      "end": [
+        5100,
+        -100
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "living",
+      "backRoomId": null,
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-h-4100-n100-5100",
+      "start": [
+        -100,
+        4100
+      ],
+      "end": [
+        5100,
+        4100
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": null,
+      "backRoomId": "living",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-n100-n100-4100",
+      "start": [
+        -100,
+        -100
+      ],
+      "end": [
+        -100,
+        4100
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": null,
+      "backRoomId": "living",
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    },
+    {
+      "id": "wall-v-5100-n100-4100",
+      "start": [
+        5100,
+        -100
+      ],
+      "end": [
+        5100,
+        4100
+      ],
+      "thickness": 200,
+      "height": 2800,
+      "frontRoomId": "living",
+      "backRoomId": null,
+      "frontMaterialId": "paint-white",
+      "backMaterialId": "paint-white"
+    }
+  ],
+  "openings": [
+    {
+      "id": "entry-door",
+      "wallId": "wall-v-n100-n100-4100",
+      "kind": "door",
+      "offset": 2500,
+      "width": 900,
+      "height": 2100,
+      "sill": 0
+    },
+    {
+      "id": "living-window",
+      "wallId": "wall-h-n100-n100-5100",
+      "kind": "window",
+      "offset": 1700,
+      "width": 1800,
+      "height": 1200,
+      "sill": 900
+    }
+  ],
+  "materials": [
+    {
+      "id": "paint-white",
+      "name": "Warm white",
+      "color": "#e8e1d5",
+      "roughness": 0.85
+    },
+    {
+      "id": "paint-clay",
+      "name": "Soft clay",
+      "color": "#ba7761",
+      "roughness": 0.85
+    },
+    {
+      "id": "paint-sage",
+      "name": "Sage green",
+      "color": "#809b86",
+      "roughness": 0.85
+    },
+    {
+      "id": "paint-navy",
+      "name": "Deep blue",
+      "color": "#344e60",
+      "roughness": 0.8
+    },
+    {
+      "id": "wood-oak",
+      "name": "Natural oak",
+      "color": "#bb9666",
+      "roughness": 0.7
+    },
+    {
+      "id": "wood-dark",
+      "name": "Smoked oak",
+      "color": "#6f503c",
+      "roughness": 0.75
+    },
+    {
+      "id": "tile-stone",
+      "name": "Pale stone",
+      "color": "#b6b6af",
+      "roughness": 0.6
+    },
+    {
+      "id": "fabric-cream",
+      "name": "Linen cream",
+      "color": "#d9cdb7",
+      "roughness": 1
+    },
+    {
+      "id": "fabric-ochre",
+      "name": "Ochre fabric",
+      "color": "#c08d3a",
+      "roughness": 1
+    }
+  ],
+  "instances": [
+    {
+      "id": "sofa-living",
+      "roomId": "living",
+      "catalogId": "sofa",
+      "position": [
+        2500,
+        0,
+        3100
+      ],
+      "rotation": 0,
+      "dimensions": [
+        2200,
+        850,
+        900
+      ],
+      "materialId": "fabric-cream",
+      "locked": false
+    },
+    {
+      "id": "table-living",
+      "roomId": "living",
+      "catalogId": "table",
+      "position": [
+        2800,
+        0,
+        1400
+      ],
+      "rotation": 0,
+      "dimensions": [
+        1400,
+        750,
+        800
+      ],
+      "materialId": "wood-oak",
+      "locked": false
+    },
+    {
+      "id": "lamp-living",
+      "roomId": "living",
+      "catalogId": "floor-lamp",
+      "position": [
+        800,
+        0,
+        800
+      ],
+      "rotation": 0,
+      "dimensions": [
+        400,
+        1600,
+        400
+      ],
+      "materialId": "paint-navy",
+      "locked": false,
+      "light": {
+        "enabled": true,
+        "intensity": 80,
+        "temperature": "warm"
+      }
+    }
+  ]
+}

@@ -13,6 +13,7 @@ On 5 September 2026 the user requested [Petpooja's](https://www.petpooja.com/) c
 | /rooms/:id | Designer's shared project room | Compact conversation, visible designer/client/agent roles, source context and current agent findings, explicit draft preparation and sharing |
 | /client/rooms/:id | Invited client's separate view | Independent sign-in, shared conversation and explicitly shared draft snapshots; no designer pricing or project-management controls |
 | /join | Join a room without a login wall | One labeled room-code field, concise context, retained input on failure, and a clear return to the workspace |
+| /studio | Explore and edit a synthetic house demo | Canvas-first Plan/Overview/Inside, room focus, selected numeric edits, illustrative lights and session undo; scoped navy/red styles and a separate-tab home launch |
 
 The workspace exposes a Product tour link; the tour leads back to the workspace. Users can begin without scrolling through marketing sections. Preserve the tour as a complete, findable route and isolate its styles so navigation does not alter the workspace layout.
 

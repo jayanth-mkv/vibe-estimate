@@ -1,0 +1,23 @@
+{
+  "name": "@vibeestimate/pascal-adapter",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.tsx",
+  "dependencies": {
+    "@vibeestimate/scene-core": "0.0.1",
+    "@pascal-app/core": "0.9.2",
+    "@pascal-app/viewer": "0.9.2",
+    "@pascal-app/nodes": "0.1.1",
+    "@pascal-app/editor": "0.9.2",
+    "three": "0.185.0",
+    "@react-three/fiber": "9.6.1",
+    "@react-three/drei": "10.7.7",
+    "zustand": "5.0.14",
+    "lucide-react": "1.41.0",
+    "@vibeestimate/scene-schema": "0.0.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.185.0"
+  }
+}

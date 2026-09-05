@@ -34,6 +34,8 @@ The user then authorized using their existing real Firebase database and request
 
 ## Planned spatial extension
 
+The user subsequently authorized a demo-sized integration of the separately tested Pascal house PoC on a different application branch. `/studio` now hosts synthetic single-floor fixtures and selected furniture, finish and lighting changes with session undo and local downloads. The workspace opens it in a separate tab. This checkpoint has no scene API persistence, image extraction or model calls; the wider spatial capabilities below remain planned. See [the demo contract and verification](docs/spatial-demo.md).
+
 The next user-requested version adds home-plan and image upload, a whole-home editable 3D view, curated assets selected through model tools, direct visual editing, different viewpoints and walkthroughs. Visual changes connect to the existing designer/homeowner room and proposal workflow; a separate client inbox provides an immediate two-person testing environment. Preserve the initial connected version and existing theme. Research and complete planning precede implementation.
 
 The user subsequently confirmed a wider direction: a designer publishes an agent onto their own website, a homeowner talks to it, the agent opens a project and builds their home in 3D, and the designer reviews what the crew did through a visual console rather than a transcript. Work is sequenced as three releases — see [the release plan](docs/plan/README.md), covering [v1](docs/plan/v1.md), [v2](docs/plan/v2.md), [v3](docs/plan/v3.md) and [who controls what](docs/plan/controls.md).

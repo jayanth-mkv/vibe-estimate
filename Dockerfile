@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY frontend/package.json ./frontend/package.json
 COPY backend/package.json ./backend/package.json
+COPY packages ./packages
 RUN npm ci --include-workspace-root=false
 COPY frontend ./frontend
 COPY backend ./backend
@@ -14,6 +15,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY frontend/package.json ./frontend/package.json
 COPY backend/package.json ./backend/package.json
+COPY packages ./packages
 RUN npm ci --omit=dev --include-workspace-root=false
 RUN mkdir -p backend/node_modules frontend/node_modules
 
@@ -28,6 +30,7 @@ COPY --from=build --chown=node:node /app/backend/package.json ./backend/package.
 COPY --from=build --chown=node:node /app/frontend/.next ./frontend/.next
 COPY --from=build --chown=node:node /app/frontend/public ./frontend/public
 COPY --from=build --chown=node:node /app/frontend/package.json ./frontend/package.json
+COPY --from=build --chown=node:node /app/packages ./packages
 COPY --chown=node:node scripts/start-production.mjs ./scripts/start-production.mjs
 USER node
 EXPOSE 8080

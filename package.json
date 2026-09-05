@@ -4,7 +4,8 @@
   "private": true,
   "workspaces": [
     "frontend",
-    "backend"
+    "backend",
+    "packages/*"
   ],
   "engines": {
     "node": ">=22.17.0 <25"
@@ -29,7 +30,15 @@
     "mcp:verify": "node scripts/verify-mcp.mjs",
     "check:public": "node scripts/check-public.mjs",
     "check:design": "node .agents/skills/impeccable/scripts/detect.mjs --json frontend/src",
-    "check:infra": "node infra/scripts/check.mjs"
+    "check:infra": "node infra/scripts/check.mjs",
+    "test:spatial": "tsx --test tests/spatial/*.test.ts",
+    "build:spatial": "npm run build --workspace @vibeestimate/frontend",
+    "start:spatial": "node scripts/spatial-preview.mjs start",
+    "test:spatial:browser": "node scripts/spatial-preview.mjs test",
+    "review:spatial": "node scripts/spatial-preview.mjs review",
+    "setup:spatial:browser": "node scripts/spatial-preview.mjs install",
+    "assets:spatial": "node scripts/spatial-models.mjs",
+    "verify:spatial": "node scripts/verify-spatial.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
@@ -37,8 +46,12 @@
     "@modelcontextprotocol/sdk": "1.30.0",
     "@playwright/mcp": "0.0.80",
     "@playwright/test": "1.63.0",
+    "@types/three": "0.185.0",
+    "esbuild": "0.25.12",
     "firebase-tools": "15.29.0",
     "jsqr": "1.4.0",
+    "three": "0.185.0",
+    "tsx": "4.20.6",
     "vitest": "3.2.6"
   }
 }
