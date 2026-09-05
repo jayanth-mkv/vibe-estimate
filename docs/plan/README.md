@@ -2,8 +2,6 @@
 
 Three releases take VibeEstimate from a text-shaped local app to a deployed spatial platform where a designer publishes an agent onto their own website, a homeowner talks to it, and the agent builds their home in 3D.
 
-The current spatial delivery sequence is [v1.1 — Pascal proof of concept, then image-to-layout and precise editing](v1.1.md). Start with its [P0 standalone browser proof](v1.1.md#3-poc-stages-and-review-gates) in `../pascal-poc/` relative to the application repository root. Its stage reviews and P4 acceptance gate precede application integration; this sequence supersedes the earlier manual-only/no-studio-AI boundary below. Consult the [latest verification record](../verification.md) for executed release evidence.
-
 | | [v1 — Standing up](v1.md) | [v2 — The crew](v2.md) | [v3 — Depth](v3.md) |
 | --- | --- | --- | --- |
 | Goal | Verified runtime and an editable 3D foundation | Complete autonomous single-floor product | Expand the ecosystem |
