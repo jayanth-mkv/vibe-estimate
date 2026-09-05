@@ -34,7 +34,11 @@ The user then authorized using their existing real Firebase database and request
 
 ## Planned spatial extension
 
-The next user-requested version adds home-plan and image upload, a whole-home editable 3D view, curated assets selected through model tools, direct visual editing, different viewpoints and walkthroughs. Visual changes connect to the existing designer/homeowner room and proposal workflow; a separate client inbox provides an immediate two-person testing environment. Preserve the initial connected version and existing theme. Research and complete planning precede implementation. The proposed first scope is a complete single-floor home with private client options, followed by multiple floors; those defaults remain open to user correction. See [the implementation plan](docs/spatial-home-studio-plan.md) and [surface brief](docs/spatial-studio-brief.md). These capabilities are planned, not implemented in the initial snapshot.
+The next user-requested version adds home-plan and image upload, a whole-home editable 3D view, curated assets selected through model tools, direct visual editing, different viewpoints and walkthroughs. Visual changes connect to the existing designer/homeowner room and proposal workflow; a separate client inbox provides an immediate two-person testing environment. Preserve the initial connected version and existing theme. Research and complete planning precede implementation.
+
+The user subsequently confirmed a wider direction: a designer publishes an agent onto their own website, a homeowner talks to it, the agent opens a project and builds their home in 3D, and the designer reviews what the crew did through a visual console rather than a transcript. Work is sequenced as three releases — see [the release plan](docs/plan/README.md), covering [v1](docs/plan/v1.md), [v2](docs/plan/v2.md), [v3](docs/plan/v3.md) and [who controls what](docs/plan/controls.md).
+
+Confirmed scope decisions: one complete floor for this release, with multiple floors deferred; a hybrid Cloud Run topology of three agent services plus a worker pool; agents built on the TypeScript Agent Development Kit with Skills and MCP; and a simulated embed page now, with a real cross-origin widget later. The deep technical reference remains [the implementation plan](docs/spatial-home-studio-plan.md) and [surface brief](docs/spatial-studio-brief.md). These capabilities are planned, not implemented in the initial snapshot.
 
 ## Brand Commitments
 

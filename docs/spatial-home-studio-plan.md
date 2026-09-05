@@ -2,6 +2,8 @@
 
 Planning checkpoint: 5 September 2026. This document specifies the next version before implementation. [Primary-source research](spatial-research.md) and [the surface brief](spatial-studio-brief.md) support it. Application code and cloud resources are unchanged by this checkpoint.
 
+> **Delivery sequencing has moved.** This document remains the deep technical reference for geometry, units, storage, threats and evaluation, and its findings are unchanged. Only its seven-stage delivery sequence is superseded, by the three releases in [the release plan](plan/README.md) — [v1](plan/v1.md), [v2](plan/v2.md), [v3](plan/v3.md) and [who controls what](plan/controls.md). [v1 records which finding lands in which release](plan/v1.md#what-carries-forward-from-the-existing-plan).
+
 ## Preserved initial version
 
 The working connected version is committed at **4fa4d70** and preserved on **snapshot/initial-connected-v1**. Its original task branch is **feat/connected-firebase-rooms**. The new planning/build branch is **feat/spatial-home-studio**.
