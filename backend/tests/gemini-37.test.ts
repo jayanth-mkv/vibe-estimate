@@ -64,6 +64,6 @@ describe("Gemini 3.7 request compatibility", () => {
     expect(request.config.temperature).toBe(0.1);
     expect(request.config.maxOutputTokens).toBe(4000);
     expect(Object.hasOwn(request.config, "thinkingConfig")).toBe(false);
-    expect(Object.hasOwn(request.config, "httpOptions")).toBe(false);
+    expect(request.config.httpOptions.retryOptions.attempts).toBe(1);
   });
 });

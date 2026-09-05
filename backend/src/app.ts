@@ -11,6 +11,8 @@ import type { ProjectStore } from "./store.js";
 import { publicProject } from "./types.js";
 import { registerRoomRoutes } from "./room-routes.js";
 import type { RoomStore } from "./room-store.js";
+import type { RoomObserver } from "./room-observer.js";
+import type { RoomTasks } from "./room-tasks.js";
 
 export type AppDependencies = {
   config: AppConfig;
@@ -18,15 +20,35 @@ export type AppDependencies = {
   provider: AnalysisProvider;
   verifyToken: (token: string) => Promise<{ uid: string }>;
   rooms?: RoomStore;
+  observer?: RoomObserver;
+  tasks?: RoomTasks;
+  notifyRoom?: (id: string) => Promise<void>;
 };
 
-export function createApp({ config, store, provider, verifyToken, rooms }: AppDependencies) {
+export function createApp({ config, store, provider, verifyToken, rooms, observer, tasks, notifyRoom }: AppDependencies) {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
   app.use(cors({ origin: config.frontendOrigin, methods: ["GET", "POST"], allowedHeaders: ["Content-Type", "Authorization"] }));
   app.use(express.json({ limit: "48kb" }));
   app.use((_request, response, next) => { response.setHeader("Cache-Control", "no-store"); next(); });
+  if (config.appEnv === "production" && rooms && observer && tasks) {
+    app.use("/internal", async (request, _response, next) => {
+      const token = /^Bearer ([^\s]+)$/.exec(request.header("authorization") ?? "")?.[1];
+      if (!token || !await tasks.verify(token)) return next(new AppError(401, "TASK_AUTH_REQUIRED", "A verified task identity is required."));
+      next();
+    });
+    app.post("/internal/observer", async (request, response) => {
+      const { roomId } = z.object({ roomId: z.string().uuid() }).strict().parse(request.body);
+      await observer.process(roomId);
+      if (await rooms.hasPendingReview(roomId)) throw new AppError(503, "TASK_PENDING", "The saved review is waiting for an available worker.");
+      response.status(204).end();
+    });
+    app.post("/internal/reconcile", async (_request, response) => {
+      for (const id of await rooms.scheduledIds()) await tasks.enqueue(id);
+      response.status(204).end();
+    });
+  }
   app.get("/health", (_request, response) => {
     response.json({ status: "ok", aiProvider: provider.kind, storage: "firestore", auth: config.appEnv === "local" ? "emulator" : "firebase", storageConnection: config.appEnv === "local" ? "emulator" : "cloud", runtime: config.appEnv, ...(provider.kind === "gemini" ? { geminiTransport: config.geminiTransport ?? "developer" } : {}) });
   });
@@ -82,7 +104,7 @@ export function createApp({ config, store, provider, verifyToken, rooms }: AppDe
     response.setHeader("Content-Disposition", 'attachment; filename="vibeestimate-draft.txt"');
     response.type("text/plain").send(exportProposal(project));
   });
-  if (rooms) registerRoomRoutes(app, rooms);
+  if (rooms) registerRoomRoutes(app, rooms, notifyRoom);
   app.use((_request, _response, next) => next(new AppError(404, "NOT_FOUND", "This endpoint could not be found.")));
   const errors: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
     if (error instanceof AppError) { response.status(error.status).json({ error: { code: error.code, message: error.message } }); return; }

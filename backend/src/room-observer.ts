@@ -21,6 +21,7 @@ function safeReviewFailure(error: unknown): string {
 /** Server-owned observation. Reads/polling never invoke a model, and one persistent claim equals at most one call. */
 export class RoomObserver {
   private timer?: ReturnType<typeof setInterval>;
+  private wakeup?: ReturnType<typeof setTimeout>;
   private polling = false;
   private stopped = false;
   private running = new Map<string, Promise<void>>();
@@ -29,11 +30,29 @@ export class RoomObserver {
   start() {
     if (this.timer) return;
     this.stopped = false;
-    this.timer = setInterval(() => { void this.tick(); }, 500);
+    this.timer = setInterval(() => { void this.tick(); }, 30000);
     this.timer.unref();
     void this.tick();
   }
-  stop() { this.stopped = true; if (this.timer) clearInterval(this.timer); this.timer = undefined; }
+  stop() { this.stopped = true; if (this.timer) clearInterval(this.timer); if (this.wakeup) clearTimeout(this.wakeup); this.timer = undefined; }
+
+  /** Local event-driven wakeup; the slower scan only recovers interrupted local work. */
+  notify() {
+    if (this.wakeup) clearTimeout(this.wakeup);
+    this.wakeup = setTimeout(() => { this.wakeup = undefined; void this.tick(); }, 1600);
+    this.wakeup.unref();
+  }
+
+  /** A managed task awaits the whole operation, keeping Cloud Run CPU allocated. */
+  async process(id: string) {
+    if (this.running.has(id)) { await this.running.get(id); return; }
+    if (this.running.size >= ROOM_GLOBAL_ACTIVE_LIMIT) throw new AppError(503, "WORKER_BUSY", "The review worker is busy.");
+    const claim = await this.store.claim(id);
+    if (!claim) return;
+    const work = this.perform(claim).finally(() => { this.running.delete(id); });
+    this.running.set(id, work);
+    await work;
+  }
 
   async tick() {
     if (this.stopped || this.polling) return;

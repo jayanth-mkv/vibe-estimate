@@ -1,6 +1,7 @@
 import { getApps, initializeApp } from "firebase/app";
 import { browserLocalPersistence, connectAuthEmulator, getAuth, GoogleAuthProvider, linkWithPopup, setPersistence, signInAnonymously, signInWithPopup, type UserCredential } from "firebase/auth";
 import { recoveryIdentity, type ClientRoomIdentity, type GoogleRoomIdentity } from "./client-room-access";
+import type {} from "./public-runtime-config";
 
 export const usesEmulators = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true";
 export const usesGuestAccess = process.env.NEXT_PUBLIC_AUTH_MODE === "guest";
@@ -11,12 +12,13 @@ const pendingSessions = new Map<SessionIdentity, Promise<UserCredential>>();
 
 export function clientAuth(identity: SessionIdentity = "designer") {
   if (typeof window === "undefined") throw new Error("Sign-in is available in the browser.");
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  if (!projectId || !apiKey) throw new Error("Sign-in is not configured. Add the frontend environment settings and restart the app.");
+  const publicConfig = window.__VIBEESTIMATE_FIREBASE__;
+  const projectId = publicConfig?.projectId || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const apiKey = publicConfig?.apiKey || process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!projectId || !apiKey) throw new Error("Sign-in is temporarily unavailable. Keep this page open and try again shortly.");
   if (usesEmulators && (!projectId.startsWith("demo-") || !["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname))) throw new Error("Local sign-in requires a demo project on localhost.");
   const appName = identity === "designer" ? "[DEFAULT]" : identity === "client" ? "vibeestimate-client" : `vibeestimate-${recoveryIdentity(identity.slice("client-google:".length)).replace(":", "-")}`;
-  const app = getApps().find((candidate) => candidate.name === appName) ?? initializeApp({ projectId, apiKey, authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID }, appName);
+  const app = getApps().find((candidate) => candidate.name === appName) ?? initializeApp({ projectId, apiKey, authDomain: publicConfig?.authDomain || process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, appId: publicConfig?.appId || process.env.NEXT_PUBLIC_FIREBASE_APP_ID }, appName);
   const auth = getAuth(app);
   if (usesEmulators && !auth.emulatorConfig) {
     const emulatorUrl = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL || "http://127.0.0.1:9099";

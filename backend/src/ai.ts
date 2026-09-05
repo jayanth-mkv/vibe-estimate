@@ -60,7 +60,7 @@ async function analyzeGemini(project: StoredProject, model: string, clientFactor
         // Keep the established request behavior for other configured models.
         ...(model === "gemini-3.7-flash"
           ? { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }, httpOptions: { retryOptions: { attempts: 1 } } }
-          : { temperature: 0.1 })
+          : { temperature: 0.1, httpOptions: { retryOptions: { attempts: 1 } } })
       }
     });
     output = JSON.parse(response.text ?? "");
@@ -81,12 +81,27 @@ export class LocalVertexGeminiProvider implements AnalysisProvider {
     return analyzeGemini(project, this.config.geminiModel!, () => createLocalVertexClient(this.config), clarification);
   }
 }
+export class RuntimeVertexGeminiProvider implements AnalysisProvider {
+  readonly kind = "gemini" as const;
+  private client: GoogleGenAI;
+  constructor(private config: AppConfig) {
+    if (config.appEnv !== "production" || config.vertexAuthMode !== "runtime" || !config.vertexProjectId || !config.vertexLocation || config.geminiApiKey) throw new Error("An explicit production Vertex runtime identity is required.");
+    this.client = new GoogleGenAI({
+      enterprise: true, vertexai: true, project: config.vertexProjectId, location: config.vertexLocation,
+      googleAuthOptions: { projectId: config.vertexProjectId, clientOptions: { quotaProjectId: config.vertexProjectId }, scopes: ["https://www.googleapis.com/auth/cloud-platform"] },
+      httpOptions: { apiVersion: "v1", timeout: 30000 },
+    });
+  }
+  analyze(project: StoredProject, clarification?: string) {
+    return analyzeGemini(project, this.config.geminiModel!, async () => this.client, clarification);
+  }
+}
 export function createProvider(config: AppConfig): AnalysisProvider {
   if (config.aiProvider === "fixture") {
     if (config.appEnv !== "local") throw new Error("Fixture provider is local-only.");
     return new FixtureProvider();
   }
-  if (config.geminiTransport === "vertex") return new LocalVertexGeminiProvider(config);
+  if (config.geminiTransport === "vertex") return config.vertexAuthMode === "runtime" ? new RuntimeVertexGeminiProvider(config) : new LocalVertexGeminiProvider(config);
   if (!config.geminiApiKey || !config.geminiModel) throw new Error("Gemini credentials and model are required.");
   return new GeminiProvider(config.geminiApiKey, config.geminiModel);
 }

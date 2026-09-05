@@ -81,3 +81,17 @@ No Vercel project, hosted frontend, state bucket, load balancer, custom domain, 
 6. Record created/imported resource IDs privately and update this status table with dates, image digest, tests, and teardown/retention decisions.
 
 Cloud Run instance limits reduce capacity; they do not cap Gemini calls, Firestore operations, build minutes, or total spend. Trial credits and free tiers are eligibility/usage dependent. A billing budget alert is useful later but is not a spending limit. [Google Cloud budgets](https://cloud.google.com/billing/docs/how-to/budgets), [Cloud Run scaling](https://cloud.google.com/run/docs/configuring/max-instances)
+
+## Initial production release — 5 September 2026
+
+User requested a running production version. Work is isolated on `fix/initial-production`; spatial planning remains separate. Values, state, plans and discovery records remain in the operator private directory. Shared ADC is checked unchanged around every operation.
+
+**Planned:** enable the discovered-disabled Cloud Run, Cloud Tasks and Cloud Scheduler APIs through infra/production; then discover existing runtime resources before creation. Prepare a scale-to-zero Cloud Run app, a bounded review queue and recovery scheduler, dedicated runtime/build/delivery identities, narrow inference/Auth IAM and Firestore access, private image repository and build-source bucket, runtime browser SDK configuration in Secret Manager, and an imported authorized-domains-only Firebase patch. Existing Gemini-local resources and Firebase database/providers remain under their current management. No deployment or resource creation is claimed by this plan.
+
+The first full plan was rejected by prevent_destroy: the REST provider would replace its imported wrapper when changing output sensitivity. No Firebase mutation occurred. Correct the import configuration and retain the deletion guard.
+
+**Created/managed:** Terraform successfully enabled Cloud Run, Cloud Tasks and Cloud Scheduler (three API resources), using the reviewed bootstrap plan. The existing API ownership in the Gemini root is unchanged. Shared ADC hash was unchanged. Runtime resources and deployment remain pending the subsequent discovery and plan.
+
+**Existing/imported:** Firebase authorized domains were imported using a GET restricted to `authorizedDomains`; Terraform added one planned Cloud Run domain with a PATCH restricted to that field. Existing domains, providers and database were preserved. No password-hashing configuration was retrieved. Inventory discovery returned no existing app service, image repository, named task queue, named scheduler job, build bucket or the two proposed custom roles.
+
+**Created:** the reviewed second apply created 20 resources: image repository and writer binding; review queue; two narrow custom roles; six project IAM memberships; browser SDK configuration secret, write-only secret version and accessor binding; three dedicated service accounts and one act-as binding; private source bucket and reader binding. Along with the three API resources and imported domain configuration, this root manages 24 resources. The runtime keyless Vertex identity uses cloud billing; the browser SDK configuration secret is not evidence of a Gemini API-key integration. No app service or scheduler job has been deployed at this stage.

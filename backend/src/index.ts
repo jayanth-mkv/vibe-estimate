@@ -5,6 +5,7 @@ import { FirestoreProjectStore } from "./store.js";
 import { FirestoreRoomDatabase, RoomStore } from "./room-store.js";
 import { RoomObserver } from "./room-observer.js";
 import { apiHost, createFirebaseRuntime } from "./firebase-runtime.js";
+import { createRoomTasks } from "./room-tasks.js";
 
 const config = readConfig(process.env);
 if (config.appEnv === "local") {
@@ -17,12 +18,13 @@ const store = new FirestoreProjectStore(firestore);
 const provider = createProvider(config);
 const rooms = new RoomStore(new FirestoreRoomDatabase(firestore), provider.kind);
 const observer = new RoomObserver(rooms, provider);
-const app = createApp({ config, store, provider, rooms, verifyToken });
+const tasks = config.appEnv === "production" ? createRoomTasks(config) : undefined;
+const app = createApp({ config, store, provider, rooms, verifyToken, observer, tasks, notifyRoom: tasks ? id => tasks.enqueue(id) : async () => { observer.notify(); } });
 const host = apiHost(config);
 const server = app.listen(config.port, host, () => {
   console.info(JSON.stringify({ event: "server_ready", port: config.port, mode: config.appEnv, aiProvider: config.aiProvider }));
 });
-observer.start();
+if (config.appEnv !== "production") observer.start();
 const shutdown = () => {
   observer.stop();
   server.close(() => { void observer.idle().finally(() => firestore.terminate()).finally(() => process.exit(0)); });
