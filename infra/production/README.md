@@ -18,14 +18,16 @@ Every cloud-owning root keeps its state in the dedicated private, versioned GCS 
 
 ### Moving existing local state into the bucket
 
-`production` and `delivery` were originally initialized with a local backend. Their configuration now declares the GCS backend, so a one-time migration moves each existing state file into its prefix. Take a private copy of both state files first; `-migrate-state` copies rather than deletes, so the local file remains as a fallback.
+`production` and `delivery` were originally initialized with a local backend. Both were migrated into this bucket on 6 September 2026 and the bucket is now authoritative. `-migrate-state` copies rather than deletes, so the previous local files remain in the private directory as a fallback alongside their pre-migration backups.
+
+Should a root ever need re-initializing, `production` goes through its launcher:
 
 ```powershell
 rtk proxy npm run build --workspace @vibeestimate/backend
 rtk proxy npm run terraform:production -- init --migrate-state
 ```
 
-`delivery` has no launcher because it changes rarely. Migrate it with the project-local Terraform, supplying the bucket name and an ephemeral token from the verified profile through the environment rather than a command-line argument:
+`delivery` has no launcher because it changes rarely. Initialize it with the project-local Terraform, supplying the bucket name and an ephemeral token from the verified profile through the environment rather than a command-line argument:
 
 ```powershell
 $env:GOOGLE_OAUTH_ACCESS_TOKEN = (gcloud auth print-access-token --configuration=<profile> --account=<account> --project=<project> --quiet)
@@ -33,7 +35,7 @@ rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\terrafor
 Remove-Item Env:\GOOGLE_OAUTH_ACCESS_TOKEN
 ```
 
-After each migration confirm `terraform state list` returns the same resource count as the backup — 22 for `production`, 9 for `delivery` — and that a fresh plan reports no changes. Until both migrations run, the authoritative state is still the local file.
+Confirm afterwards that `terraform state list` matches the backup and that a fresh plan reports no changes. Compare resource *instances*, not configuration blocks: `production`'s 22 blocks list as 26 addresses because two `for_each` blocks expand to three each. `delivery` lists 9.
 
 ## Adopt the running service
 
