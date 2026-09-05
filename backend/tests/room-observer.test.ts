@@ -92,6 +92,47 @@ describe("backend-owned room observer scheduling and spending boundaries", () =>
     expect(provider.analyze).toHaveBeenCalledTimes(ROOM_GLOBAL_ACTIVE_LIMIT + 2);
   });
 
+  it("reserves capacity before concurrent managed task claims and leaves excess rooms uncharged", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    vi.mocked(provider.analyze).mockImplementation(async () => { await gate; return { analysis: validAnalysis(), conversation: [] }; });
+    const ids: string[] = [];
+    for (let count = 0; count < ROOM_GLOBAL_ACTIVE_LIMIT + 2; count++) {
+      const owner = `owner-${count}`; const id = await create(owner); await message(id, "Could we quote 6 display lights?", owner); ids.push(id);
+    }
+    now += ROOM_DEBOUNCE_MS;
+    const deliveries = ids.map(id => observer.process(id).then(() => undefined, error => error));
+    try {
+      await vi.waitFor(() => { expect(provider.analyze).toHaveBeenCalledTimes(ROOM_GLOBAL_ACTIVE_LIMIT); });
+      for (const id of ids.slice(ROOM_GLOBAL_ACTIVE_LIMIT)) {
+        expect(database.rooms.get(id)!.observer).toMatchObject({ status: "queued", callsUsed: 0 });
+      }
+    } finally { release(); }
+    const results = await Promise.all(deliveries);
+    expect(results.slice(0, ROOM_GLOBAL_ACTIVE_LIMIT)).toEqual(Array(ROOM_GLOBAL_ACTIVE_LIMIT).fill(undefined));
+    for (const result of results.slice(ROOM_GLOBAL_ACTIVE_LIMIT)) expect(result).toMatchObject({ code: "WORKER_BUSY", status: 503 });
+    await Promise.all(ids.slice(ROOM_GLOBAL_ACTIVE_LIMIT).map(id => observer.process(id)));
+    expect(provider.analyze).toHaveBeenCalledTimes(ROOM_GLOBAL_ACTIVE_LIMIT + 2);
+  });
+
+  it("shares a pending managed claim and releases its slot when Firestore fails", async () => {
+    const id = await create(); await message(id); now += ROOM_DEBOUNCE_MS;
+    let rejectClaim!: (error: Error) => void;
+    const pendingClaim = new Promise<never>((_resolve, reject) => { rejectClaim = reject; });
+    const claim = vi.spyOn(rooms, "claim").mockImplementationOnce(() => pendingClaim);
+    const first = observer.process(id).catch(error => error);
+    const duplicate = observer.process(id).catch(error => error);
+    await vi.waitFor(() => { expect(claim).toHaveBeenCalledTimes(1); });
+    expect(provider.analyze).not.toHaveBeenCalled();
+    const failure = new Error("Synthetic unavailable transaction");
+    rejectClaim(failure);
+    expect(await Promise.all([first, duplicate])).toEqual([failure, failure]);
+    await observer.process(id);
+    expect(claim).toHaveBeenCalledTimes(2);
+    expect(provider.analyze).toHaveBeenCalledTimes(1);
+    expect((await rooms.get("owner", id)).observer).toMatchObject({ status: "ready", callsUsed: 1 });
+  });
+
   it("retains stale review history but never presents or prepares stale results as current", async () => {
     const id = await create();
     let release!: () => void;

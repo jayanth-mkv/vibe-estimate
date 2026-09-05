@@ -47,9 +47,12 @@ export class RoomObserver {
   async process(id: string) {
     if (this.running.has(id)) { await this.running.get(id); return; }
     if (this.running.size >= ROOM_GLOBAL_ACTIVE_LIMIT) throw new AppError(503, "WORKER_BUSY", "The review worker is busy.");
-    const claim = await this.store.claim(id);
-    if (!claim) return;
-    const work = this.perform(claim).finally(() => { this.running.delete(id); });
+    // Reserve the slot before awaiting Firestore. Concurrent task deliveries
+    // share a pending claim and cannot all pass the capacity check together.
+    const work = Promise.resolve().then(async () => {
+      const claim = await this.store.claim(id);
+      if (claim) await this.perform(claim);
+    }).finally(() => { this.running.delete(id); });
     this.running.set(id, work);
     await work;
   }
