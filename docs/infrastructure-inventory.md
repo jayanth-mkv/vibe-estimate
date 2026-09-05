@@ -1,6 +1,12 @@
 # VibeEstimate infrastructure inventory
 
-The original local setup created no cloud resources. Live Gemini setup began on 5 September 2026 in the explicitly authorized backend project. Deployment remains deferred. Public documentation omits personal account names, real project IDs, connection paths, and credentials; exact operational records and Terraform state remain in the outer private workspace.
+The original local setup created no cloud resources. Live Gemini setup and the later authorized production deployment took place on 5 September 2026. The sections below retain those separate historical stages. Public documentation omits personal account names, real project IDs, connection paths, and credentials; exact operational records and Terraform state remain in the outer private workspace.
+
+## Production audit: observed, no resource changes
+
+On 5 September 2026 a named-profile, read-only Cloud Run API check confirmed that the existing service is ready, sends 100% of traffic to its latest revision, selects `gemini-3.7-flash`, and has the required `dev-tutorial=cloud-run-ai-challenge` label. The deployed image digest is `sha256:537163883e4db76eab8e16c341b0301c4dc2e6990a27e4d9871e5d146a9d4f43`. Full service metadata is retained as `../docs/private/production-audit-service.json`. Shared ADC hashes matched before/after this read.
+
+The [production journey audit](verification.md#production-journey-audit--5-september-2026) created synthetic guest accounts and application documents through the app, with seven bounded Vertex calls. It created, imported, updated and deleted **zero infrastructure resources**. The retry/concurrency source fixes are separate from the image verified here; no new image rollout is claimed by this checkpoint.
 
 ## Live Gemini setup
 

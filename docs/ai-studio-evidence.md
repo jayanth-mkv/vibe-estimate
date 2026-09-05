@@ -8,14 +8,18 @@ The later connected journey also passed against **real Firebase Authentication a
 
 ## Still required
 
+The later production audit now verifies the deployed Cloud Run service, required campaign label, real Firebase storage/authentication, all 15 distinct browser checks and seven bounded Vertex calls. Three production Google handoff/cancellation paths retain guest identity; completed personal account consent is still unverified. See the current [production results](verification.md#production-journey-audit--5-september-2026).
+
+The [official codelab](https://codelabs.developers.google.com/codelabs/cloud-run/cloud-run-ai-challenge) was re-read on 5 September 2026. It permits extending the prototype with a similar agentic coding assistant, so the repository's authentic enhancement history is useful evidence. It still describes initial AI Studio instructions, Google sign-in, secret management, model fallback, a labeled Cloud Run deployment, source/deployment instructions and a public showcase. Repository history alone does not establish AI Studio settings or build history. No submission or outreach was performed.
+
 | Evidence | What to retain | Verified now? |
 | --- | --- | --- |
 | AI Studio custom instructions | A genuine settings record showing the security instructions, app identity, and date before the relevant build | No settings or build-history evidence available in this checkout |
 | Original enhancement through AI Studio | Actual prompt, response/build history, resulting source change, and before/after walkthrough for source review, clarification, or revisions | The app implements these features; AI Studio authorship is not established |
-| Live Firebase and Firestore | Real identities, reload, cross-user denial and deployed frontend configuration | Connected anonymous workflow and restart persistence passed; deployed-domain verification remains deferred |
+| Live Firebase and Firestore | Real identities, reload, cross-user denial and deployed frontend configuration | Production anonymous workflows, guest isolation, persistence/reload and exports passed; earlier connected restart evidence remains separate |
 | Google SSO | Genuine Google consent/sign-in and retained ownership in the application | Providers enabled; home and client recovery reach Google and preserve guests on cancellation; completed personal consent/sign-in still pending |
-| Secret Manager runtime use | Terraform-managed Gemini API-key secret version, narrow runtime access, and working injection into the deployed backend | Deferred; local Vertex OAuth and private JSON are not this evidence |
-| Cloud Run | Verified deployed service, image digest, health/task checks, and `dev-tutorial=cloud-run-ai-challenge` | Deferred |
+| Secret Manager runtime use | Terraform-managed Gemini API-key secret version, narrow runtime access, and working injection into the deployed backend | Production uses an attached Vertex identity; the runtime Firebase web-config secret does not establish Gemini API-key retrieval evidence |
+| Cloud Run | Verified deployed service, image digest, health/task checks, and `dev-tutorial=cloud-run-ai-challenge` | Passed: ready service, verified image, required label, 100% latest-revision traffic, live managed room observations and denial of ordinary user task invocation |
 | Submission assets | Public source, working URL or genuine walkthrough, social/demo link, and required hashtag | No publication or submission performed |
 
 The supplied dashboard snapshot gives **6 September 2026, 11:59 PM IST** as the deadline and a 1,024-character description limit. These are supplied snapshot values, not a fresh authenticated dashboard check. Confirm them before submitting. A walkthrough can document a deployment that is subsequently stopped; it does not remove the need to verify the deployed application.

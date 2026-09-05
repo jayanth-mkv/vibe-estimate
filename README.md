@@ -34,7 +34,7 @@ For the separately authorized real Firebase workspace, follow [connected setup](
 
 The sample demonstrates included kitchen lighting, a proposed display-light addition, a six-light draft at ₹12,000, and a four-light revision at ₹8,000. Amounts are fictional item subtotals. Client approval is not collected.
 
-Follow the [demo walkthrough](docs/demo-walkthrough.md) for the complete story. For live Gemini with local Firebase emulators, use the private Vertex configuration in [local setup](docs/local-setup.md). Real Gemini 3.7 Flash passed desktop/mobile reviews and a two-person room journey. The later connected journey also passed with real Firebase guests and Firestore, including two observations, draft creation, preserved revisions, explicit sharing, persistence and export. The [verification record](docs/verification.md) records executed results, fixes, bounded calls and remaining Google consent/AI Studio/deployment evidence.
+Follow the [demo walkthrough](docs/demo-walkthrough.md) for the complete story. For live Gemini with local Firebase emulators, use the private Vertex configuration in [local setup](docs/local-setup.md). The later connected and production journeys passed with real Firebase guests, Firestore and Gemini 3.7 Flash, including multi-turn reviews, draft creation, preserved revisions, explicit sharing, persistence and export. The [quick test checklist](docs/quick-test-checklist.md) covers the current routes and remaining limits. The [verification record](docs/verification.md) separates deployed-image results from source fixes, and retains bounded call counts and outstanding Google consent/AI Studio evidence.
 
 ![Connected guest home with a guided project flow, room joining and fictional examples](docs/screenshots/connected-home.png)
 
@@ -55,6 +55,10 @@ npm run check:public
 ~~~
 
 The local test command starts the emulator/app stack when needed. If a stack is already running, it verifies local fixture mode before using it. Tests exercise real emulator identities and storage, access denial, checked arithmetic, revisions, replay behavior, browser interactions, and accessibility.
+
+For a fresh fixture regression while the connected app is running, use `rtk npm run test:isolated`. It creates an isolated source copy on ports 3102/8180 with empty demo Firebase emulators, runs Rules and desktop/mobile browser checks, and stops only its own processes. Existing services on ports 3000/8080 and saved emulator snapshots remain available. All required isolated ports must be free. Reports stay under the ignored `.cache/fixture-verification/` directory.
+
+Use `rtk npm run test:production -- --list` to inspect the production suite without model calls. Executing it requires the authorized external operator configuration; it uses real Firebase and a declared budget of six Gemini calls, with private evidence and no automatic retries. Fixture tests cannot be pointed at production.
 
 See [verification status](docs/verification.md) for executed results and [local setup](docs/local-setup.md) for details. A test suite does not establish live-Gemini accuracy or production readiness.
 

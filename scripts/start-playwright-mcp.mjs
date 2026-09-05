@@ -4,7 +4,7 @@ import { localEnv, root } from "./local-env.mjs";
 
 const child = spawn(process.execPath, [
   path.join(root, "node_modules/@playwright/mcp/cli.js"),
-  "--headless", "--isolated", "--browser", "chromium",
+"--isolated", "--browser", "chromium",
   "--output-dir", path.join(root, ".cache/mcp-output"),
   ...process.argv.slice(2)
 ], { cwd: root, env: localEnv(), stdio: "inherit", windowsHide: true });

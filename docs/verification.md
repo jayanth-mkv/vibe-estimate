@@ -4,7 +4,7 @@ This file records **executed** results only. The checks each future release must
 
 ## Production journey audit — 5 September 2026
 
-Audited the existing public Cloud Run service from `88f253f` on `feat/spatial-home-studio`. The runner resolved the canonical HTTPS origin from external operator configuration and checked it against the authorized backend project and region. Health returned HTTP 200, `runtime=production`, `auth=firebase`, `storageConnection=cloud`, `aiProvider=gemini`, and `geminiTransport=vertex`. These are production Firebase/Vertex results, separate from the historical emulator and connected-local results below.
+Audited the existing public Cloud Run service from `88f253f` on `feat/spatial-home-studio`. The runner resolved the canonical HTTPS origin from external operator configuration and checked it against the authorized backend project and region. Health returned HTTP 200, `runtime=production`, `auth=firebase`, `storageConnection=cloud`, `aiProvider=gemini`, and `geminiTransport=vertex`. A read-only service API check confirmed `gemini-3.7-flash`, the required campaign label, readiness, 100% latest-revision traffic and image digest `sha256:537163883e4db76eab8e16c341b0301c4dc2e6990a27e4d9871e5d146a9d4f43`; shared ADC was unchanged. These are production Firebase/Vertex results, separate from the historical emulator and connected-local results below.
 
 **All 15 distinct production Playwright checks have a passing result across the initial and targeted runs below. This was not a single all-green run.** The [quick checklist](quick-test-checklist.md) states the remaining coverage limits. Evidence, synthetic responses and exports are outside the checkout under `../docs/private/production-verification/`; browser traces, video and automatic screenshots are disabled. The runner now allowlists worker environment variables to exclude inherited credentials and debug capture, and validates canonical external evidence paths, including Windows case aliases and symlinks.
 
@@ -26,7 +26,36 @@ Additional production checks decoded QR pixels, verified clipboard contents in m
 
 Google handoff/cancellation passed from an empty home, a populated guest project and client recovery. Guest UIDs and saved work remained unchanged after cancellation and reload. **Completed personal Google sign-in/linking and account recovery still require the operator's consent check.** Resized Chromium and QR decoding do not establish physical-phone camera or assistive-technology coverage. Production persistence here means browser reload/reopen, not a controlled service restart.
 
-Supporting checks executed at this stage: 34 configuration/continuity/environment tests, 24 frontend authentication/runtime/request tests, frontend lint, frontend read-only TypeScript and production-harness TypeScript passed. The observer's pending-claim capacity race was reproduced locally and fixed in `359d71d`; 158 backend tests and backend build passed. That source fix is not yet a deployed-image result. A separate local reproduction found duplicate direct review dispatch and clarification replay superseding a draft; durable review-request recovery is being corrected before its own verification checkpoint. No infrastructure was changed during this audit.
+Supporting checks executed at this stage: 34 configuration/continuity/environment tests, 24 frontend authentication/runtime/request tests, frontend lint, frontend read-only TypeScript and production-harness TypeScript passed. The observer's pending-claim capacity race was reproduced locally and fixed in `359d71d`; 158 backend tests and backend build passed. A separate local reproduction found duplicate direct review dispatch and clarification replay superseding a draft. The subsequent verified recovery checkpoint is below. These source fixes are not a deployed-image result. No infrastructure was changed during this audit.
+
+## Review recovery and isolated regression — 5 September 2026
+
+The backend now claims a durable review request before dispatch, retains bounded request receipts and staged output, and returns the current project on replay. Cross-instance recovery, expired claims, late responses, failed saves and explicit retry all preserve ownership and project version checks. The backend stage is committed as `71263a2`; the frontend and isolated browser regression stage is `8f3ef55`. The browser retains a user/project-scoped request note, offers **Check review status** or **Finish saving**, and permits a corrected clarification only for a server-confirmed explicit retry. Checking a lost response preserves current owner pricing and later saved drafts. Normal reload restores saved values. See the [recovery contract and threat controls](review-recovery.md).
+
+The fresh emulator run exposed an empty string rendered inside `<head>` when no runtime Firebase web-config script was present. React's hydration failed, the document title disappeared, and unstyled elements intercepted navigation. Rendering `null` for the absent script fixed the defect. The production service already supplies runtime configuration, so its earlier browser results remain separate.
+
+| Executed check | Result |
+| --- | --- |
+| Backend unit/API and transactional store suite | **183/183 passed**, including duplicate/concurrent dispatch, late-result fencing, staged-save recovery, legacy replay, cross-owner denial and preserved later drafts. Backend build passed. |
+| Frontend unit tests | **44/44 passed**, including request-note scoping, server-authoritative retry permission, request serialization, error metadata, identity transitions and authentication/runtime protections. |
+| Configuration, emulator continuity and evidence environment | **34/34 passed**; credential/debug aliases and invalid evidence/config paths fail closed. |
+| Firestore Rules | **3/3 passed** on fresh emulators, including direct browser access and room/membership denial. |
+| Desktop/mobile Playwright | **28/28 passed in one clean 8.9-minute run**: 15 desktop and 13 mobile checks. Evidence is `.cache/fixture-verification/2026-09-05T17-37-53-140Z-LnRB3r/`; the final manifest records successful stages and no imported workspace. |
+| Lint and type checks | Frontend lint/type checks, backend build and strict fixture/production test-harness TypeScript passed. |
+| Optimized frontend build | Passed from a clean isolated source copy, without credentials or changes to the running app's build output. Evidence is `.cache/build-verification/2026-09-05T17-33-51-217Z-p8IyAV/`. |
+| Impeccable and live MCP inspection | The completed recovery UI pass reported zero detector findings. Playwright MCP checked the 320px interrupted-request screen, keyboard status check and safe return to review; no page overflow or uncaught page errors. Injected failed requests were expected. |
+| Public files and documentation | Focused public/private scan passed across **244 text files**; all **67 relative links** in seven reviewed documents resolved. Git whitespace checks passed. |
+
+The optimized build, current checkout and final fixture frontend matched all 52 source/asset files. The recorded SHA-256 is `99c3005e16a313b5c2e193c78d945fa3ef769314a4dd3b7a392eff4d1e6a7368`.
+
+The four new browser journeys ran on both desktop and mobile: lose a successful clarification response, save a later draft and recover after reload; lose an unaccepted request and check its absence before starting another; recover a first review alongside a draft saved by the same owner in another tab; and correct a real fixture-provider rejection before an explicit retry. Existing tests also passed source validation, owner pricing, draft/revision/export, room chat, sharing, QR/code rotation, role denial, lost save/message responses, observer failure and keyboard/axe checks. Fixture rejection is not evidence of a real Gemini outage.
+
+| Earlier isolated attempt | Actual outcome and correction |
+| --- | --- |
+| `2026-09-05T17-07-08-473Z-PWqDfw` | Readiness helper incorrectly called Fetch's boolean `response.ok` as a method. The runner stopped its own services before any Rules/browser checks. Corrected the helper. |
+| `2026-09-05T17-13-05-162Z-lUl6Sf` | 15 browser checks passed and 13 failed. This run began before the head fix and received the layout patch mid-run, so it is not a clean result. Its trace confirmed hydration/intercepted navigation; remaining test-only failures selected a disabled fixture example or expected outdated shared error wording. Tests were corrected without forced clicks, relaxed accessibility assertions or automatic retries. |
+
+`rtk npm run test:isolated` now creates an empty emulator workspace and separate frontend/backend ports, verifies both direct API and same-origin gateway fixture health, runs Rules plus browser tests, and stops only its own children. The connected app on ports 3000/8080 and the saved emulator workspace were preserved. This regression made **zero Gemini calls**. Final Playwright MCP return to production confirmed the existing populated home, its title and healthy Firebase/Vertex runtime; an initial empty-home heading expectation was corrected for that retained guest workspace. No new production rollout, Terraform resource change, push, outreach or submission was performed.
 
 ## Initial production hardening — 5 September 2026
 

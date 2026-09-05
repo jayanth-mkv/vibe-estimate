@@ -1,6 +1,12 @@
-# Initial production release
+# Production readiness
 
-This release is prepared on `fix/initial-production` from `snapshot/initial-connected-v1`. The spatial-design branch remains independent. Public deployment was requested on 5 September 2026; publication, outreach and hackathon submission are separate actions.
+The initial release was prepared on `fix/initial-production` from `snapshot/initial-connected-v1` and deployed on 5 September 2026. The current audit and recovery fixes are on `feat/spatial-home-studio`. Spatial features remain planned. Publication, outreach and hackathon submission are separate actions.
+
+## Current production checkpoint
+
+The deployed service is ready and uses real Firebase Authentication, cloud Firestore and Gemini 3.7 Flash through Vertex. The required campaign label and deployed image were checked through a read-only Cloud Run API request. All 15 distinct production browser checks have passing results across targeted runs, with seven real model calls; this was not a single all-green run. The [quick checklist](quick-test-checklist.md) and [executed record](verification.md#production-journey-audit--5-september-2026) retain the failures, reruns and remaining limits.
+
+The audit found two reliability defects through local reproductions: the room observer could exceed its configured call capacity while database claims were pending, and replaying a direct review could dispatch again or supersede a later draft. Source fixes reserve observer capacity before claiming work and persist review requests before provider dispatch. The browser now checks an interrupted request before offering a deliberate new attempt. A separate emulator-only page hydration defect was fixed by omitting the empty runtime-config head child. These source fixes are not part of the production image verified above; no new rollout or infrastructure change was made during this audit.
 
 ## Connection recovery
 
@@ -12,10 +18,12 @@ Keep the bounded initial room as one document: membership, current state and the
 
 For a later unbounded conversation, move messages, immutable review snapshots and shared drafts to separate room subcollections. Keep membership and the current review summary in the parent; use pagination and a cursor/listener for changes, authorize every child access, and retain atomic membership, duplicate-request and review-lease checks. Do not migrate existing data merely to preserve an API that still rehydrates all history.
 
-Before this release the background observer queried Firestore twice per second even with no queued rooms: 172,800 queries/day. This is the immediate production cost/reliability issue, rather than the bounded document shape. Production verification must establish that observation runs within a managed task request and recovers persisted queued work. ID-only lookup projections reduce bytes without implying lower document-read charges.
+Before the initial release the background observer queried Firestore twice per second even with no queued rooms: 172,800 queries/day. Production now uses managed task requests and scheduled recovery of persisted queued work. The production two-person journey completed two real observations; backend tests cover task delivery, recovery and identity denial. ID-only lookup projections reduce bytes without implying lower document-read charges.
 
 References: [Firestore data structure](https://firebase.google.com/docs/firestore/manage-data/structure-data), [Firestore read pricing](https://firebase.google.com/docs/firestore/pricing), [Cloud Run task execution](https://docs.cloud.google.com/run/docs/triggering/using-tasks).
 
 ## Evidence still to verify
 
-Deployment, live production journeys, Google consent and authentic AI Studio build evidence are not established by a successful local build. The existing Developer API has a prepaid-balance limitation; working Vertex OAuth is a different billing/authentication path. An attached runtime service identity follows Google's production authentication guidance, but must not be described as completed Secret Manager API-key evidence. Track executed results in `verification.md` and actual resources in `infrastructure-inventory.md`.
+Deployment and the audited production journeys have been verified. Completed personal Google consent/linking/recovery, genuine AI Studio settings/build history and submission assets remain outstanding. Google popup/cancellation checks passed; they do not establish completed sign-in. Physical-phone camera and manual assistive-technology checks were not performed. Reload persistence was tested in production, without forcing a service restart.
+
+The existing Developer API has a prepaid-balance limitation; working Vertex authentication is a different billing/authentication path. The attached runtime service identity must not be described as completed Secret Manager Gemini API-key evidence. The proposed multi-model fallback ladder is still pending. See [AI Studio evidence](ai-studio-evidence.md), [verification](verification.md) and the [resource inventory](infrastructure-inventory.md) before preparing a submission.
