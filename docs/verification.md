@@ -1,25 +1,48 @@
 # Verification status
 
-Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the project-local packages. **Real Gemini through Vertex passed both desktop and mobile journeys**, with Firebase Authentication and Firestore kept on local demo emulators. Fixture regression and earlier Developer API billing failures are recorded separately below.
+Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the project-local packages. **Real Gemini 3.7 Flash through Vertex passed the desktop review, mobile review and two-person shared-room journeys**, with Firebase Authentication and Firestore kept on local demo emulators. The desktop accessibility failure and its successful fix, fixture regression, and earlier Developer API billing failures are recorded separately below.
 
 | Check | Current state |
 | --- | --- |
 | Terraform main/adoption formatting and schema validation | Passed in local tooling |
 | Terraform behavior checks | Main/adoption baseline: 7 mock tests passed. Gemini root: 6 mock tests and 3 provider loopback checks passed; saved-plan guards passed and authenticated final plan clean |
-| TypeScript and production build | Backend and frontend typechecks/builds passed after the guided workspace changes; frontend ESLint passed |
+| TypeScript and production build | Backend and frontend typechecks/builds passed after room integration; frontend production build, TypeScript and ESLint passed again after the live accessibility fix |
 | Backend unit/API tests | 100 passed: 74 existing + 26 room authorization, observation, snapshot/sharing and strict fixture-follow-up checks |
 | Firebase emulator access checks | 3 Firestore Rules tests passed, including direct room/membership denial for designer, client and guest |
 | Playwright desktop/mobile and accessibility | 18 distinct checks passed: original 12 rerun after integration, plus 6 new shared-room journeys/API checks |
 | Project-local MCP handshake/browser launch | Playwright: 24 tools and successful isolated Chromium launch; shadcn: 7 tools |
-| Impeccable detector / visual review | Guided workspace: one completed-pass detector run, zero findings; Playwright MCP desktop/mobile tour, home, source and saved-draft inspection passed |
-| Public/private configuration scan | Passed across 139 publishable text files; separate exact-key/OAuth scan passed across 310 publishable/compiled/browser/log files; 2 private state files contained no Gemini key |
+| Impeccable detector / visual review | Guided workspace and shared room: one detector run per completed UI pass, zero findings; Playwright MCP desktop/mobile inspection and shadcn checklist passed |
+| Public/private configuration scan | Final: 170 publishable text files passed; exact-key/OAuth scan passed across 358 publishable/compiled/browser/log files; 2 private state files contained no Gemini key |
 | Dependency audit | Rechecked after the explicit OAuth dependency: zero high/critical findings; 13 moderate upstream package reports remain. See dependency-review.md |
 | Docker image build | Not run: Docker Desktop engine is not running; Dockerfile and Cloud Build definition are prepared |
-| Live Gemini | Vertex `gemini-3.6-flash`: earlier 2/2 browser journeys passed. Requested `gemini-3.7-flash`: catalog and one structured smoke request passed; full updated-UI live journey remains pending at this checkpoint |
+| Live Gemini | Requested Vertex `gemini-3.7-flash`: catalog and structured smoke check passed; all 3 distinct live browser journeys passed across the initial run and targeted accessibility-fix rerun |
 | Real Firebase, Cloud Run, Vercel | Not tested or deployed |
 | AI Studio initial settings and enhancement evidence | Prepared instructions; actual setup not verified |
 
 ## Live Gemini enablement: 5 September 2026
+
+### Gemini 3.7 and shared-room live checkpoint
+
+The active local stack uses `gemini-3.7-flash` on Vertex global/v1 through the authorized named profile. Health reports `aiProvider=gemini`, `geminiTransport=vertex`, `auth=emulator`, and `storage=firestore`. The private model configuration stays outside this repository. Shared ADC hashes matched before and after both live runs. The existing six Terraform resources are unchanged; no additional cloud resources, billing changes or deployment were needed.
+
+The first bounded run passed the **two-person room journey in 1.7 minutes** and **mobile review journey in 46.2 seconds**. Desktop completed both real reviews but failed axe's `scrollable-region-focusable` rule: longer Gemini evidence made the source panel scrollable without keyboard access. The panel now has a named, focusable region and an inset visible focus outline. Only that affected desktop journey was rerun; it passed **in 28.1 seconds**, including both real reviews, draft creation, revision, persistence, export, keyboard interactions and the unchanged axe checks. Frontend production build, TypeScript and ESLint passed after the fix.
+
+There were **eight real model calls across these two verification runs**: six in the initial bounded run, including the two before the desktop accessibility failure, and two in its targeted rerun. There were no automatic test/model retries and no fixture fallback. All three distinct journeys now pass; this does not represent a single all-green run.
+
+The new room journey used independent designer and client Firebase emulator identities. A client message triggered the first Gemini review and a designer reply triggered the second. Both messages arrived in the other person's interface. Exact source quotations, included kitchen lighting, the new matte-white finish and the owner's confirmed ₹2,000.50 price were checked against the frozen transcript. The designer prepared a private six-light **₹12,003** draft, explicitly shared it, revised it to four lights for **₹8,002**, and shared the new version. Both retained shared copies survived reload; the original source project stayed unchanged. The client was denied draft preparation, sharing, private-project access and private export. The owner downloaded revision 2 with correct amounts and source evidence. Observation was paused after the test without an additional model request.
+
+Evidence directories, retained under ignored `.cache/live-gemini-runs/`:
+
+- `2026-09-05T07-28-49-264Z-29004/`: the room and mobile passes, the original desktop failure, synthetic model responses, exports, screenshots and HTML report.
+- `2026-09-05T07-37-45-559Z-1368/`: the successful targeted desktop rerun and its synthetic responses, export, screenshots and report.
+
+[Live client-room screenshot](screenshots/live-client-room.png) shows the actual two-person Gemini verification with both shared revisions. It contains fictional project data. Browser traces and emulator session data remain ignored.
+
+Before switching from fixture to live Gemini, a complete stack restart restored **51 local Auth users, 41 projects and 10 rooms**, matching their saved content fingerprints. After the live runs, a new verified six-file snapshot retained **59 users, 46 projects and 11 rooms** under ignored `.cache/firebase/workspace`. That final snapshot has been exported and checked; the running stack has not been restarted again. Export again before a future planned stop to retain later changes.
+
+A later check of an older browser identity exposed a separate restart issue: Auth emulator import resets the account's token-validity time, so Firebase Admin rejects an otherwise refreshed session that signed in before import. The user's records remain present. Preserving original revocation metadata across local import is being checked separately; session continuity across a stack restart is not yet claimed at this checkpoint.
+
+Working history is preserved on separate local task branches: `b04d544` on `feat/guided-workspace`, `b7ca603` on `feat/shared-project-rooms`, and this live-fix/evidence stage on `test/gemini-37-live-rooms`. Nothing has been pushed or deployed. Actual AI Studio build evidence and the remaining [challenge evidence](ai-studio-evidence.md) are still outstanding.
 
 ### Shared-room working checkpoint
 

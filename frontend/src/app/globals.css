@@ -223,6 +223,7 @@ input:disabled, textarea:disabled { background: var(--ve-surface-muted); }
 .source-document[open] > summary > svg { transform: rotate(180deg); }
 .source-count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 5px; color: var(--ve-muted); background: var(--ve-surface-muted); font-size: .75rem; }
 .source-body { padding: 16px; max-height: 660px; overflow: auto; scrollbar-width: thin; }
+.source-body:focus-visible { outline-offset: -3px; }
 .source-caption, .source-note { font-size: .8125rem; color: var(--ve-muted); }
 .source-note { margin: 10px 3px 0; }
 .source-body section + section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--ve-line); }

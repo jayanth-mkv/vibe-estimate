@@ -71,7 +71,7 @@ export function ProjectView({ project, health, busy, hasUnsavedChanges, draftCha
         <aside className="evidence-column" aria-label="Project evidence">
           <details className="source-document" open={sourcesOpen} onToggle={(event) => setSourcesOpen(event.currentTarget.open)}>
             <summary><span><FileText size={17} aria-hidden="true" />Your sources<span className="source-count">2</span></span><ChevronDown size={17} aria-hidden="true" /></summary>
-            <div className="source-body">
+            <div className="source-body" role="region" aria-label="Original project sources" tabIndex={0}>
               <p className="source-caption">Original wording, kept with your project.</p>
               <section><h2 id="source-scope" tabIndex={-1}><FileText size={15} aria-hidden="true" />Agreed scope</h2><p className="source-text">{project.scope}</p></section>
               <section><h2 id="source-messages" tabIndex={-1}><MessageSquareText size={15} aria-hidden="true" />Client conversation</h2><p className="source-text conversation">{project.messages}</p></section>

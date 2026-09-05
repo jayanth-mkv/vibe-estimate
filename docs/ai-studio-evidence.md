@@ -2,7 +2,7 @@
 
 Reviewed on 5 September 2026 against the [official challenge](https://codelabs.developers.google.com/codelabs/cloud-run/cloud-run-ai-challenge) and the operator's supplied submission instructions. A local Gemini API request is evidence of model integration. It does not establish that AI Studio was configured or used to build the enhancement.
 
-The genuine Vertex run now verifies two-turn Gemini reviews and the resulting draft/revision, persistence and export flow on desktop and mobile, using `gemini-3.6-flash` with local Firebase emulators. Its timestamped report is linked in [verification.md](verification.md). This satisfies the local model-integration check only; the OAuth transport does not demonstrate the codelab's deployed Secret Manager API-key integration or original AI Studio build workflow.
+Genuine Vertex runs now verify two-turn Gemini reviews and the resulting draft/revision, persistence and export flow on desktop and mobile, using `gemini-3.7-flash` with local Firebase emulators. A separate live two-person room journey verifies two observations, independent client/designer identities, private draft preparation and immutable shared revisions. The reports and fixed desktop accessibility failure are recorded in [verification.md](verification.md). This satisfies the local model-integration check only; the OAuth transport does not demonstrate the codelab's deployed Secret Manager API-key integration or original AI Studio build workflow.
 
 ## Still required
 
@@ -28,6 +28,7 @@ The current codelab additionally describes recoverable-error model fallback. Thi
 | Threat | Enforcing control | Verification |
 | --- | --- | --- |
 | Forged identity or another owner's project | Server-verified Firebase tokens, UID-derived paths, stored ownership check | Backend/API and emulator journeys |
+| Forged room role, reused/expired invite or access to private draft controls | UID-derived membership, hashed expiring single-client invitations, strict request schemas and owner-only draft/observer actions | Room unit/API tests, Rules denial checks and independent-identity live room journey |
 | Direct client access bypassing the backend | Deny-all client Firestore rules | Firebase Rules tests |
 | Source/model prompt injection and fabricated evidence | Separate system instructions, structured validation, exact original quote checks, escaped rendering | Domain/API tests; source references checked in live journey |
 | Invented prices, duplicate saves, overwritten revisions | Owner-entered integer paise, request IDs, transactional append and preserved versions | Domain/API and live draft/revision journey |

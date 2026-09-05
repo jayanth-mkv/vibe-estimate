@@ -27,7 +27,7 @@ The subsequent Cloud-credit recheck added the optional Vertex API through a revi
 
 ### Gemini 3.7 configuration update
 
-The requested `gemini-3.7-flash` was confirmed in the authorized Vertex model catalog and passed a structured-response smoke check. This changes only the private local model setting and request compatibility in the application. No new cloud resources, IAM grants, keys, Terraform changes, billing purchases or deployment were required. The six-resource inventory above remains unchanged; full browser evidence is tracked in [verification.md](verification.md).
+The requested `gemini-3.7-flash` was confirmed in the authorized Vertex model catalog and passed a structured-response smoke check, desktop/mobile application journeys and a two-person room journey. This changes only the private local model setting and request compatibility in the application. Shared rooms use the same local Firebase emulators and existing backend transport. No new cloud resources, IAM grants, keys, Terraform changes, billing purchases or deployment were required. The six-resource inventory above remains unchanged; full browser evidence is tracked in [verification.md](verification.md).
 
 | Component | Evidence | State in this setup |
 |---|---|---|

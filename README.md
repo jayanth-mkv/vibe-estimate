@@ -26,7 +26,7 @@ The default runner uses a demo Firebase project and local Auth/Firestore emulato
 
 The sample demonstrates included kitchen lighting, a proposed display-light addition, a six-light draft at ₹12,000, and a four-light revision at ₹8,000. Amounts are fictional item subtotals. Client approval is not collected.
 
-Follow the [demo walkthrough](docs/demo-walkthrough.md) for the complete story. For live Gemini with local Firebase emulators, use the private Vertex configuration in [local setup](docs/local-setup.md). Real Gemini reviews, clarification, drafts, revisions, persistence and export passed on desktop and mobile. The [verification record](docs/verification.md) separates these Vertex results from fixture tests and the Developer API's separate prepaid-balance limitation.
+Follow the [demo walkthrough](docs/demo-walkthrough.md) for the complete story. For live Gemini with local Firebase emulators, use the private Vertex configuration in [local setup](docs/local-setup.md). Real Gemini 3.7 Flash passed desktop and mobile review flows and a two-person room journey, including draft creation, revisions, sharing, persistence and export. The [verification record](docs/verification.md) records the fixed desktop accessibility failure, bounded live calls, fixture tests and the Developer API's separate prepaid-balance limitation.
 
 ![Compact VibeEstimate home with a guided project flow and fictional examples](docs/screenshots/home.png)
 
