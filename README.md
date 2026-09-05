@@ -66,7 +66,7 @@ See [verification status](docs/verification.md) for executed results and [local 
 
 | Path | Purpose |
 | --- | --- |
-| frontend/ | Official Next.js App Router and shadcn/ui interface; suitable for later Vercel deployment |
+| frontend/ | Official Next.js App Router and shadcn/ui interface; served by the same Cloud Run service as the API |
 | backend/ | Express/TypeScript, Firebase Admin authorization/storage, Google GenAI adapter |
 | infra/ | Terraform infrastructure and separate existing-Firebase adoption root |
 | tests/ | Firebase Security Rules and Playwright tests |
@@ -77,7 +77,7 @@ See [verification status](docs/verification.md) for executed results and [local 
 
 ## Automatic deployment
 
-The complete app is hosted on Cloud Run. The Terraform-managed GitHub `main` trigger runs checks, builds an immutable image and applies the Cloud Run runtime plan. Ordinary releases come from a reviewed push to `main`; follow the [deployment guide](docs/deployment.md). The optional Vercel frontend has its own Terraform Git connection and requires the operator's Vercel GitHub App authorization.
+The complete app is hosted on Cloud Run. The Terraform-managed GitHub `main` trigger runs checks, builds an immutable image and applies the Cloud Run runtime plan. Ordinary releases come from a reviewed push to `main`; follow the [deployment guide](docs/deployment.md). One image serves the Next.js frontend and the Express API on a single origin, so there is no separate frontend host to deploy or authorize.
 
 The frontend and backend can use different cloud projects. The frontend's same-origin gateway forwards to the verified Cloud Run origin. Terraform owns resource configuration and Cloud Run revisions; Cloud Build builds the image and applies only the runtime Terraform root. Real account/project configuration, credentials and operator state stay outside this checkout. Examples contain placeholders or demo identifiers.
 

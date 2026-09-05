@@ -9,7 +9,6 @@ node_modules/
 # Runtime configuration must not enter the public checkout
 .env*
 !.env.example
-.vercel/
 
 # Local diagnostics
 npm-debug.log*

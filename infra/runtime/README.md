@@ -1,6 +1,6 @@
 # Native main-branch runtime release
 
-`cloudbuild.yaml` is the release pipeline invoked by the Terraform-managed GitHub trigger. An ordinary push to `main` runs checks, builds the existing root Dockerfile, pushes the commit-tagged image, resolves its immutable digest, and applies a saved Terraform plan for the existing Cloud Run service. It then checks public production health without calling Gemini. Vercel independently follows the same GitHub `main` branch.
+`cloudbuild.yaml` is the release pipeline invoked by the Terraform-managed GitHub trigger. An ordinary push to `main` runs checks, builds the existing root Dockerfile, pushes the commit-tagged image, resolves its immutable digest, and applies a saved Terraform plan for the existing Cloud Run service. It then checks public production health without calling Gemini. The image serves the Next.js frontend and the Express API on that one origin; there is no separate frontend host.
 
 This root owns exactly `google_cloud_run_v2_service.application`. The copied service configuration retains its current runtime identity, CPU/memory, zero-to-two scaling, queue delivery settings, numeric Secret Manager reference, and challenge label. IAM, APIs, secrets and their payloads, Firebase domains, queues, and the recovery scheduler remain in `infra/production`. There is no image upload from an operator machine and no `gcloud run deploy` step.
 
@@ -17,7 +17,7 @@ The regional `google_cloudbuild_trigger` must reference the discovered existing 
 
 Metadata variables: `backend_project_id`, `firebase_project_id`, `project_number`, `region`, `firestore_database_id`, `gemini_model`, `runtime_service_account` (email), `task_queue` (full resource path), `task_service_account` (email), `firebase_web_config_secret` (existing secret ID), and `firebase_web_config_version` (numeric string). All are required strings. The build adds `image` from the verified Artifact Registry digest. It never accepts an image, token, or Firebase web-config payload in the encoded metadata.
 
-`access_token` is optional, sensitive and ephemeral for operator adoption. Native builds leave it null and use their attached service identity. Do not supply user ADC, refresh tokens, service-account keys, Vercel credentials, or Gemini keys to the build. [User-specified Cloud Build identities](https://docs.cloud.google.com/build/docs/securing-builds/configure-user-specified-service-accounts)
+`access_token` is optional, sensitive and ephemeral for operator adoption. Native builds leave it null and use their attached service identity. Do not supply user ADC, refresh tokens, service-account keys, or Gemini keys to the build. [User-specified Cloud Build identities](https://docs.cloud.google.com/build/docs/securing-builds/configure-user-specified-service-accounts)
 
 ## Adopt before enabling
 

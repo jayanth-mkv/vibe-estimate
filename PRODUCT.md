@@ -24,7 +24,7 @@ Text supplied by the user, INR example amounts, project review at a desk or on a
 
 ## Capabilities and Constraints
 
-Confirmed direction: Next.js frontend suitable for Vercel, backend suitable for Cloud Run, Firebase sign-in, multi-turn Gemini, private Firestore persistence, production Secret Manager, Terraform-managed infrastructure, local testing first.
+Confirmed direction: Next.js frontend and backend served together from one Cloud Run service, Firebase sign-in, multi-turn Gemini, private Firestore persistence, production Secret Manager, Terraform-managed infrastructure, local testing first.
 
 The user approved the selected product and delegated implementation/setup choices. The home and working screens should explain the task quickly, minimize header space, and guide Sources → Review → Draft with familiar Google/NotebookLM interaction patterns. Keep the existing illustrated landing page as an optional product tour at /welcome; / opens the compact workspace. Use the official Next.js and shadcn setup. Actual cloud identifiers are operator configuration outside the public repository; Firebase and backend projects can differ.
 

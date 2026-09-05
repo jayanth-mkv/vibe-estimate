@@ -4,13 +4,13 @@ This file records **executed** results only. The checks each future release must
 
 ## Native delivery configuration — 6 September 2026
 
-The operator requested automatic GitHub `main` releases and Terraform ownership for both Google Cloud and Vercel. The existing Google GitHub installation was verified, with no linked repository child or trigger. Terraform created the child, an enabled `^main$` trigger using `cloudbuild.yaml`, a private versioned runtime-state bucket and restricted release IAM: **nine resources**, no replacements or deletions. Exact operations are in the private delivery state/logs and [inventory](infrastructure-inventory.md).
+The operator requested automatic GitHub `main` releases and Terraform ownership. The existing Google GitHub installation was verified, with no linked repository child or trigger. Terraform created the child, an enabled `^main$` trigger using `cloudbuild.yaml`, a private versioned runtime-state bucket and restricted release IAM: **nine resources**, no replacements or deletions. Exact operations are in the private delivery state/logs and [inventory](infrastructure-inventory.md).
 
 The existing Cloud Run service was imported into the GCS-backed runtime state before a `destroy=false` removal from the old state. The checked runtime plan retained the exact container template, image and effective labels; its label changes only adopted configuration ownership. The old production plan/apply contained only the one state `forget`. Shared ADC remained unchanged across all authenticated operations. No service replacement or application-data migration occurred.
 
-Executed configuration checks: Google delivery Terraform validation and **3/3 mocked safety runs**, Vercel validation and **7/7 mocked safety runs**, runtime Terraform validation, native build YAML parsing and **8/8 release-boundary tests**. Release checks reject non-main or abbreviated commits, credential-bearing runtime inputs, mutable images, new/deleted/replaced resources, a different service and fixture health. The public scan passed for **260 text files** at this stage and Git whitespace checks passed.
+Executed configuration checks: Google delivery Terraform validation and **3/3 mocked safety runs**, runtime Terraform validation, native build YAML parsing and **8/8 release-boundary tests**. Release checks reject non-main or abbreviated commits, credential-bearing runtime inputs, mutable images, new/deleted/replaced resources, a different service and fixture health. The public scan passed for **260 text files** at this stage and Git whitespace checks passed.
 
-Vercel CLI authentication succeeded. The reviewed project/environment plan contained no credential or environment values, but the initial apply failed because the account had not installed the Vercel GitHub App for this public repository. It created no Vercel project. A public repository URL does not bypass that native Git-link requirement. The operator was given the installation link. This configuration checkpoint does not claim a passing push-triggered release or Vercel hosting; those results must be added after execution.
+A separate frontend host was attempted and then abandoned. The Vercel apply failed because the account had not installed the Vercel GitHub App for this repository, and it created no project; its state held zero resources. A Cloudflare Worker root was written and passed mock checks but was never applied. On 6 September 2026 the operator chose Cloud Run as the only application host, and both roots were removed from the repository. No resource exists at either provider. The Vercel API token recorded privately during that attempt should be revoked.
 
 Manual image-build/upload release scripts were removed. `cloudbuild.yaml` now defines checks, immutable Git image build/push, guarded Terraform runtime apply and production health; ordinary releases use a `main` push. Project-local development and verification tools remain available.
 
@@ -120,7 +120,7 @@ Planning checks: 198 publishable text files passed the focused public/private sc
 | Live Gemini | Requested Vertex `gemini-3.7-flash`: connected guest-room journey passed with 2 real observations; earlier 3 emulator-backed live journeys also passed |
 | Real Firebase | Guest identities, source/room saving, code join, draft/revision, sharing, reload/export and client denial passed; cloud record fingerprints matched across an app restart |
 | Google SSO | Real Google popup reached from home and client recovery; cancellation retained guest sessions. Completed personal account consent/sign-in remains unverified |
-| Cloud Run and Vercel | Deployment deferred; no deployed application URL |
+| Cloud Run | Frontend and API deployed together from one image; see the native release record above |
 | AI Studio initial settings and enhancement evidence | Prepared instructions; actual setup not verified |
 
 ## Live Gemini enablement: 5 September 2026
