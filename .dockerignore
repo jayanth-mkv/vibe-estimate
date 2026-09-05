@@ -1,0 +1,12 @@
+# Backend build context is an allowlist; local tools, emulator records,
+# browser traces, private environment files, and Terraform state stay out.
+**
+!package.json
+!package-lock.json
+!frontend/
+!frontend/package.json
+!backend/
+!backend/package.json
+!backend/tsconfig.json
+!backend/src/
+!backend/src/**

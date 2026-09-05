@@ -1,0 +1,5 @@
+# Keep actual configuration outside the repository. Never save an access token
+# in this file; the secure launcher supplies an ephemeral process variable.
+project_id       = "example-authorized-project"
+provision_gemini = false
+enable_vertex_ai = false

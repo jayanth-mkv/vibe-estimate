@@ -6,17 +6,17 @@ Build VibeEstimate for an independent interior designer: agreed scope and client
 
 The user requests a simple, modern, accessible interface; Next.js frontend suitable for Vercel; a backend suitable for Google Cloud Run; a complete local testing setup now; deployment later. Preserve frontend/ and backend/ as the application boundaries.
 
-Use the Impeccable skill for UI work. Its installed skill is C:/Users/DELL/.codex/plugins/cache/impeccable/impeccable/4.0.2/skills/impeccable/SKILL.md. PRODUCT.md stores confirmed product context; DESIGN.md and surface briefs store design decisions. Use Playwright to inspect desktop/mobile and verify real interactions, accessibility, and failure states.
+Use the project-local Impeccable skill at .agents/skills/impeccable/SKILL.md for UI work. PRODUCT.md stores confirmed product context; DESIGN.md and surface briefs store design decisions. Initialize the frontend through the official Next.js and shadcn CLIs; use generated shadcn components rather than recreating their primitives. Use the project-local Playwright tooling to inspect desktop/mobile and verify real interactions, accessibility, and failure states.
 
 ## Authorization and infrastructure
 
-The user explicitly authorized activating gcloud configuration personal-profile and read-only account/project verification. That supersedes the earlier blanket prohibition on gcloud. Use that configuration explicitly for all future gcloud operations. Never use another/default account accidentally.
+Cloud account/profile/project values belong in the operator's private configuration outside this repository. Verify explicit authorization and the intended account before cloud operations. Never infer a target from an unrelated default configuration. The outer workspace instructions, when present, hold private operational context and must not be copied here.
 
 Cloud resources must be managed with Terraform. Do not create or modify infrastructure using ad hoc gcloud, Firebase CLI, or Console commands. Cloud Build may build application images; Terraform owns Cloud Run service configuration. Deployment is deferred for this local setup. Record planned, existing, imported, and created resources separately in docs/infrastructure-inventory.md.
 
-The supplied Firebase web configuration is in docs/firebase.md and identifies vibe-estimate-pro. The user supplied the Cloud Build connection projects/vibe-estimate/locations/asia-south1/connections/Github-Jay. These differ; do not silently choose or modify a cloud project until reconciled. Existing resources must be discovered and imported into Terraform before management; do not replace them.
+Firebase and backend projects can differ. Configure Firebase identity/storage, backend resources, and the Cloud Build connection independently. Likewise the backend region can differ from the existing connection location. Existing resources must be discovered and imported into Terraform before management; do not replace them. Use only placeholders and emulator identifiers in committed examples.
 
-No automatic outreach, social posting, or submission. No commits or pushes were requested. Commit format when later requested: conventional title such as feat: or fix:, plus at least one description line; never include author/assistant names.
+No automatic outreach, social posting, or submission. The user has requested ongoing history: work on a dedicated task branch and commit each verified working stage, with a conventional title such as feat: or fix: plus at least one description line. Never include author/assistant names in commit messages. Keep related stages on task branches so working snapshots remain easy to review; do not push or deploy without authorization.
 
 ## Security instructions before application code
 
@@ -33,6 +33,8 @@ Threat model: untrusted scope/messages and model output, authentication, ownersh
 - Provide bounded input/call limits, visible failures, saved/unsaved states, and safe retry. Do not silently replace live AI with a fixture.
 
 Configure the provided custom instructions in Google AI Studio and retain genuine build evidence for the required original enhancement. Local setup is not evidence that AI Studio was configured. Use @google/genai rather than a deprecated Gemini SDK; use Firebase client/Admin SDKs for identity and persistence. Optional ADK, BigQuery, MCP data agents, and Maps are not required for this workflow.
+
+Install tooling inside this repository only. Use the npm workspaces, project cache, locally vendored skills, ignored generated MCP config, and project-local browser/CLI binaries. Do not change global skills, plugin registrations, MCP settings, npm packages, or caches. Actual credentials and infrastructure variable values stay outside the public checkout.
 
 ## Commands and verification
 

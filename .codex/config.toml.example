@@ -1,0 +1,14 @@
+# Run npm run setup to generate ignored config.toml with this checkout's paths.
+[mcp_servers.playwright]
+command = "node"
+args = ["scripts/start-playwright-mcp.mjs"]
+cwd = "."
+startup_timeout_sec = 60
+tool_timeout_sec = 60
+
+[mcp_servers.shadcn]
+command = "node"
+args = ["scripts/start-shadcn-mcp.mjs"]
+cwd = "."
+startup_timeout_sec = 60
+tool_timeout_sec = 60

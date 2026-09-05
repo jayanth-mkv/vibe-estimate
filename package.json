@@ -1,0 +1,32 @@
+{
+  "name": "vibeestimate",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["frontend", "backend"],
+  "engines": { "node": ">=22.17.0 <25" },
+  "scripts": {
+    "setup": "node scripts/setup-local.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspace @vibeestimate/backend",
+    "test:rules": "node scripts/rules.mjs",
+    "test:e2e": "node scripts/playwright.mjs test",
+    "test:local": "node scripts/test-local.mjs",
+    "test:live": "node scripts/test-live.mjs",
+    "test:config": "node --test tests/local-env.test.mjs",
+    "mcp:playwright": "node scripts/start-playwright-mcp.mjs",
+    "mcp:verify": "node scripts/verify-mcp.mjs",
+    "check:public": "node scripts/check-public.mjs",
+    "check:design": "node .agents/skills/impeccable/scripts/detect.mjs --json frontend/src"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@firebase/rules-unit-testing": "5.0.2",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@playwright/mcp": "0.0.80",
+    "@playwright/test": "1.63.0",
+    "firebase-tools": "15.29.0",
+    "vitest": "3.2.6"
+  }
+}

@@ -1,0 +1,7 @@
+# Generic public example. Store actual values outside the public checkout.
+firebase_project_id       = "your-firebase-project"
+adopt_firebase_project    = false
+adopt_firestore_database = false
+firestore_database_id     = "(default)"
+firestore_location        = ""
+publish_firestore_rules   = false

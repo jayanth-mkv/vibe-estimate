@@ -1,0 +1,9 @@
+# Builds an immutable backend artifact. Terraform owns Cloud Run deployment.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "backend/Dockerfile", "-t", "$_IMAGE_REPOSITORY:$COMMIT_SHA", "."]
+images:
+  - "$_IMAGE_REPOSITORY:$COMMIT_SHA"
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 900s

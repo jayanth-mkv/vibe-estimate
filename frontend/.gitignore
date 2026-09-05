@@ -1,0 +1,17 @@
+# Generated local scaffold and build output
+.scaffold/
+.next/
+out/
+build/
+node_modules/
+*.tsbuildinfo
+
+# Runtime configuration must not enter the public checkout
+.env*
+!.env.example
+.vercel/
+
+# Local diagnostics
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
