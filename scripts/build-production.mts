@@ -49,7 +49,7 @@ async function main() {
     } else {
       const saved=JSON.parse(fs.readFileSync(path.join(privateRoot,'production-build.json'),'utf8'));
       const response=await fetch('https://cloudbuild.googleapis.com/v1/'+(saved.buildName||saved.operation),{headers,signal:AbortSignal.timeout(30000)});
-      if(!response.ok)throw new Error('Build status unavailable');
+      if(!response.ok){console.log(JSON.stringify({buildStatusHttp:response.status}));throw new Error('Build status unavailable');}
       const result=await response.json();const build=result.response??result.metadata?.build??result;
       fs.writeFileSync(path.join(privateRoot,'production-build-status.json'),JSON.stringify(build,null,2));
       console.log(JSON.stringify({status:build.status??'PENDING',steps:build.steps?.map((step:any)=>({status:step.status,exitCode:step.exitCode}))}));

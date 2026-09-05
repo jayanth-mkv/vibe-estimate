@@ -16,6 +16,8 @@ Executed before deployment:
 
 The deployed end-to-end checks, Google consent, specific Gemini API-key evidence and genuine AI Studio build evidence are still pending at this checkpoint. See `production-readiness.md` and the inventory for the room-schema decision and cloud resources.
 
+The subsequent Cloud Build and Terraform deployment succeeded. The public service health returned HTTP 200 with `runtime: production`, Firebase authentication, cloud Firestore and Vertex. Three Firebase Rules checks also passed in an isolated local emulator, which was stopped afterward. Public end-to-end journeys remain pending. A fresh Developer API probe still returned HTTP 429/prepaid balance; it is not a working alternative to Vertex yet.
+
 ## Earlier connected/local verification
 
 Executed on 5 September 2026 using Windows, Node.js 22.17.1, Java 21, and the project-local packages. **The connected two-person journey now passes with real Firebase Authentication, the operator's existing Firestore database, and Gemini 3.7 Flash through Vertex.** Earlier desktop/mobile live reviews and shared-room checks with local emulators remain separate evidence below. Guest entry requires no login form, and deployment remains deferred.
