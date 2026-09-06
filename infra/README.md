@@ -22,6 +22,7 @@ the same resource.
 | [`runtime/`](runtime/README.md) | The adopted Cloud Run service and its complete template | Same GCS state bucket, prefix `runtime` |
 | [`firebase-adoption/`](../docs/terraform-setup.md#firebase-adoption) | Existing Firebase project and Firestore database adoption; optional Firestore rules publication | Separate private local state |
 | [`gemini-local/`](gemini-local/README.md) | Local Gemini prerequisites, restricted Developer API key and optional Vertex API enablement | Separate private local state |
+| [`guardrails/`](guardrails/README.md) | Monthly Cloud Billing budget scoped to the backend project, and the Budget API it needs | Separate private local state |
 
 `production`, `delivery` and `runtime` share the dedicated state bucket
 provisioned by `delivery`, with distinct prefixes. The bucket has versioning,
@@ -31,8 +32,8 @@ deletion rule makes it unsuitable for state. Bucket names are supplied during
 initialization, not committed in backend configuration. See the
 [state setup and migration notes](production/README.md#private-configuration-and-state).
 
-Firebase adoption and Gemini-local keep their state outside the checkout in the
-operator's private directory. Existing resources must be discovered and imported
+Firebase adoption, Gemini-local and guardrails keep their state outside the
+checkout in the operator's private directory. Existing resources must be discovered and imported
 before management; preserve the existing database, sign-in providers and GitHub
 connection. Actual accounts, project IDs, credentials, plans and state backups
 stay private.

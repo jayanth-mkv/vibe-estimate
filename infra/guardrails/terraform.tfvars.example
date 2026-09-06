@@ -1,0 +1,8 @@
+# Keep actual configuration outside the repository. Never save an access token
+# in this file; the launcher supplies an ephemeral process variable.
+project_id           = "example-authorized-project"
+project_number       = "100000000000"
+billing_account      = "0000AA-0000BB-0000CC"
+provision_guardrails = false
+budget_units         = "1000"
+currency_code        = "INR"

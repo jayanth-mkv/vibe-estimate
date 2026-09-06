@@ -2,6 +2,19 @@
 
 The original local setup created no cloud resources. Live Gemini setup and the later authorized production deployment took place on 5 September 2026. The sections below retain those separate historical stages. Public documentation omits personal account names, real project IDs, connection paths, and credentials; exact operational records and Terraform state remain in the outer private workspace.
 
+## Cost guardrail — 6 September 2026
+
+The operator authorized a monthly spending allocation for the backend project. Read-only discovery first established the facts: the project is linked to an open billing account whose currency is **INR**, the Cloud Billing Budget API had never been enabled on the project, and a permission test confirmed budget create/read/update rights. Because the API was disabled, no budget could previously have been created through it.
+
+| Component | Executed action | Ownership |
+| --- | --- | --- |
+| Cloud Billing Budget API | Enabled on the backend project through Terraform; `disable_on_destroy = false` | `infra/guardrails` |
+| Monthly project budget | Created through Terraform: whole-currency allocation, `MONTH` calendar period, filtered to the single project number, all credits included | `infra/guardrails` |
+
+The reviewed plan was **2 to add, 0 to change, 0 to destroy**, and the post-apply plan is clean. An independent REST readback confirms exactly one budget on the account, scoped to `projects/<backend number>`, with four actual-spend thresholds (50%, 75%, 90%, 100%) and one forecast threshold at 100%. No `all_updates_rule` was set, so alerts reach the billing account's administrators and users by email without any new Pub/Sub topic, Monitoring channel or IAM grant. Terraform used an ephemeral token from the explicitly verified profile; shared ADC hashes matched before and after. State, plan and variables stayed in the operator's private directory.
+
+**A budget alerts; it does not stop spend.** Nothing in this change caps, throttles or disables a service. The controls that actually bound cost are unchanged and remain owned elsewhere: the Cloud Run template in `infra/runtime` (maximum 2 instances, 8 concurrent requests per instance, 2 vCPU / 1 GiB, 120-second request timeout, scale to zero when idle) and the backend's own bounded call limits. No quota override, billing-disable automation, budget notification channel or application change was requested or made.
+
 ## Native GitHub delivery — 6 September 2026
 
 The operator authorized Terraform-managed GitHub `main` delivery. Discovery verified the existing Google GitHub connection was installed, with no repository children or build triggers. Its OAuth secret and installation remain unchanged.
@@ -25,7 +38,7 @@ The legacy root Terraform stack was removed from the repository. It had never be
 
 `infra/production` and `infra/delivery` now declare the shared private, versioned GCS backend under the `production` and `delivery` prefixes, matching `infra/runtime`. Both states were migrated on 6 September 2026 with `-migrate-state`, which copies rather than deletes: the pre-migration files remain private at serial 30 with 22 resource blocks and serial 10 with 9. After migration `production` lists 26 instance addresses — its 22 blocks include two `for_each` blocks expanding to three each — and `delivery` lists 9. **Both roots then planned with no changes**, confirming the move altered no infrastructure. Shared ADC hashes matched before and after.
 
-Every Terraform root now carries a mock-provider suite: production 10, runtime 10, gemini-local 6, delivery 3 and firebase-adoption 2, run together by `npm run check:infra` and by the pull-request workflow. Because a push to main applies Terraform, these checks now gate merges.
+Every Terraform root now carries a mock-provider suite: production 10, runtime 10, guardrails 7, gemini-local 6, delivery 3 and firebase-adoption 2, run together by `npm run check:infra` and by the pull-request workflow. Because a push to main applies Terraform, these checks now gate merges.
 
 ## Production audit: observed, no resource changes
 
