@@ -1,6 +1,6 @@
 # Spatial studio surface brief
 
-Status: proposed design brief for the next version, 5 September 2026. Planning only. This expands the established visual world; it does not replace [DESIGN.md](../DESIGN.md). The [release plan](plan/README.md), [controls](plan/controls.md) and [platform contracts](plan/v2.md#platform-contracts) specify current behavior, architecture and tests.
+Status: proposed design brief for the next version, 5 September 2026. Planning only. This expands the established visual world; it does not replace [DESIGN.md](../DESIGN.md). The [release plan](plan/README.md), [controls](plan/controls.md) and [platform contracts](plan/v2.backup.md#platform-contracts) specify current behavior, architecture and tests.
 
 ## Job, audience and mode
 

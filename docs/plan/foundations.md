@@ -38,7 +38,7 @@ The existing code already solves several of the hardest problems in this plan. E
 | 3D | Pascal core/viewer 0.9.2 and nodes 0.1.1 through the shared adapter | Actual Pascal/Three geometry mirrors canonical scenes; the independent Plan view remains available if graphics fail. |
 | Assets | Sixteen locally authored MIT GLBs in V1 | Bounds, pivots, material slots, hashes and actual-model thumbnails are admitted. A later expansion may admit approximately 24 assets with separate license records. |
 | Memory | Canonical project preferences in Firestore; optional Vertex Agent Engine Memory Bank projection | Project-scoped by default; edit/forget and same-studio cross-project opt-in follow [controls](controls.md). Provider choice must not block preference persistence. |
-| Voice | `gemini-3.1-flash-live-preview` over WebSocket | [v3](v3.md#voice) only. |
+| Voice | `gemini-3.1-flash-live-preview` over WebSocket | [v3](v2.backup.md#voice) only. |
 
 The versions above are planning references. Check current supported ADK/A2A/model versions and compatibility during implementation, then pin the verified combination; do not pre-design a compatibility adapter. Check `frontend/node_modules/next/dist/docs/` before writing Next.js code, as `frontend/AGENTS.md` warns.
 
@@ -50,7 +50,7 @@ Extends the threat table in [spatial-home-studio-plan.md](../spatial-home-studio
 
 | Risk | Control |
 | --- | --- |
-| An agent hop carries the wrong tenant's context | Server-verified actor plus studio/project grants, versioned task context and audience-filtered traces; see [platform contracts](v2.md#platform-contracts). Extraction caches include the authorization scope and source/model versions. |
+| An agent hop carries the wrong tenant's context | Server-verified actor plus studio/project grants, versioned task context and audience-filtered traces; see [platform contracts](v2.backup.md#platform-contracts). Extraction caches include the authorization scope and source/model versions. |
 | A service is called by something outside the fleet | Per-service service accounts, `run.invoker` granted only along real edges, ID-token audience equal to the callee URL, no `allUsers` on any agent service. |
 | Injection through a plan image, message, skill body or MCP response | Uploads and MCP results are evidence. Published skills provide bounded task guidance and cannot override authorization, tool permissions, locks or budgets. Admitted IDs, strict schemas and no arbitrary executable output. |
 | Nine roles multiply model spend | Global, per-owner, per-room and per-role budgets reserved transactionally before dispatch. One active spatial job per owner. Bounded rounds. Viewing, orbiting, saving and exporting never call a model. |

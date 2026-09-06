@@ -1,6 +1,6 @@
 # VibeEstimate spatial home studio
 
-**Reference status:** geometry, storage and validation detail below remains useful. Product behavior and release scope follow [docs/plan](plan/README.md), particularly [controls](plan/controls.md) and [platform contracts](plan/v2.md#platform-contracts). Older private-option, preview/Apply, sharing and seven-stage delivery assumptions below are superseded. This historical planning checkpoint is not a current implementation or deployment status report.
+**Reference status:** geometry, storage and validation detail below remains useful. Product behavior and release scope follow [docs/plan](plan/README.md), particularly [controls](plan/controls.md) and [platform contracts](plan/v2.backup.md#platform-contracts). Older private-option, preview/Apply, sharing and seven-stage delivery assumptions below are superseded. This historical planning checkpoint is not a current implementation or deployment status report.
 
 Planning checkpoint: 5 September 2026. This document specifies the next version before implementation. [Primary-source research](spatial-research.md) and [the surface brief](spatial-studio-brief.md) support it. Application code and cloud resources are unchanged by this checkpoint.
 

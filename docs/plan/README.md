@@ -1,13 +1,15 @@
 # Release plan
 
-Three releases take VibeEstimate from a text-shaped local app to a deployed spatial platform where a designer publishes an agent onto their own website, a homeowner talks to it, and the agent builds their home in 3D.
+Two releases take VibeEstimate from a text-shaped local app to a spatial product where the assistant designs like a designer, explains itself, and hands over something worth paying for.
 
-| | [v1 — Home to agreement](v1.md) | [v2 — The crew](v2.md) | [v3 — Depth](v3.md) |
-| --- | --- | --- | --- |
-| Goal | Complete shared home design and draft agreement | Complete autonomous single-floor product | Expand the ecosystem |
-| Proves | Gemini edits, shared decisions and saved agreement work | Website intake through visual design and optional human review works | Multiple floors and deeper integrations work |
-| New AI surface | Selected edits, briefs and agreements | Image interpretation and wider orchestration | Voice, more roles, more MCP |
-| Risk | Low | High — deliver incrementally using the [cut line](v2.md#the-cut-line) | Later extensions with separate gates |
+| | [v1 — Home to agreement](v1.md) | [v2 — Question, cost and agree](v2.md) |
+| --- | --- | --- |
+| Goal | Complete shared home design and draft agreement | An assistant that places well, explains itself and estimates honestly |
+| Proves | Gemini edits, shared decisions and saved agreement work | Placement quality, anchored review, measured quantities and a small agent crew |
+| New AI surface | Selected edits, briefs and agreements | Vision, ask-back questions, skills, MCP tools and research |
+| Risk | Low — shipped | Moderate — phased, each phase leaves a shippable product |
+
+There is one future plan. The earlier v2 and v3 specs are preserved unchanged in [v2.backup.md](v2.backup.md) as a reference, not a commitment.
 
 Two documents are cross-cutting. [Who controls what](controls.md) covers the settings each party gets, the problem each one solves, and the server-side access matrix. [Foundations](foundations.md) covers what to reuse rather than rebuild, the pinned libraries, the security controls and the verification categories.
 
@@ -21,7 +23,7 @@ V1 now includes real Gemini edits and the designer/homeowner review flow. The is
 
 ## Relationship to the existing plan
 
-[docs/spatial-home-studio-plan.md](../spatial-home-studio-plan.md) remains a technical reference for geometry, units, storage and evaluation. The current [controls](controls.md), [platform contracts](v2.md#platform-contracts) and release gates take precedence over its older private-option, preview/Apply, sharing and delivery policies. [PRODUCT.md](../../PRODUCT.md) records confirmed intent; current implemented status is supported by the [v1 verification record](../v1-verification.md).
+[docs/spatial-home-studio-plan.md](../spatial-home-studio-plan.md) remains a technical reference for geometry, units, storage and evaluation. The current [controls](controls.md), [platform contracts](v2.backup.md#platform-contracts) and release gates take precedence over its older private-option, preview/Apply, sharing and delivery policies. [PRODUCT.md](../../PRODUCT.md) records confirmed intent; current implemented status is supported by the [v1 verification record](../v1-verification.md).
 
 ## Product direction after v1
 
@@ -45,18 +47,18 @@ Track each requirement and its genuine evidence separately from product completi
 
 ## Product coverage
 
-These are planned acceptance gates, not claims of shipped features.
+These are planned acceptance gates, not claims of shipped features. Rows below describe the wider ecosystem ambition, whose detailed contracts live in the [archived spec](v2.backup.md); the [current plan](v2.md) delivers the product quality and estimate work first.
 
 | Requirement | Contract and release | Acceptance |
 | --- | --- | --- |
-| Designer-branded agent and website intake | [v2 platform contracts](v2.md#platform-contracts) | Publish, guest entry, same-project handoff and designer visibility |
-| Plans and native reference images | [v2 source pipeline](v2.md#from-source-to-editable-3d) | Calibrate a full floor; edit a selection using a permitted reference image |
-| Autonomous working options | [Controls](controls.md) and [v2 tools](v2.md#model-tools) | No per-edit Apply; compare, undo and choose; enforce locks and budgets |
+| Placement quality and vision | [v2 phases 1–3](v2.md#phase-1--place-things-like-a-designer) | Wall-anchored, correctly oriented, stackable placement chosen from a plan the assistant can see |
+| Anchored review and change cards | [v2 phase 4](v2.md#phase-4--a-conversation-about-a-place) | Comment pinned to an exact surface; typed cards replace the flat change list |
+| Measured quantities and honest costs | [v2 phase 5](v2.md#phase-5--the-estimate) | Deterministic quantities, sourced indicative ranges, no price in the agreement without a human |
+| Agent crew, skills and MCP tools | [v2 phase 6](v2.md#phase-6--the-crew) | ADK spike passes; allowlisted toolsets; tool results treated as evidence |
+| Designer-branded agent and website intake | [Archived platform contracts](v2.backup.md) | Publish, guest entry, same-project handoff and designer visibility |
+| Plans and native reference images | [Archived source pipeline](v2.backup.md) | Calibrate a full floor; edit a selection using a permitted reference image |
 | Shared activity and private professional notes | [Access matrix](controls.md#access-matrix) | Project grants and audience filtering hold across files, artifacts and traces |
-| Requirements, decisions and human review | [v2 interface](v2.md#interface--the-signature-moves) | Living Brief, chosen/rejected history, Play briefing and takeover/resume |
-| Independent agents with durable context | [v2 architecture](v2.md#architecture) | Restart, duplicate delivery, stale results and replayed progress |
-| Walkthroughs, exports and evaluation | [v2 complete-product capabilities](v2.md#complete-product-capabilities) | Room navigation, canonical exports and the 12-plan benchmark |
-| Multiple floors, voice and integrations | [v3](v3.md) | Separate extension gates after the complete single-floor journey |
+| Multiple floors, voice and integrations | [Archived depth spec](v2.backup.md) | Separate extension gates after the complete single-floor journey |
 
 ## Preserved baseline
 

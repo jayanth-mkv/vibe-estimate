@@ -42,7 +42,7 @@ Limit messages to 1,000 characters, 40 new messages and a 16,000-character assem
 
 ## Planned extension
 
-The [release plan](plan/README.md) extends this room rather than replacing it. [v2](plan/v2.md#data-sharing-and-collaboration) adds explicitly shared scene snapshots as an allowlisted projection, private client options with their own attachment namespace, annotations anchored to visual evidence, and per-identity read cursors — and replaces the single observer with a nine-role crew whose proposals still cannot share, price or send without the designer. Everything in this contract stays binding: hashed expiring one-client invitations, server-derived roles, bounded and debounced model calls, owner-only draft and sharing actions, immutable snapshots, and exact-quote evidence.
+The [release plan](plan/README.md) extends this room rather than replacing it. [v2](plan/v2.backup.md#data-sharing-and-collaboration) adds explicitly shared scene snapshots as an allowlisted projection, private client options with their own attachment namespace, annotations anchored to visual evidence, and per-identity read cursors — and replaces the single observer with a nine-role crew whose proposals still cannot share, price or send without the designer. Everything in this contract stays binding: hashed expiring one-client invitations, server-derived roles, bounded and debounced model calls, owner-only draft and sharing actions, immutable snapshots, and exact-quote evidence.
 
 ## Required verification
 
