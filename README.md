@@ -6,6 +6,8 @@ Choose a complete home, describe what you want to change, and explore it in 2D a
 
 **[Try the live app →](https://vibe-estimate.xplormity.com)** · **[Watch the 2:56 walkthrough](https://vibe-estimate.xplormity.com/demo/index.html)** · [Verification](docs/v1-verification.md)
 
+The live app is a single Cloud Run service in `asia-southeast1`. `vibe-estimate.xplormity.com` is a Cloud Run domain mapping onto that service, which also answers directly at [vibeestimate-tcevzp3fya-as.a.run.app](https://vibeestimate-tcevzp3fya-as.a.run.app).
+
 [![Watch the live walkthrough: a designer on desktop and homeowner on mobile viewing the same saved 3D home.](frontend/public/demo/walkthrough-poster.png)](https://vibe-estimate.xplormity.com/demo/index.html)
 
 *Real Gemini, separate identities, visible clicks and synchronized desktop/mobile views. The silent recording includes chat, a selected wall change, both design decisions, matching agreement downloads and reopening. [Video file](frontend/public/demo/walkthrough.mp4) · [Recording provenance](docs/demo-media.md)*
