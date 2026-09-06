@@ -41,7 +41,7 @@ test("production invitations, independent same-browser client, mobile room and s
     return route.continue();
   };
   await context.route(baseURL + "/api/**", guard);
-  await page.goto("/");
+  await page.goto("/proposals");
   const creating = page.waitForResponse(responseFor("/api/projects"));
   await page.getByRole("button", { name: "Try the lighting example", exact: true }).click();
   const created = await creating;

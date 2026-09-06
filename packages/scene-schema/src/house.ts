@@ -33,10 +33,19 @@ export const catalog: readonly CatalogEntry[] = [
   { id: 'cabinet', name: 'Storage cabinet', kind: 'furniture', mount: 'floor', dimensions: [1200, 2100, 500], resizable: true, modelPath: '/models/cabinet.glb', thumbnailPath: '/models/cabinet.png' },
   { id: 'pendant', name: 'Ceiling pendant', kind: 'light', mount: 'ceiling', dimensions: [400, 300, 400], resizable: false, modelPath: '/models/pendant.glb', thumbnailPath: '/models/pendant.png', lightOffset: [0, -50, 0] },
   { id: 'floor-lamp', name: 'Floor lamp', kind: 'light', mount: 'floor', dimensions: [400, 1600, 400], resizable: false, modelPath: '/models/floor-lamp.glb', thumbnailPath: '/models/floor-lamp.png', lightOffset: [0, 1350, 0] },
+  { id: 'armchair', name: 'Lounge chair', kind: 'furniture', mount: 'floor', dimensions: [900, 850, 850], resizable: false, modelPath: '/models/armchair.glb', thumbnailPath: '/models/armchair.png' },
+  { id: 'coffee-table', name: 'Coffee table', kind: 'furniture', mount: 'floor', dimensions: [900, 450, 500], resizable: true, modelPath: '/models/coffee-table.glb', thumbnailPath: '/models/coffee-table.png' },
+  { id: 'side-table', name: 'Side table', kind: 'furniture', mount: 'floor', dimensions: [450, 550, 450], resizable: false, modelPath: '/models/side-table.glb', thumbnailPath: '/models/side-table.png' },
+  { id: 'desk', name: 'Writing desk', kind: 'furniture', mount: 'floor', dimensions: [1200, 750, 600], resizable: true, modelPath: '/models/desk.glb', thumbnailPath: '/models/desk.png' },
+  { id: 'kitchen-counter', name: 'Kitchen counter', kind: 'furniture', mount: 'floor', dimensions: [1800, 900, 600], resizable: true, modelPath: '/models/kitchen-counter.glb', thumbnailPath: '/models/kitchen-counter.png' },
+  { id: 'toilet', name: 'Toilet', kind: 'furniture', mount: 'floor', dimensions: [420, 780, 680], resizable: false, modelPath: '/models/toilet.glb', thumbnailPath: '/models/toilet.png' },
+  { id: 'shower', name: 'Shower enclosure', kind: 'furniture', mount: 'floor', dimensions: [900, 2000, 900], resizable: false, modelPath: '/models/shower.glb', thumbnailPath: '/models/shower.png' },
+  { id: 'plant', name: 'Potted plant', kind: 'furniture', mount: 'floor', dimensions: [500, 1000, 500], resizable: false, modelPath: '/models/plant.glb', thumbnailPath: '/models/plant.png' },
+  { id: 'bookcase', name: 'Open bookcase', kind: 'furniture', mount: 'floor', dimensions: [900, 1800, 300], resizable: false, modelPath: '/models/bookcase.glb', thumbnailPath: '/models/bookcase.png' },
 ];
 
 const region = z.strictObject({ roomId: id, x: mm, z: mm, width: dimension, depth: dimension });
-export const houseScopeSchema = z.strictObject({ selectedIds: z.array(id).max(64), region: region.optional() });
+export const houseScopeSchema = z.strictObject({ selectedIds: z.array(id).max(128), region: region.optional() });
 export type HouseScope = z.infer<typeof houseScopeSchema>;
 const target = { entityId: id };
 export const houseOperationSchema = z.discriminatedUnion('op', [

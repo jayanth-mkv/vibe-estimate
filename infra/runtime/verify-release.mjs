@@ -55,8 +55,9 @@ export function verifyPlan(plan, variables) {
   return { serviceOnly: true, destructiveChanges: false, changed: actions[0] === 'update' };
 }
 
-export function verifyHealth(body) {
+export function verifyHealth(body, expectedCommit) {
   requireValue(body?.status === 'ok' && body.runtime === 'production' && body.auth === 'firebase' && body.storage === 'firestore' && body.storageConnection === 'cloud' && body.aiProvider === 'gemini' && body.geminiTransport === 'vertex');
+  if (expectedCommit !== undefined) requireValue(/^[a-f0-9]{40}$/.test(expectedCommit) && body.gitRevision === expectedCommit);
   return { productionHealth: true, firebase: true, firestore: true, vertex: true };
 }
 
@@ -100,7 +101,7 @@ async function main(action) {
       try {
         const response = await fetch(`${origin}/health`, { redirect: 'error', signal: AbortSignal.timeout(Math.min(10000, deadline - Date.now())) });
         requireValue(response.ok);
-        const result = verifyHealth(await response.json());
+        const result = verifyHealth(await response.json(), inputs.commit);
         write('verification.json', { ...result, commit: inputs.commit, checkedAt: new Date().toISOString() });
         console.log(JSON.stringify(result));
         return;

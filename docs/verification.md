@@ -1,6 +1,10 @@
 # Verification status
 
-This file records **executed** results only. The checks each future release must pass before it can be called done are specified separately, as gates in the [release plan](plan/README.md) — [v1](plan/v1.md#v1-gate), [v2](plan/v2.md#v2-gate) and [v3](plan/v3.md). A planned gate is not evidence; copy a result here only once it has actually run.
+This file records **executed** results only. The checks each future release must pass before it can be called done are specified separately, as gates in the [release plan](plan/README.md) — [v1](plan/v1.md#verification-videos-and-release), [v2](plan/v2.md#v2-gate) and [v3](plan/v3.md). A planned gate is not evidence; copy a result here only once it has actually run.
+
+## Home-to-agreement overhaul — 6 September 2026
+
+The current [V1 verification record](v1-verification.md) separates executed source, asset, browser and live-release evidence for the three-home studio and shared design agreements. Historical production and proposal checks below remain preserved. The current release is not complete until its final record identifies the matching deployed commit and successful user journeys.
 
 ## Native delivery configuration — 6 September 2026
 

@@ -1,4 +1,4 @@
-import { catalog, houseDocumentSchema, housePatchSchema, houseScopeSchema, type HouseDocument, type HouseInstance, type HouseRoom, type HouseScope, type HouseWall } from '@vibeestimate/scene-schema';
+import { catalog, houseInstanceSchema, houseDocumentSchema, housePatchSchema, houseScopeSchema, type HouseDocument, type HouseInstance, type HouseRoom, type HouseScope, type HouseWall } from '@vibeestimate/scene-schema';
 export type { HouseDocument, HouseInstance, HousePatch, HouseRoom, HouseScope } from '@vibeestimate/scene-schema';
 export type HouseRegion = NonNullable<HouseScope['region']>;
 type Point = [number, number];
@@ -90,15 +90,21 @@ export function validateHouse(input: unknown): HouseDocument {
     for (const other of scene.openings.slice(0, index)) if (other.wallId === opening.wallId && opening.offset < other.offset + other.width && other.offset < opening.offset + opening.width && opening.sill < other.sill + other.height && other.sill < opening.sill + opening.height) fail(`${opening.id}: openings overlap`);
   }
   if (scene.instances.filter(i => entryFor(i.catalogId).kind === 'light').length > 12) fail('The experiment allows at most 12 light instances');
-  for (const [index, item] of scene.instances.entries()) {
+  for (const [index, item] of scene.instances.entries()) assertInstance(scene, item, scene.instances.slice(0, index));
+  return scene;
+}
+
+
+function assertInstance(scene: HouseDocument, item: HouseInstance, neighbours: HouseInstance[]) {
+  const t = scene.walls[0].thickness;
     const entry = entryFor(item.catalogId), room = scene.rooms.find(r => r.id === item.roomId) ?? fail(`${item.id}: unknown room`);
-    material(item.materialId);
+    if (!scene.materials.some(material => material.id === item.materialId)) fail('Unknown material: ' + item.materialId);
     if (!entry.resizable && item.dimensions.some((n, i) => n !== entry.dimensions[i])) fail(`${item.id}: ${entry.name} does not support resizing`);
     if (entry.resizable && item.dimensions.some((n, i) => n < entry.dimensions[i] / 2 || n > entry.dimensions[i] * 2)) fail(`${item.id}: resize must remain between 50% and 200% of admitted dimensions`);
     if (entry.kind === 'light' ? !item.light : Boolean(item.light)) fail(`${item.id}: light settings must match the catalog type`);
     if (item.position[1] !== (entry.mount === 'floor' ? 0 : scene.level.ceilingHeight - item.dimensions[1])) fail(`${item.id}: object does not meet its ${entry.mount} mounting surface`);
     if (item.position[1] + item.dimensions[1] > scene.level.ceilingHeight || !contained(footprint(item), room)) fail(`${item.id}: object must fit inside ${room.name}`);
-    for (const other of scene.instances.slice(0, index)) {
+    for (const other of neighbours) {
       if (item.roomId !== other.roomId || item.position[1] >= other.position[1] + other.dimensions[1] || other.position[1] >= item.position[1] + item.dimensions[1]) continue;
       if (intersects(footprint(item), footprint(other))) fail(`${item.id}: collision with ${other.id}`);
     }
@@ -112,8 +118,17 @@ export function validateHouse(input: unknown): HouseDocument {
       const sweep: Point[] = [a, b, [b[0] + n[0] * door.width, b[1] + n[1] * door.width], [a[0] + n[0] * door.width, a[1] + n[1] * door.width]];
       if (intersects(footprint(item), sweep)) fail(`${item.id}: keep ${door.id}'s door swing clear`);
     }
-  }
-  return scene;
+}
+
+/** Placement preview reuses publication geometry checks on an already validated scene. */
+export function validateHousePlacement(scene: HouseDocument, input: unknown, region?: HouseRegion) {
+  const item = houseInstanceSchema.parse(input);
+  if (scene.instances.length >= 64) fail('This home has reached its furniture limit.');
+  if ([scene, scene.level, ...scene.rooms, ...scene.walls, ...scene.openings, ...scene.instances, ...scene.materials].some(entity => entity.id === item.id)) fail('The new item needs a unique ID.');
+  if (item.light && scene.instances.filter(entry => entry.light).length >= 12) fail('This home has reached its 12-light limit.');
+  if (region && (item.roomId !== region.roomId || !contained(footprint(item), region))) fail('The item must fit in the selected area.');
+  assertInstance(scene, item, scene.instances);
+  return item;
 }
 
 /** Host scope is separate from generated JSON; a failed batch returns no document. */

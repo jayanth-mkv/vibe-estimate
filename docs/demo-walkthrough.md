@@ -1,32 +1,51 @@
-# Local walkthrough
+# Home-to-agreement recording walkthrough
 
-This is a fictional scenario for rehearsing the product flow. The default run uses a deterministic fixture; it is not a live Gemini demonstration.
+The story: a designer and homeowner should be able to see what they mean, change the same home, and leave with a clear saved record. Use synthetic project content for the demonstration. Announce whether the provider is live Gemini or the labelled local fixture; never describe fixture output as live inference.
 
-This walkthrough describes the workflow **as it exists today**. The demonstration the product is being built towards — a homeowner uploading a plan on a designer's site, the crew revealing their home in 3D, and the designer reviewing a change card in a console — is specified separately in [v2](plan/v2.md#the-demonstration) and is not implemented.
+Run `rtk npm run start:v1` for an isolated fixture rehearsal, or pass the existing private --gemini-config for an authorized live rehearsal. Open http://127.0.0.1:3100. The headed browser suite records flows, screenshots and actual Pascal geometry under .cache/v1/. Final evidence is indexed in the verification report after execution.
 
-Start with: "Asha thinks lighting was included. Her designer agrees about the kitchen strip, but the conversation also contains four display lights, then six. They need a clear decision before either person treats a message as a bill."
+## Synchronized two-person capture
 
-1. Open the home workspace and choose **Try the lighting example**. A guest identity supports private saving without a login form; the original agreement and conversation stay together. The illustrated product tour is still available at `/welcome`.
-2. Choose **Review scope and messages**. Point to the exact excerpts: the kitchen strip is included, display lights are excluded, the supplied rate is ₹2,000, and the quantity still needs an answer.
-3. Expand **Add a clarification**, enter **Quote 6 lights**, and choose **Update review**. This specifies a draft option; it does not collect client approval.
-4. Choose **Continue to draft**, enter quantity **6** and unit price **2000**, then save the **₹12,000** draft. The app calculates this subtotal in integer paise; kitchen lighting is outside the extra-work total.
-5. Say: "Now Asha wants the smaller option." Change quantity to **4** and save the **₹8,000** revision. Both versions remain visible. This difference is a changed scope, not a claimed saving.
-6. Reload the page and download the saved draft. Point out the approval status and source evidence retained with the project.
+Install the pinned repository-local encoder with `rtk proxy node scripts/v1-video-tools.mjs`. With the isolated fixture preview ready, run `rtk proxy node scripts/v1-video-record.mjs`. It uses separate designer and homeowner identities, displays role labels and pointer/click indicators, masks invitation details before capture, and checks both chat directions and the saved agreement. It refuses a live or unexpected target.
 
-To use your own sources, choose **Start a project**. First name it and paste the agreed scope; continue to client messages. Back preserves your text. Source persistence happens on **Save project**. The project then guides you through Review and Draft, while returning visits show each saved project's next step. In connected mode, **Save access with Google** optionally links the guest identity so its work can be reopened across devices.
+Run `rtk proxy node scripts/v1-video-compose.mjs --manifest <story-directory>/dual-capture.json` on the completed story. The resulting `designer-homeowner.mp4` presents desktop and mobile side by side at their actual synchronized timing. Original clips, synchronization measurements, hashes and source mode remain in the evidence directory. A completed production rehearsal supplies the same manifest format and uses the same compositor; it is a separate live recording.
 
-For a real submission, show the flow with live Gemini and a context-dependent follow-up. Retain this repository's authentic enhancement history, deployed authentication/persistence checks, and Cloud Run evidence. The recorded production journeys already passed; use their evidence or a genuine new recording. A local fixture cannot substitute for a live demonstration.
+## 1. An idea becomes a home
 
-The product's useful difference is the connected workflow: evidence, ambiguity, owner-entered commercial terms, safe revisions, and private persistence. Whether that is valuable enough for designers to adopt needs interviews and actual usage; a generic chat response or a fictional demonstration does not establish demand.
+Open **Your homes → New project**. Choose **Family home**. The measured single-floor layout appears immediately, with authored furniture and assumed ceiling height disclosed. Show **Plan**, then **Overview**. Enter “Add warm ceiling lights throughout the home” and choose **Generate design**. Wait for the saved result and explain the concrete changes. Repeat with **City apartment** and **Home with a study** to show every advertised layout works.
 
-## Shared-room demonstration
+The assistant supplies the title and design description. Existing walls, openings and selected scope constrain its response.
 
-1. From home, choose **Try a shared room**. It creates a fictional lighting project and its designer room.
-2. Choose **Invite client**, **Create invite link**, then **Open client demo** (or **Open client view** in connected mode). Keep both tabs visible. Alternatively, copy the room code, open **Join a room**, and enter it. The second tab is a separately authenticated client; room membership is enforced by the API. The QR encodes the same invitation and needs a reachable workspace address for another phone.
-3. In the client tab, send **Could we quote 6 display lights?**. The designer receives it, and the agent checks the conversation after messages settle. The fixture labels this as a local sample; live Gemini uses the configured real model.
-4. In the designer tab, send **I will prepare a draft for 6 display lights at ₹2,000 each.**. Wait for the current review. On mobile, use **Scope agent** to see the findings and their original source quotes.
-5. Choose **Prepare draft**, then **Continue to draft**. Enter 6 lights at 2000 and save. The room transcript is frozen into this private project; original messages stay unchanged.
-6. Choose **Back to room**, then **Share saved draft** (under **Drafts** on mobile). The client's **Drafts** tab now shows the saved ₹12,000 version, with approval uncollected.
-7. Open the private draft workspace, change quantity to 4 and save a revision. Return and share it. Both people see the ₹8,000 version and the previous ₹12,000 shared version. Reload both tabs; download/export stays in the designer workspace.
+## 2. See and adjust the lights
 
-The source context, conversation and saved draft are visible together on a wide desktop. The client has a focused chat/review/draft view and cannot change the designer's prices or access private projects. Each room has a ten-review limit and an explicit pause/retry control. Ordinary polling never invokes Gemini. Use the supplied demo suggestions in fixture mode; arbitrary messages require Gemini. A room keeps the provider mode in which it was created, so create a new demonstration room after switching from fixture to live mode.
+Choose **Evening**, select **Living & dining**, then open **Inside**. Show the real ceiling pendants and their effect on the room. In **Edit**, choose one light, switch it off and apply its settings. Turn it back on or use **Undo**. Lighting is illustrative; dimensions and electrical specifications still need confirmation.
+
+## 3. Make one room work better
+
+Set **Design area → Living & dining**. Ask for a smaller dining table and soft finishes while keeping the doorway clear. Inspect the changed table and unchanged neighbouring rooms in Plan and Overview. Use **Edit → Position and size** for a precise adjustment. An invalid move into another object shows a readable error and preserves the last saved design.
+
+## 4. Choose the exact surface
+
+Select a shared wall face in **Edit selection** or by picking it in the view. Ask “Make this wall warm clay and keep the rest as it is.” Show the changed room-facing surface, then inspect the opposite side. A shared wall is not permission to change both rooms.
+
+## 5. Keep a useful saved option
+
+Open **Options → Compare starting layout** and return to the current design with the same camera. Reopen the project from **Your homes** and demonstrate that its saved version survives reload. Prepare and download the design summary and floor-plan PNG.
+
+Keep the failure rehearsal in test evidence: a model error preserves the scene, retry is explicit, and finishing a staged save makes no new model call. Do not induce a paid retry just to create a more dramatic submission clip.
+
+## 6. Designer, homeowner and assistant agree on the same version
+
+From **Share**, create the prefilled design assistant, then **Create shared room**. Choose **Invite client → Create invite link → Open client demo** in local mode. The client tab uses a distinct authenticated identity. In connected mode use the offered client link; another device requires a reachable application origin.
+
+Keep both people visible. Send a human message describing the desired atmosphere. The homeowner selects the living room and asks the assistant for a table or light change. The designer sees the same saved geometry and requests a refinement. Ordinary conversation, viewing and polling do not call Gemini; **Ask assistant** is explicit.
+
+The homeowner chooses **Accept this design**. The designer then chooses **Approve this design**. Both decisions refer to the exact current saved revision. Choose **Generate draft agreement** and open the **Shared agreement library**. Read and download the same draft from both identities, reload, and show it remains available.
+
+The document preserves the design revision, recorded decisions, change schedule and conversation references. It is a draft for review, not a legal signature or permission to begin work. A later change requires fresh decisions while retaining the older agreement.
+
+## Retained scope and pricing story
+
+The independent proposal workflow is at /proposals. Its fictional lighting example preserves source-linked review, clarification, owner-entered commercial terms, integer-money totals, revisions and private export. Use it if the video needs the next commercial step. AI must not invent an agreed scope, client approval, rate or saving to prefill that record.
+
+End the main recording with the saved shared agreement and a clear next step. Upload extraction and the wider agent service crew are later work.

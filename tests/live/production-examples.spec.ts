@@ -30,7 +30,7 @@ for (const id of ["wardrobe", "finish"] as const) {
       }
       return route.continue();
     });
-    await page.goto("/");
+    await page.goto("/proposals");
     const creating = page.waitForResponse(responseFor("/api/projects"));
     await page.getByRole("button", { name: id === "wardrobe" ? "Try the wardrobe example" : "Try the finish example", exact: true }).click();
     const created = await creating;

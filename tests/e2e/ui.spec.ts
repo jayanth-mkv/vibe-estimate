@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import fs from "node:fs/promises";
 import { FIXTURE_SCOPE, FIXTURE_MESSAGES } from "../../backend/src/fixtures";
-import { apiOrigin, appOrigin } from "./target";
+import { apiOrigin, appOrigin, authOrigin } from "./target";
 
 const api = appOrigin;
 
@@ -16,7 +16,7 @@ test.beforeAll(async ({ request }) => {
 });
 
 async function openExample(page: Page) {
-  await page.goto("/");
+  await page.goto("/proposals");
   let creations = 0;
   const countCreation = (request: import("@playwright/test").Request) => {
     if (request.url() === api + "/api/projects" && request.method() === "POST") creations += 1;
@@ -52,7 +52,7 @@ async function accessible(page: Page) {
 }
 
 test("source review, keyboard clarification, saved revision, reload, and draft download", async ({ page }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/proposals");
   await expect(page.getByRole("heading", { name: "Turn client changes into clear drafts.", exact: true })).toBeVisible();
   await expect(page.getByText("Guest access", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toHaveCount(0);
@@ -172,10 +172,10 @@ test("guided sources validate each step, retain edits, save once, and resume wit
   page.on("request", request => {
     if (request.method() !== "POST") return;
     if (request.url() === api + "/api/projects") creations += 1;
-    if (request.url().startsWith("http://127.0.0.1:9099/") && request.url().includes("accounts:signUp")) signIns += 1;
+    if (request.url().startsWith(authOrigin + "/") && request.url().includes("accounts:signUp")) signIns += 1;
     if (request.url().startsWith(api + "/api/projects/") && request.url().endsWith("/analyze")) reviews += 1;
   });
-  await page.goto("/");
+  await page.goto("/proposals");
   await expect(page.getByRole("heading", { name: "Turn client changes into clear drafts.", exact: true })).toBeVisible();
   const start = page.getByRole("button", { name: "Start a project", exact: true });
   await expect(start).toBeInViewport();
@@ -241,7 +241,7 @@ test("guided sources validate each step, retain edits, save once, and resume wit
 });
 
 test("illustrated product tour preserves its imagery and keyboard flow without enlarging the workspace", async ({ page }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/proposals");
   await page.getByRole("link", { name: "Explore the illustrated product tour", exact: true }).click();
   await expect(page).toHaveURL(/\/welcome$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Clearer Scope.Better Conversations.Considered Changes.");
@@ -268,7 +268,7 @@ test("illustrated product tour preserves its imagery and keyboard flow without e
   await page.screenshot({ path: testInfo.outputPath("illustrated-tour.png"), fullPage: true });
 
   await page.getByRole("link", { name: "Open workspace", exact: true }).click();
-  await expect(page).toHaveURL(appOrigin + "/");
+  await expect(page).toHaveURL(appOrigin + "/proposals");
   await expect(page.getByRole("heading", { name: "Turn client changes into clear drafts.", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Start a project", exact: true })).toBeInViewport();
   const header = await page.getByRole("banner").boundingBox();

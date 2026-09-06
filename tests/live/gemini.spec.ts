@@ -71,7 +71,7 @@ test("live source review, owner clarification, private saved draft and preserved
     return route.continue();
   });
 
-  await page.goto("/");
+  await page.goto("/proposals");
   await expect(page.getByText("Local workspace · Gemini enabled")).toBeVisible();
   await page.getByRole("button", { name: "Start a project", exact: true }).focus();
   await page.keyboard.press("Enter");

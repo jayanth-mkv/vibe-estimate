@@ -1,88 +1,80 @@
 # VibeEstimate
 
-The integrated [house demo](docs/spatial-demo.md) is available at `/studio`: a sample single-floor home with selected furniture, material and lighting edits. Run `rtk npm run build:spatial`, then `rtk npm run start:spatial` to inspect the isolated demo at http://127.0.0.1:3100/studio. The normal workspace also opens it in a separate tab. Demo state lasts for the page session.
+Choose a complete home, describe your ideas, and explore the saved design together. Gemini selects from admitted furniture, lights and finishes; deterministic geometry checks keep each change inside its selected area. A designer and homeowner can share the same home, refine it through chat, review an exact saved version, and keep its draft agreement in one shared library.
 
-Turn an agreed project scope and client messages into a reviewable change proposal. See what is included, clarify proposed additions, and revise a draft without losing its history.
+The primary journey is **New project → Choose a home → Generate design → Design together → Accept and approve → Download draft agreement**. Descriptive briefs and agreement drafts are prepared for review. Prices, legal signatures and permission to start work are never inferred by AI.
 
-This repository is the local foundation for a Google Cloud Gen AI Academy submission. The frontend uses the official Next.js setup and shadcn/ui. A TypeScript API verifies Firebase identities, isolates Firestore records, and calls the Google GenAI SDK when live mode is configured.
+The existing source-linked scope and pricing workflow remains at /proposals. /studio redirects to the home library. The independent Pascal proof of concept remains outside this checkout; the application retains frontend/, backend/ and reusable scene packages.
 
 ## Try locally
 
-Requires Node.js 22.17+ and Java 21. All downloaded npm dependencies, emulator files, browser binaries, and MCP configuration stay in this project.
+Requires Node.js 22.17+, Java 21 and a browser-capable desktop. Dependencies, browser binaries, emulators and generated reports stay inside this checkout.
 
 ~~~sh
-npm ci
-npm run setup
-npm run dev
+rtk npm ci
+rtk npm run setup
+rtk npm run build
+rtk npm run start:v1
 ~~~
 
-Open **http://127.0.0.1:3000**. The API is at **http://127.0.0.1:8080/health**, and the Firebase emulator UI is at **http://127.0.0.1:4000**.
+Open **http://127.0.0.1:3100**. This runner builds a fresh production frontend and starts the API on 8181, Auth emulator on 9299 and Firestore emulator on 8285. It refuses occupied ports and preserves the connected development environment on 3000/8080.
 
-The home workspace explains Sources → Review → Draft. Choose **Start a project** for the two-step source form, or **Try the lighting example** to explore immediately. Saved projects show where to resume. The original navy/red landing page, illustrations and interactive product story remain at **http://127.0.0.1:3000/welcome**, linked from home.
+The default provider is an explicitly labelled deterministic fixture. It exercises the complete interface and persistence without paid model calls or production Firebase data. Use the supplied prompt suggestions in fixture mode. Arbitrary requests require the real Gemini provider; a model failure is never replaced by a fixture response.
 
-For the complete collaborative demo, choose **Try a shared room**. In the room, choose **Invite client → Create invite link → Open client demo**. The new tab uses a separate client identity. Exchange messages between both tabs and watch the source-linked agent review update. The designer can prepare a private draft, return with **Back to room**, and **Share saved draft** so the client receives that saved version. Both interfaces run on port 3000 with the same authenticated API; no second server is needed.
+For separately authorized live Gemini with isolated local identities and storage:
 
-![Connected synthetic designer room: live Gemini review and two explicitly shared draft revisions](docs/screenshots/connected-designer-room.png)
+~~~sh
+rtk npm run start:v1 -- --gemini-config ../docs/private/vertex-local.json
+~~~
 
-The [client's separate view](docs/screenshots/connected-client-room.png) shows the same saved conversation and shared drafts with its own identity and permissions.
+The configuration must be an existing private operator file, outside this public repository. See [local setup](docs/local-setup.md) and [connected setup](docs/connected-setup.md) for the separate connected Firebase workflow.
 
-The initial connected version is preserved at `4fa4d70` on `snapshot/initial-connected-v1`. Work continues on `feat/spatial-home-studio` towards a spatial platform: a designer publishes an agent onto their own website, a homeowner talks to it, the agent opens a project and builds their home in 3D from an uploaded plan, and the designer reviews what it did through a visual console rather than a transcript.
+## The six demonstration flows
 
-That work is sequenced as three releases — read the [release plan](docs/plan/README.md), covering [v1](docs/plan/v1.md), [v2](docs/plan/v2.md), [v3](docs/plan/v3.md) and [who controls what](docs/plan/controls.md). The deep technical reference is the [researched implementation plan](docs/spatial-home-studio-plan.md) with its [UI brief](docs/spatial-studio-brief.md). Beyond the initial production release recorded in [production readiness](docs/production-readiness.md), no spatial or agent-crew feature is implemented yet.
+1. Create and generate a design in each of the three complete home layouts.
+2. Add ceiling lights throughout a home; inspect actual lighting inside and adjust one lamp.
+3. Refine one room, including a table, while neighbouring rooms remain unchanged.
+4. Change one shared wall face and verify the opposite face is preserved.
+5. Recover from a failed request, compare saved options, reopen and export the design.
+6. Invite a separate homeowner identity, make chat changes together, accept and approve one version, then store and download its draft agreement.
 
-The default runner uses a demo Firebase project and local Auth/Firestore emulators. Its AI provider is a clearly labeled, deterministic lighting fixture. It does not call paid Gemini services and does not access production Firebase data. Arbitrary scope analysis requires the real Gemini provider and server credentials.
+Follow the [recording walkthrough](docs/demo-walkthrough.md). The [v1 plan](docs/plan/v1.md) defines acceptance gates and current scope; the [API contract](docs/v1-home-contract.md) describes persistence and collaboration. Historical PoC and production evidence remains labelled with the version it tested.
 
-For the separately authorized real Firebase workspace, follow [connected setup](docs/connected-setup.md) and open **http://localhost:3000**. Guests can start without a login form, join by QR/link/room code, and optionally link Google to keep access across devices. The existing database and auth providers are preserved. A localhost QR supports this computer's demo; use the deployed app for another phone.
-
-The sample demonstrates included kitchen lighting, a proposed display-light addition, a six-light draft at ₹12,000, and a four-light revision at ₹8,000. Amounts are fictional item subtotals. Client approval is not collected.
-
-Follow the [demo walkthrough](docs/demo-walkthrough.md) for the complete story. For live Gemini with local Firebase emulators, use the private Vertex configuration in [local setup](docs/local-setup.md). The later connected and production journeys passed with real Firebase guests, Firestore and Gemini 3.7 Flash, including multi-turn reviews, draft creation, preserved revisions, explicit sharing, persistence and export. The [quick test checklist](docs/quick-test-checklist.md) covers the current routes and remaining limits. The [verification record](docs/verification.md) separates deployed-image results from source fixes; [build provenance and evidence](docs/ai-studio-evidence.md) identifies this repository as the authentic agent-assisted build history.
-
-![Connected guest home with a guided project flow, room joining and fictional examples](docs/screenshots/connected-home.png)
-
-The illustrated product tour is preserved:
-
-![VibeEstimate landing page with a fictional source review and revised draft preview](docs/screenshots/welcome.png)
+Home templates are authored concept layouts with disclosed assumed ceiling heights. Catalog models are local assets with bounds and admission records. Lighting is illustrative and does not model wall occlusion. Upload extraction, additional floors and the wider agent service architecture remain later work; the interface does not advertise unavailable actions.
 
 ## Verify
 
 ~~~sh
-npm run typecheck
-npm test
-npm run test:auth --workspace @vibeestimate/frontend
-npm run build
-npm run test:local
-npm run mcp:verify
-npm run check:public
+rtk npm run verify:v1
 ~~~
 
-The local test command starts the emulator/app stack when needed. If a stack is already running, it verifies local fixture mode before using it. Tests exercise real emulator identities and storage, access denial, checked arithmetic, revisions, replay behavior, browser interactions, and accessibility.
+This command runs configuration/startup checks, typecheck, lint, frontend/backend and geometry tests, production build, Firebase Rules, headed desktop/mobile browser journeys, legacy proposal regressions, public-content scanning and offline Terraform checks. The browser stage starts its own empty local stack and saves screenshots, renderer reports and videos under .cache/v1/.
 
-For a fresh fixture regression while the connected app is running, use `rtk npm run test:isolated`. It creates an isolated source copy on ports 3102/8180 with empty demo Firebase emulators, runs Rules and desktop/mobile browser checks, and stops only its own processes. Existing services on ports 3000/8080 and saved emulator snapshots remain available. All required isolated ports must be free. Reports stay under the ignored `.cache/fixture-verification/` directory.
+Live inference is a separate bounded rehearsal. It runs five explicit model jobs, at most two reserved provider attempts each, with no test retries:
 
-Use `rtk npm run test:production -- --list` to inspect the production suite without model calls. Executing it requires the authorized external operator configuration; it uses real Firebase and a declared budget of six Gemini calls, with private evidence and no automatic retries. Fixture tests cannot be pointed at production.
+~~~sh
+rtk npm run test:v1:browser -- --gemini-config ../docs/private/vertex-local.json
+~~~
 
-See [verification status](docs/verification.md) for executed results and [local setup](docs/local-setup.md) for details. A test suite does not establish live-Gemini accuracy or production readiness.
+A fixture pass establishes deterministic behaviour, not live model accuracy. A local pass also does not establish deployment readiness: the exact deployed Git SHA and production journeys require their own evidence. See [verification records](docs/verification.md) and [build provenance](docs/ai-studio-evidence.md).
+
+Verify an already-built local production image with `npm run test:v1:container -- --image <local-tag> --expected-sha <embedded-full-commit> --context <local-docker-context>`. The probe starts only its own containers, disables networking and uses synthetic configuration. It checks both servers, local assets, authentication denial and failure before server startup when production settings are missing.
 
 ## Project structure
 
-| Path | Purpose |
+| Path | Responsibility |
 | --- | --- |
-| frontend/ | Official Next.js App Router and shadcn/ui interface; served by the same Cloud Run service as the API |
-| backend/ | Express/TypeScript, Firebase Admin authorization/storage, Google GenAI adapter |
-| infra/ | Terraform infrastructure and separate existing-Firebase adoption root |
-| tests/ | Firebase Security Rules and Playwright tests |
-| scripts/ | Project-local setup, process supervision, MCP, and verification |
-| .agents/skills/impeccable/ | Vendored design skill with upstream provenance/license |
-| PRODUCT.md / DESIGN.md | Durable product facts and UI design decisions |
-| docs/ | Public setup, architecture, challenge, and infrastructure records |
+| frontend/ | Next.js App Router, shadcn/ui, home and shared-room interfaces |
+| backend/ | Verified Firebase identity, ownership, immutable revisions, bounded Gemini jobs and money |
+| packages/scene-schema/ | Strict versioned scene, patch, selection and catalog contracts |
+| packages/scene-core/ | Renderer-independent geometry, scoped changes and deterministic descriptions |
+| packages/pascal-adapter/ | Pascal rendering mirror, native selection and actual geometry inspection |
+| infra/ | Terraform infrastructure and runtime release configuration |
+| tests/ and scripts/ | Local tools, security and browser verification, recordings |
+| PRODUCT.md / DESIGN.md | Confirmed product context and interface decisions |
 
 ## Automatic deployment
 
-The complete app is hosted on Cloud Run. The Terraform-managed GitHub `main` trigger runs checks, builds an immutable image and applies the Cloud Run runtime plan. Ordinary releases come from a reviewed push to `main`; follow the [deployment guide](docs/deployment.md). One image serves the Next.js frontend and the Express API on a single origin, so there is no separate frontend host to deploy or authorize.
+One Cloud Run image serves the frontend and API on the same origin. The Terraform-managed GitHub main trigger checks the source, builds an immutable image and applies the runtime plan. Follow the [deployment guide](docs/deployment.md); account/project values and Terraform state stay in private operator configuration.
 
-The frontend and backend can use different cloud projects. The frontend's same-origin gateway forwards to the verified Cloud Run origin. Terraform owns resource configuration and Cloud Run revisions; Cloud Build builds the image and applies only the runtime Terraform root. Real account/project configuration, credentials and operator state stay outside this checkout. Examples contain placeholders or demo identifiers.
-
-Follow [Terraform setup](docs/terraform-setup.md), [infrastructure inventory](docs/infrastructure-inventory.md), and the [challenge checklist](docs/hackathon-checklist.md). Production journeys are verified; the checklist distinguishes remaining service confirmations and publication steps from completed repository build evidence.
-
-The app has no WhatsApp integration, client signature collection, payment processing, or verified savings claims.
+The repository is the authentic agent-assisted build record for the submission. Publication, outreach and submission are separate activities. The app does not collect legal signatures or payments, and does not claim verified savings.

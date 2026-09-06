@@ -14,13 +14,18 @@ steps:
       - |
         npm ci
         npm run typecheck
+        npm run typecheck:v1
         npm test
         npm run test --workspace @vibeestimate/frontend
+        npm run test:spatial
+        npm run test:v1:scene
+        npm run test:v1:config
+        npm run lint --workspace @vibeestimate/frontend
         node --test infra/runtime/tests/release.test.mjs
 
   - id: build-commit
     name: gcr.io/cloud-builders/docker
-    args: ["build", "-f", "Dockerfile", "-t", "${_IMAGE_REPOSITORY}:$COMMIT_SHA", "."]
+    args: ["build", "-f", "Dockerfile", "--build-arg", "BUILD_GIT_SHA=$COMMIT_SHA", "-t", "${_IMAGE_REPOSITORY}:$COMMIT_SHA", "."]
   - id: push-commit
     name: gcr.io/cloud-builders/docker
     args: ["push", "${_IMAGE_REPOSITORY}:$COMMIT_SHA"]

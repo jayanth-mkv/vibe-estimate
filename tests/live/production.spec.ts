@@ -18,7 +18,7 @@ function safeApi(raw: APIRequestContext): Pick<APIRequestContext, "get" | "post"
 
 test("production mobile onboarding recovers from an offline save without losing inputs", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
+  await page.goto("/proposals");
   await expect(page.getByText("Cloud workspace · Gemini enabled", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Start a project", exact: true }).click();
   await page.getByLabel("Project name", { exact: true }).fill("Synthetic recovery check");
@@ -47,7 +47,7 @@ test("production real multi-turn review, revision, reload, export and ownership 
     if (calls > 2) return route.fulfill({ status: 429, json: { error: { message: "Verification budget reached." } } });
     return route.continue();
   });
-  await page.goto("/");
+  await page.goto("/proposals");
   await page.getByRole("button", { name: "Start a project", exact: true }).click();
   await page.getByLabel("Project name", { exact: true }).fill("Synthetic production review");
   await page.getByLabel("Agreed scope", { exact: true }).fill(source.scope);
@@ -75,7 +75,7 @@ test("production real multi-turn review, revision, reload, export and ownership 
   try {
     const strangerPage = await strangerContext.newPage();
     const listing = strangerPage.waitForResponse(responseFor("/api/projects", "GET"));
-    await strangerPage.goto(baseURL);
+    await strangerPage.goto(baseURL + "/proposals");
     const stranger = { Authorization: (await (await listing).request().headerValue("authorization"))! };
     expect(Boolean(stranger.Authorization && stranger.Authorization !== owner.Authorization)).toBe(true);
     for (const suffix of ["", "/export"]) expect((await request.get(projectPath + suffix, { headers: stranger })).status()).toBe(404);

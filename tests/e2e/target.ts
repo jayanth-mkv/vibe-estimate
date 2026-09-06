@@ -11,3 +11,4 @@ export function fixtureOrigin(value: string | undefined, fallback: string): stri
 
 export const apiOrigin = fixtureOrigin(process.env.VIBEESTIMATE_E2E_API_ORIGIN, "http://127.0.0.1:8080");
 export const appOrigin = fixtureOrigin(process.env.VIBEESTIMATE_E2E_BASE_URL, "http://127.0.0.1:3000");
+export const authOrigin = fixtureOrigin(process.env.VIBEESTIMATE_E2E_AUTH_ORIGIN, "http://127.0.0.1:9099");

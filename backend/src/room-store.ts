@@ -164,6 +164,7 @@ export class RoomStore {
     await this.database.transaction(async transaction => {
       const room = await transaction.getRoom(id);
       requireDesigner(room, uid);
+      if (room.homeId && action !== "pause") throw new AppError(409, "HOME_ASSISTANT_REQUIRED", "Use the selected design assistant in this home's conversation.");
       const now = this.clock();
       if (action === "pause") {
         room.paused = true;
@@ -185,6 +186,15 @@ export class RoomStore {
       transaction.putRoom(room);
     });
     return this.get(uid, id);
+  }
+
+  async attachHome(uid: string, id: string, homeId: string) {
+    await this.database.transaction(async transaction => {
+      const room = await transaction.getRoom(id); requireDesigner(room, uid);
+      if (room.homeId && room.homeId !== homeId) throw new AppError(409, "ROOM_HOME_CHANGED", "This room already belongs to another home.");
+      room.homeId = homeId; room.paused = true; room.observer.status = "paused";
+      transaction.putRoom(room);
+    });
   }
 
   async prepare(uid: string, id: string) {
@@ -233,6 +243,10 @@ export class RoomStore {
     return this.database.transaction(async transaction => {
       const room = await transaction.getRoom(id);
       if (!room) return;
+      if (room.homeId) {
+        if (room.observer.status !== "paused") { room.paused = true; room.observer.status = "paused"; transaction.putRoom(room); }
+        return;
+      }
       const now = this.clock();
       if (room.run) {
         if (room.run.leaseUntil > now) return;

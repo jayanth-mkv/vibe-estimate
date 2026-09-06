@@ -1,5 +1,7 @@
 # Local foundation API contract
 
+This document describes the retained proposal foundation. The implemented primary home studio, catalog, revision jobs and shared design agreements use the [V1 home contract](v1-home-contract.md), with isolated preview ports 3100/8181/9299/8285. The original connected development ports below remain unchanged.
+
 Backend: Express + TypeScript, port 8080. Frontend: Next.js, port 3000. All protected routes require Authorization: Bearer <Firebase ID token>. Firebase Auth emulator 9099; Firestore emulator 8085; emulator UI 4000; local project demo-vibeestimate. No production data in the local test suite.
 
 GET /health → { status: "ok", aiProvider: "fixture" | "gemini", storage: "firestore", auth: "emulator" | "firebase", storageConnection: "emulator" | "cloud", runtime: "local" | "connected" | "production", geminiTransport?: "vertex" | "developer" }.
@@ -23,6 +25,6 @@ Every new proposal supersedes the previous current draft and leaves its values i
 
 The user-requested [shared-room extension](room-contract.md) adds authenticated designer/client chat, bounded agent observation, frozen private review projects and explicit draft sharing. Derived Project records include optional server-assigned roomId metadata for returning to their room; original private project access stays owner-only. Public links do not grant project access.
 
-The [release plan](plan/README.md) adds a further set of routes that are **proposed, not implemented**: scene creation and validated revisions with an optimistic `baseRevisionId` check and a catalog read in [v1](plan/v1.md#endpoints); then plan upload and authorized asset retrieval, spatial jobs, edit proposals, scene sharing and shared-manifest reads, client options and their attachment namespace, annotations, membership listing and per-identity read cursors in [v2](plan/v2.md#endpoints). Those become shared schemas in `packages/scene-schema` before any parallel implementation begins. Multi-line proposals and the three export formats are [v3](plan/v3.md#commercial-depth); the current single-line proposal shape above stays authoritative until then.
+The [V1 home routes](v1-home-contract.md) implement scene creation, catalog reads, validated revisions with `baseRevisionId`, bounded jobs, exact-member sharing and stored draft agreements. Plan uploads, source-image interpretation, wider service orchestration and additional sharing/attachment contracts remain proposed in the [later release plan](plan/README.md). Multi-line commercial proposals remain [v3](plan/v3.md#commercial-depth); the existing single-line proposal shape above stays authoritative until then.
 
 Editing arbitrary line items, signatures, file OCR, payment collection, and WhatsApp integration remain outside this foundation.

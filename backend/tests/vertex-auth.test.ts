@@ -107,6 +107,25 @@ describe("user-token acquisition with a bound gcloud target", () => {
     await createGcloudExecutor(command, "linux")(args, {});
     expect(command.mock.calls[1]).toEqual(["gcloud", args, expect.objectContaining({ shell: false })]);
   });
+  it.each(["profile_describe", "token_acquire"] as const)("preserves a safe %s timeout diagnostic without a subprocess retry", async stage => {
+    const command = vi.fn<CommandRunner>();
+    if (stage === "token_acquire") command.mockResolvedValueOnce(JSON.stringify(profile()));
+    command.mockRejectedValueOnce(Object.assign(new Error("raw private stderr " + fakeToken), { killed: true, signal: "SIGTERM" }));
+    const error = await obtainLocalVertexToken(target, createGcloudExecutor(command, "linux"), {}).catch(error => error);
+    expect(error).toMatchObject({ code: "AI_AUTH_UNAVAILABLE", authDiagnostic: { authStage: stage, authFailureCategory: "timeout", authElapsedMs: expect.any(Number) } });
+    expect(command).toHaveBeenCalledTimes(stage === "profile_describe" ? 1 : 2);
+    expect(JSON.stringify(error)).not.toContain(fakeToken); expect(error.stack).not.toContain(fakeToken);
+    expect(error.cause).toBeUndefined();
+    for (const call of command.mock.calls) expect(call[2]).toMatchObject({ timeout: 30000, shell: false });
+  });
+  it("distinguishes an unavailable CLI from invalid profile and malformed token evidence", async () => {
+    const command = vi.fn<CommandRunner>().mockRejectedValue(Object.assign(new Error("private executable path"), { code: "ENOENT" }));
+    await expect(obtainLocalVertexToken(target, createGcloudExecutor(command, "linux"), {})).rejects.toMatchObject({ authDiagnostic: { authStage: "profile_describe", authFailureCategory: "executable_unavailable" } });
+    const mismatch = vi.fn().mockResolvedValue(JSON.stringify({ ...profile(), name: "other-profile" }));
+    await expect(obtainLocalVertexToken(target, mismatch, {})).rejects.toMatchObject({ authDiagnostic: { authStage: "profile_validate", authFailureCategory: "invalid_profile" } });
+    const malformed = vi.fn().mockResolvedValueOnce(JSON.stringify(profile())).mockResolvedValueOnce("warning\n" + fakeToken);
+    await expect(obtainLocalVertexToken(target, malformed, {})).rejects.toMatchObject({ authDiagnostic: { authStage: "token_validate", authFailureCategory: "invalid_token" } });
+  });
   it.skipIf(process.platform !== "win32")("passes separate string arguments through real Windows PowerShell without invoking cloud tooling", async () => {
     // A function shadows the gcloud executable for the entire PowerShell run.
     // This catches PowerShell 5.1's nested-array behavior, which mocked spawn

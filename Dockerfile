@@ -8,7 +8,7 @@ RUN npm ci --include-workspace-root=false
 COPY frontend ./frontend
 COPY backend ./backend
 ENV NEXT_TELEMETRY_DISABLED=1 NEXT_PUBLIC_AUTH_MODE=guest NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true NEXT_PUBLIC_USE_FIREBASE_EMULATORS=false
-RUN npm run build --workspaces --if-present
+RUN npm run build
 
 FROM node:22-bookworm-slim AS dependencies
 WORKDIR /app
@@ -21,7 +21,8 @@ RUN mkdir -p backend/node_modules frontend/node_modules
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
-ENV NODE_ENV=production APP_ENV=production PORT=8080 NEXT_TELEMETRY_DISABLED=1
+ARG BUILD_GIT_SHA=""
+ENV NODE_ENV=production APP_ENV=production PORT=8080 NEXT_TELEMETRY_DISABLED=1 BUILD_GIT_SHA=$BUILD_GIT_SHA
 COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=dependencies --chown=node:node /app/backend/node_modules ./backend/node_modules
 COPY --from=dependencies --chown=node:node /app/frontend/node_modules ./frontend/node_modules

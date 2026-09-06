@@ -26,7 +26,7 @@ export type HouseRendererReport = {
 };
 export type HouseViewerProps = {
   document: HouseDocument; mode: HouseMode; roomId?: string | null; reset: number; lighting: HouseLighting; selectedIds: readonly string[];
-  onSelect: (canonicalId: string) => void; onReady: (report: HouseRendererReport) => void; onFailure: (message?: string) => void;
+  onSelect: (canonicalId: string, surface?: 'floor' | 'front' | 'back' | 'body') => void; onReady: (report: HouseRendererReport) => void; onFailure: (message?: string) => void;
 };
 declare global {
   interface Window {
@@ -37,6 +37,22 @@ declare global {
 
 let preparation: Promise<void> | undefined;
 const trackedRenderers = new WeakSet<object>();
+const dirtyBuildKinds = new Set(['ceiling', 'door', 'item', 'roof', 'roof-segment', 'stair', 'stair-segment', 'wall', 'window']);
+function hasPendingSceneBuildWork() {
+  // Match Pascal 0.9.2's build readiness predicate through its public store
+  // and registry. Existing meshes remain registered during progressive wall
+  // rebuilds, so their presence alone does not prove this mirror is ready.
+  const { dirtyNodes, nodes, rootNodeIds } = useScene.getState();
+  for (const id of dirtyNodes) {
+    const node = nodes[id]; if (!node) continue;
+    const parent = node.parentId ? nodes[node.parentId as keyof typeof nodes] : undefined;
+    const reachable = parent ? 'children' in parent && Array.isArray(parent.children) && parent.children.some(childId => childId === id) : rootNodeIds.includes(id);
+    if (!reachable) continue;
+    const definition = nodeRegistry.get(node.type);
+    if (definition?.geometry || definition?.capabilities?.floorPlaced || dirtyBuildKinds.has(node.type)) return true;
+  }
+  return false;
+}
 function prepareHouse() {
   preparation ??= (async () => {
     useScene.temporal.getState().pause(); useScene.temporal.getState().clear();
@@ -73,8 +89,9 @@ function ownMeshes(root: Object3D) {
 function meshBounds(meshes: Mesh[]) {
   const bounds = new Box3();
   for (const mesh of meshes) {
-    mesh.geometry.computeBoundingBox();
-    if (mesh.geometry.boundingBox) bounds.union(mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld));
+    // Model parts may be rotated (for example plant leaves). Transforming a
+    // local bounding box inflates those bounds; inspect actual vertices.
+    bounds.union(new Box3().setFromObject(mesh, true));
   }
   return bounds;
 }
@@ -115,17 +132,17 @@ function HouseRuntime({ mirror, document, mode, roomId, reset, lighting, selecte
   const selectedRoom = mode === 'inside' ? (roomId ?? document.rooms[0].id) : null;
   const nextArea = focus(document, selectedRoom);
   const area = useMemo(() => ({ x: nextArea.x, z: nextArea.z, width: nextArea.width, depth: nextArea.depth }), [nextArea.x, nextArea.z, nextArea.width, nextArea.depth]);
-  const target = useMemo<[number, number, number]>(() => mode === 'inside' ? [area.x, 1.55, area.z - area.depth * .28] : [area.x, .4, area.z], [area, mode]);
+  const target = useMemo<[number, number, number]>(() => mode === 'inside' ? [area.x - area.width * .15, 1.35, area.z - area.depth * .2] : [area.x, .4, area.z], [area, mode]);
 
   useEffect(() => { latest.current = { mirror, document, lighting, selectedIds, onSelect, onReady, onFailure }; }, [mirror, document, lighting, selectedIds, onSelect, onReady, onFailure]);
   useEffect(() => { stableFrames.current = 0; }, [document]);
   useEffect(() => {
-    if (camera instanceof PerspectiveCamera) camera.setFocalLength(camera.getFilmHeight() / (2 * Math.tan((mode === 'inside' ? 58 : 42) * Math.PI / 360)));
-    if (mode === 'inside') camera.position.set(area.x, 1.6, area.z + area.depth * .32);
+    if (camera instanceof PerspectiveCamera) camera.setFocalLength(camera.getFilmHeight() / (2 * Math.tan((mode === 'inside' ? 68 : 42) * Math.PI / 360)));
+    if (mode === 'inside') camera.position.set(area.x + area.width * .25, 1.6, area.z + area.depth * .32);
     else {
       // Fit all eight exterior corners in the actual viewport, including
       // phone aspect ratios. A span-only heuristic clips the near facade.
-      const direction = new Vector3(.65, 1, .8).normalize();
+      const direction = new Vector3(.65, 1.65, .8).normalize();
       const right = new Vector3().crossVectors(new Vector3(0, 1, 0), direction).normalize();
       const up = new Vector3().crossVectors(direction, right).normalize();
       const tangentY = Math.tan(42 * Math.PI / 360), tangentX = tangentY * size.width / size.height;
@@ -165,7 +182,18 @@ function HouseRuntime({ mirror, document, mode, roomId, reset, lighting, selecte
         }
       }
       const hit = ray.intersectObjects(candidates, false).find(hit => owner.has(hit.object as Mesh));
-      if (hit) latest.current.onSelect(owner.get(hit.object as Mesh)!);
+      if (hit) {
+        const id = owner.get(hit.object as Mesh)!, current = latest.current;
+        const wall = current.document.walls.find(wall => wall.id === id);
+        if (wall) {
+          const dx = wall.end[0] - wall.start[0], dz = wall.end[1] - wall.start[1];
+          const side = (point: Vector3) => -(point.x * 1000 - wall.start[0]) * dz + (point.z * 1000 - wall.start[1]) * dx;
+          // Native ray-hit position determines the actual shared wall face.
+          // A top-edge click uses the camera-facing side as its visible target.
+          const distance = side(hit.point);
+          current.onSelect(id, (Math.abs(distance) > Math.hypot(dx, dz) ? distance : side(camera.position)) >= 0 ? 'front' : 'back');
+        } else current.onSelect(id, current.document.rooms.some(room => room.id === id) ? 'floor' : current.document.instances.some(item => item.id === id) ? 'body' : undefined);
+      }
     };
     canvas.addEventListener('pointerdown', pointerDown); canvas.addEventListener('pointerup', pointerUp);
     return () => { canvas.removeEventListener('pointerdown', pointerDown); canvas.removeEventListener('pointerup', pointerUp); };
@@ -220,7 +248,7 @@ function HouseRuntime({ mirror, document, mode, roomId, reset, lighting, selecte
       });
       const assetFailures = Object.keys(useViewer.getState().itemLoadFailures).map(id => current.mirror.nodeEntityIds[id] ?? id);
       const settled = current.document.instances.every(instance => sceneRegistry.nodes.get(`item_${instance.id}`)?.userData.itemModelSettled === true);
-      const ready = settled && assetFailures.length === 0 && Object.keys(current.mirror.entityNodeIds).every(id => entities[id]?.meshes > 0);
+      const ready = !hasPendingSceneBuildWork() && settled && assetFailures.length === 0 && Object.keys(current.mirror.entityNodeIds).every(id => entities[id]?.meshes > 0);
       const renderInfo = gl.info.render as { calls?: number; drawCalls?: number; triangles?: number };
       return { documentId: current.document.id, backend: backend?.device ? 'WebGPU' : backend?.gl ? 'WebGL' : 'Unknown', shading: useViewer.getState().shading, lighting: current.lighting, frames: frames.current, ready,
         camera: camera.position.toArray(), cameraTarget: target, meshCount, entities, lights, openings, wallFaces, assetFailures, highlightedIds: [...helpers.current.keys()],

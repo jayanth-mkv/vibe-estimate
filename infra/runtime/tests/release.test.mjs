@@ -88,4 +88,9 @@ test('health verification rejects fixture/local metadata without making model re
   const health = { status: 'ok', runtime: 'production', auth: 'firebase', storage: 'firestore', storageConnection: 'cloud', aiProvider: 'gemini', geminiTransport: 'vertex' };
   assert.equal(verifyHealth(health).productionHealth, true);
   for (const change of [{ runtime: 'local' }, { auth: 'emulator' }, { aiProvider: 'fixture' }, { storageConnection: 'emulator' }]) assert.throws(() => verifyHealth({ ...health, ...change }));
+  const commit = 'a'.repeat(40);
+  assert.equal(verifyHealth({ ...health, gitRevision: commit }, commit).productionHealth, true);
+  assert.throws(() => verifyHealth(health, commit));
+  assert.throws(() => verifyHealth({ ...health, gitRevision: 'b'.repeat(40) }, commit));
+  assert.throws(() => verifyHealth({ ...health, gitRevision: 'abcdef' }, 'abcdef'));
 });

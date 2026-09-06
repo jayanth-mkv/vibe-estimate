@@ -14,6 +14,7 @@ import type { Room } from "@/lib/room-types";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RoomView } from "./room-view";
+import { HomeStudio } from "../spatial/home-studio";
 import styles from "./room.module.css";
 
 export interface PendingMessage { text: string; requestId: string; status: "sending" | "error"; error?: string }
@@ -109,8 +110,9 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
   }, [roomId, identity, activeIdentity, api, bootVersion, acceptRoom]);
 
   const connectedRoomId = room?.id;
+  const connectedHomeId = room?.homeId;
   useEffect(() => {
-    if (!connectedRoomId) return;
+    if (!connectedRoomId || connectedHomeId) return;
     let cancelled = false;
     let polling = false;
     async function refresh() {
@@ -130,7 +132,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
     return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener("focus", onFocus); };
-  }, [connectedRoomId, api, acceptRoom]);
+  }, [connectedRoomId, api, acceptRoom, connectedHomeId]);
 
   useEffect(() => {
     if (!text.trim() && !pending) return;
@@ -248,7 +250,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
     setActionError("");
     try {
       const result = await api.prepareDraft(room.id);
-      router.push(`/?project=${encodeURIComponent(result.project.id)}&room=${encodeURIComponent(room.id)}`);
+      router.push(`/proposals?project=${encodeURIComponent(result.project.id)}&room=${encodeURIComponent(room.id)}`);
     } catch (error) { setActionError(errorText(error)); }
     finally { setBusy(""); }
   }
@@ -285,6 +287,8 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
       </>}
     </main>
   </div>;
+
+  if (room.homeId) return <HomeStudio key={`${roomId}-${activeIdentity}`} sharedRoomId={roomId} identity={activeIdentity} initialRoom={room} />;
 
   return <>
     <RoomView room={room} text={text} pending={pending} busy={busy} notice={notice} actionError={actionError} connectionError={connectionError} inviteOpen={inviteOpen} inviteHref={inviteHref} joinCode={joinCode} environmentLabel={workspaceStatus(health)} googleAvailable={googleAuthEnabled && anonymous} local={usesEmulators} composerRef={composerRef}

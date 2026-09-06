@@ -1,6 +1,9 @@
 /** Fixed server-side destination: user input can never select an upstream host. */
 export async function forwardService(request: Request, path: string) {
   const origin = process.env.BACKEND_ORIGIN || "http://127.0.0.1:8080";
+  // Routes supply a root-relative, encoded path. Keep query data separate so
+  // a revision selector cannot become a destination URL or replace the host.
+  if (!path.startsWith("/") || path.startsWith("//") || /[\\?#]/.test(path)) return new Response(null, { status: 404 });
   const headers = new Headers();
   for (const name of ["authorization", "content-type"]) {
     const value = request.headers.get(name);
@@ -26,7 +29,11 @@ export async function forwardService(request: Request, path: string) {
     for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.length; }
   }
   try {
-    const upstream = await fetch(`${origin.replace(/\/$/, "")}${path}`, {
+    const destination = new URL(origin);
+    destination.pathname = path;
+    destination.search = new URL(request.url).search;
+    destination.hash = "";
+    const upstream = await fetch(destination.toString(), {
       method: request.method, headers, body: body as BodyInit | undefined,
       cache: "no-store", redirect: "error", signal: AbortSignal.timeout(65000),
     });

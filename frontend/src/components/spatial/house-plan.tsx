@@ -22,7 +22,7 @@ export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef
   const selected = (id: string) => selectedIds.includes(id);
   return <svg ref={svgRef} className="house-plan" viewBox={viewBox} role="img" aria-label={`${focusedRoom ? `${focusedRoom.name} focused room` : document.name} floor plan`} xmlns="http://www.w3.org/2000/svg" style={{ fontFamily: "Arial, sans-serif" }}>
     <title>{`${focusedRoom?.name ?? document.name} — floor plan`}</title>
-    <desc>Synthetic single-floor fixture. Measurements use millimetres. Select rooms, walls and objects using the selection controls.</desc>
+    <desc>Single-floor design plan. Measurements use millimetres. Select rooms, walls and objects using the selection controls. Template measurements must be checked against the actual home.</desc>
     <rect x={minX - 550} y={minZ - 650} width={maxX - minX + 1100} height={maxZ - minZ + 1250} fill="#f4f6f8" />
     {document.rooms.map(room => <g key={room.id} onClick={() => onSelect?.(room.id, "floor")} style={{ cursor: onSelect ? "pointer" : undefined }}>
       <rect x={room.x} y={room.z} width={room.width} height={room.depth} fill={color(room.floorMaterialId)} fillOpacity="0.25" />
@@ -78,7 +78,7 @@ export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef
       </g>;
     })}
     {region && <rect x={region.x} y={region.z} width={region.width} height={region.depth} fill="#c52031" fillOpacity="0.07" stroke="#c52031" strokeWidth="25" strokeDasharray="95 65" pointerEvents="none" />}
-    {!focusedRoom && <><g fill="#536775" fontSize={textSize * 0.85}><text x={minX} y={maxZ + 390}>Ceiling 2.8 m · assumed</text><text x={maxX} y={maxZ + 390} textAnchor="end">Synthetic fixture · mm</text></g>
+    {!focusedRoom && <><g fill="#536775" fontSize={textSize * 0.85}><text x={minX} y={maxZ + 390}>Ceiling {document.level.ceilingHeight / 1000} m · assumed</text><text x={maxX} y={maxZ + 390} textAnchor="end">Design plan · mm</text></g>
     <g stroke="#647684" strokeWidth="10"><path d={`M ${minX} ${minZ - 360} H ${maxX} M ${minX} ${minZ - 440} V ${minZ - 280} M ${maxX} ${minZ - 440} V ${minZ - 280}`} /></g>
     <text x={(minX + maxX) / 2} y={minZ - 410} textAnchor="middle" fill="#536775" fontSize={textSize}>{(maxX - minX).toLocaleString("en-GB")} mm · wall centre lines</text></>}
   </svg>;

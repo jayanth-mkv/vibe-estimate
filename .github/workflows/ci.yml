@@ -7,7 +7,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,16 +21,29 @@ jobs:
       - run: npm ci
       - run: npm run setup
       - run: npm run typecheck
+      - run: npm run typecheck:v1
       - run: npm test
-      - run: npm run test:auth --workspace @vibeestimate/frontend
+      - run: npm run test --workspace @vibeestimate/frontend
+      - run: npm run test:spatial
+      - run: npm run test:v1:scene
+      - run: npm run test:v1:config
+      - run: node --test tests/v1/runtime-command.test.mjs
+      - run: npm run lint --workspace @vibeestimate/frontend
       - run: npm run build
-      - run: npm run test:local
+      - run: xvfb-run -a npm run test:v1:browser -- --legacy
       - run: npm run check:public
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: browser-failure-report
-          path: playwright-report/
+          name: fixture-browser-failure-report
+          path: |
+            .cache/v1/*/report/
+            .cache/v1/*/evidence/
+            .cache/v1/*/browser.json
+            .cache/v1/*/verification.json
+            .cache/v1/*/ready.json
+          if-no-files-found: ignore
+          include-hidden-files: true
           retention-days: 3
 
   # A push to main applies Terraform, so every root is checked before merge.

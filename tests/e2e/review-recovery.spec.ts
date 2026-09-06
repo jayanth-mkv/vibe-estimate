@@ -12,7 +12,7 @@ test.beforeAll(async ({ request }) => {
   }
 });
 async function example(page: Page, which = "lighting") {
-  await page.goto("/");
+  await page.goto("/proposals");
   const creating = page.waitForResponse(responseFor("/api/projects"));
   await page.getByRole("button", { name: `Try the ${which} example`, exact: true }).click();
   expect((await creating).status()).toBe(201);

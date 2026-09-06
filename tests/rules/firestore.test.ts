@@ -5,10 +5,11 @@ import { beforeAll, afterAll, test } from "vitest";
 
 let environment: RulesTestEnvironment;
 beforeAll(async () => {
-  if (process.env.FIRESTORE_EMULATOR_HOST !== "127.0.0.1:8085") throw new Error("Rules tests require the local emulator.");
+  const emulator = process.env.FIRESTORE_EMULATOR_HOST;
+  if (!["127.0.0.1:8085", "127.0.0.1:8285"].includes(emulator ?? "")) throw new Error("Rules tests require an admitted local emulator.");
   environment = await initializeTestEnvironment({
     projectId: "demo-vibeestimate",
-    firestore: { host: "127.0.0.1", port: 8085, rules: fs.readFileSync("firestore.rules", "utf8") }
+    firestore: { host: "127.0.0.1", port: Number(emulator!.split(":")[1]), rules: fs.readFileSync("firestore.rules", "utf8") }
   });
 });
 afterAll(async () => { await environment?.cleanup(); });
@@ -35,5 +36,14 @@ test("room and invitation membership records are only accessible through the ver
     }
     await assertFails(getDocs(collection(db, "rooms")));
     await assertFails(getDocs(collection(db, "roomOwners")));
+  }
+});
+test("home scenes, immutable revisions and summaries cannot bypass the owner-authorized API", async () => {
+  for (const db of [environment.authenticatedContext("owner-a").firestore(), environment.authenticatedContext("owner-b").firestore(), environment.unauthenticatedContext().firestore()]) {
+    for (const record of ["users/owner-a/homes/home-a", "users/owner-a/homes/home-a/revisions/revision-a", "users/owner-a/homes/home-a/summaries/revision-a", "users/owner-a/homes/home-a/agreementProse/revision-a", "homeOwners/owner-a"]) {
+      await assertFails(getDoc(doc(db, record)));
+      await assertFails(setDoc(doc(db, record), { ownerId: "owner-a", headRevisionId: "revision-a" }));
+    }
+    await assertFails(getDocs(collection(db, "users/owner-a/homes")));
   }
 });

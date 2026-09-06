@@ -7,8 +7,10 @@ export type AppConfig = {
   firestoreDatabaseId: string;
   frontendOrigin: string;
   port: number;
+  gitRevision?: string;
   geminiApiKey?: string;
   geminiModel?: string;
+  geminiFallbackModel?: string;
   geminiTransport?: "developer" | "vertex";
   vertexProjectId?: string;
   vertexLocation?: string;
@@ -64,6 +66,8 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
   if (geminiTransport !== "developer" && geminiTransport !== "vertex") throw new Error("GEMINI_TRANSPORT must be developer or vertex.");
   if (geminiTransport === "vertex" && aiProvider !== "gemini") throw new Error("Vertex transport requires Gemini reviews.");
   if (aiProvider === "gemini" && (!env.GEMINI_MODEL?.trim() || !/^[A-Za-z0-9._-]+$/.test(env.GEMINI_MODEL.trim()))) throw new Error("Gemini mode requires a valid explicit GEMINI_MODEL; fixture fallback is disabled.");
+  const geminiFallbackModel = env.GEMINI_FALLBACK_MODEL?.trim();
+  if (env.GEMINI_FALLBACK_MODEL !== undefined && (!geminiFallbackModel || aiProvider !== "gemini" || !/^[A-Za-z0-9._-]+$/.test(geminiFallbackModel) || geminiFallbackModel === env.GEMINI_MODEL?.trim())) throw new Error("GEMINI_FALLBACK_MODEL must be a distinct explicitly configured Gemini model.");
   if (aiProvider === "gemini" && geminiTransport === "developer" && !env.GEMINI_API_KEY?.trim()) throw new Error("Developer Gemini mode requires GEMINI_API_KEY; fixture fallback is disabled.");
   if (geminiTransport === "vertex" && (env.GEMINI_API_KEY?.trim() || env.GOOGLE_API_KEY?.trim())) throw new Error("Local Vertex mode requires explicit user authentication without an API key.");
   const runtimeVertex = geminiTransport === "vertex" && appEnv === "production";
@@ -88,12 +92,14 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
   if (firestoreDatabaseId !== "(default)" && !/^[a-z][a-z0-9-]{2,61}[a-z0-9]$/.test(firestoreDatabaseId)) throw new Error("FIRESTORE_DATABASE_ID must identify an explicit valid database.");
   const port = Number(env.PORT ?? "8080");
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("PORT must be a valid port.");
+  const gitRevision = env.BUILD_GIT_SHA || undefined;
+  if (gitRevision !== undefined && !/^[0-9a-f]{40}$/.test(gitRevision)) throw new Error("BUILD_GIT_SHA must be a complete 40-character lowercase hexadecimal Git revision.");
   const taskQueuePath = env.ROOM_TASK_QUEUE;
   const taskServiceAccount = env.ROOM_TASK_SERVICE_ACCOUNT;
   if (appEnv === "production" && (!/^projects\/[a-z][a-z0-9-]+\/locations\/[a-z]+-[a-z]+[0-9]\/queues\/[a-z][a-z0-9-]+$/.test(taskQueuePath ?? "") || !/^[a-z][a-z0-9-]+@[a-z][a-z0-9-]+\.iam\.gserviceaccount\.com$/.test(taskServiceAccount ?? ""))) throw new Error("Production requires a managed room task queue and delivery identity.");
   return {
-    appEnv, aiProvider, projectId, frontendOrigin, port, authEmulatorHost, firestoreEmulatorHost,
-    firestoreDatabaseId, geminiApiKey: env.GEMINI_API_KEY?.trim(), geminiModel: env.GEMINI_MODEL?.trim(), geminiTransport,
+    appEnv, aiProvider, projectId, frontendOrigin, port, gitRevision, authEmulatorHost, firestoreEmulatorHost,
+    firestoreDatabaseId, geminiApiKey: env.GEMINI_API_KEY?.trim(), geminiModel: env.GEMINI_MODEL?.trim(), geminiFallbackModel, geminiTransport,
     vertexProjectId: runtimeVertex ? env.VERTEX_PROJECT_ID : vertex?.projectId, vertexLocation: runtimeVertex ? env.VERTEX_LOCATION : vertex?.location,
     vertexAuthMode: runtimeVertex ? "runtime" : "named-profile", taskQueuePath, taskServiceAccount,
     vertexGcloudConfiguration: vertex?.gcloudConfiguration, vertexGcloudAccount: vertex?.gcloudAccount, vertexGcloudConfigDir: vertex?.gcloudConfigDir,

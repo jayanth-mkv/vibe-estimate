@@ -1,5 +1,5 @@
 import { catalog, type HouseDocument, type HouseInstance, type HousePatch, type HouseScope, type HouseWall } from '@vibeestimate/scene-schema';
-import { validateHouse } from './house';
+import { validateHouse } from './house.js';
 
 type Cell = { id: string; name: string; x: number; z: number; width: number; depth: number };
 const materials: HouseDocument['materials'] = [
@@ -15,7 +15,7 @@ const materials: HouseDocument['materials'] = [
 ];
 
 /** Split collinear room edges at every junction, admitting each shared wall once. */
-function structure(id: string, name: string, cells: Cell[]): HouseDocument {
+export function structure(id: string, name: string, cells: Cell[]): HouseDocument {
   const lines = new Map<string, { horizontal: boolean; coordinate: number; edges: { start: number; end: number; roomId: string; front: boolean }[] }>();
   function edge(horizontal: boolean, coordinate: number, start: number, end: number, roomId: string, front: boolean) {
     const key = `${horizontal ? 'h' : 'v'}:${coordinate}`;
@@ -52,7 +52,7 @@ function opening(scene: HouseDocument, id: string, wall: HouseWall, kind: 'door'
 }
 export function createInstance(scene: HouseDocument, id: string, catalogId: string, roomId: string, x: number, z: number, overrides: Partial<HouseInstance> = {}): HouseInstance {
   const entry = catalog.find(e => e.id === catalogId)!;
-  return { id, catalogId, roomId, position: [x, entry.mount === 'floor' ? 0 : scene.level.ceilingHeight - entry.dimensions[1], z], dimensions: [...entry.dimensions], rotation: 0, materialId: catalogId === 'sofa' || catalogId === 'bed' ? 'fabric-cream' : catalogId.includes('lamp') || catalogId === 'pendant' ? 'paint-navy' : 'wood-oak', locked: false, ...(entry.kind === 'light' ? { light: { enabled: true, intensity: 80, temperature: 'warm' as const } } : {}), ...overrides };
+  return { id, catalogId, roomId, position: [x, entry.mount === 'floor' ? 0 : scene.level.ceilingHeight - entry.dimensions[1], z], dimensions: [...entry.dimensions], rotation: 0, materialId: catalogId === 'sofa' || catalogId === 'bed' ? 'fabric-cream' : catalogId.includes('lamp') || catalogId === 'pendant' ? 'paint-navy' : catalogId === 'plant' ? 'paint-sage' : 'wood-oak', locked: false, ...(entry.kind === 'light' ? { light: { enabled: true, intensity: 80, temperature: 'warm' as const } } : {}), ...overrides };
 }
 function smallFixture(adjoining: boolean) {
   const scene = structure(adjoining ? 'adjoining-rooms' : 'room-study', adjoining ? 'Adjoining rooms' : 'Measured room', [

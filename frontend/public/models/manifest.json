@@ -29,7 +29,7 @@
     "meshes": 12,
     "vertices": 7792,
     "licence": "MIT",
-    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
   },
   {
     "id": "table",
@@ -60,7 +60,7 @@
     "meshes": 6,
     "vertices": 5400,
     "licence": "MIT",
-    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
   },
   {
     "id": "chair",
@@ -91,7 +91,7 @@
     "meshes": 6,
     "vertices": 5400,
     "licence": "MIT",
-    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
   },
   {
     "id": "bed",
@@ -124,7 +124,7 @@
     "meshes": 10,
     "vertices": 9000,
     "licence": "MIT",
-    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
   },
   {
     "id": "cabinet",
@@ -156,7 +156,7 @@
     "meshes": 9,
     "vertices": 8100,
     "licence": "MIT",
-    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
   },
   {
     "id": "pendant",
@@ -189,7 +189,7 @@
     "meshes": 5,
     "vertices": 779,
     "licence": "MIT",
-    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
   },
   {
     "id": "floor-lamp",
@@ -222,6 +222,289 @@
     "meshes": 5,
     "vertices": 779,
     "licence": "MIT",
-    "source": "Authored procedural geometry in scripts/generate-models.mjs"
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
+  },
+  {
+    "id": "armchair",
+    "dimensionsMm": [
+      900,
+      850,
+      850
+    ],
+    "boundsMm": {
+      "min": [
+        -450,
+        0,
+        -425
+      ],
+      "max": [
+        450,
+        850,
+        425
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "linen",
+      "oak"
+    ],
+    "bytes": 173852,
+    "sha256": "71cd9ba89090028ea3d91de11cfbef5f4a4964ffc97e055ef4fdfcf0f4546b08",
+    "meshes": 9,
+    "vertices": 4596,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
+  },
+  {
+    "id": "coffee-table",
+    "dimensionsMm": [
+      900,
+      450,
+      500
+    ],
+    "boundsMm": {
+      "min": [
+        -450,
+        0,
+        -250
+      ],
+      "max": [
+        450,
+        450,
+        250
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "oak"
+    ],
+    "bytes": 40720,
+    "sha256": "16f2999b53bbfc2109a9fe82e381a7decb1ab65efcf605e8934615dbf40b233f",
+    "meshes": 5,
+    "vertices": 996,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
+  },
+  {
+    "id": "side-table",
+    "dimensionsMm": [
+      450,
+      550,
+      450
+    ],
+    "boundsMm": {
+      "min": [
+        -225,
+        0,
+        -225
+      ],
+      "max": [
+        225,
+        550,
+        225
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "oak"
+    ],
+    "bytes": 40720,
+    "sha256": "5e2e91a125ca5d2be972baa44abdbd00bcf98f74d2f95bf173991709fbf8dc80",
+    "meshes": 5,
+    "vertices": 996,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
+  },
+  {
+    "id": "desk",
+    "dimensionsMm": [
+      1200,
+      750,
+      600
+    ],
+    "boundsMm": {
+      "min": [
+        -600,
+        0,
+        -300
+      ],
+      "max": [
+        600,
+        750,
+        300
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "oak"
+    ],
+    "bytes": 42368,
+    "sha256": "90338ef7aa6ac010b0ba253c0cd0c626f0f954873703aafb52fbe579a90f5433",
+    "meshes": 6,
+    "vertices": 1020,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
+  },
+  {
+    "id": "kitchen-counter",
+    "dimensionsMm": [
+      1800,
+      900,
+      600
+    ],
+    "boundsMm": {
+      "min": [
+        -900,
+        0,
+        -300
+      ],
+      "max": [
+        900,
+        900,
+        300
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "linen",
+      "metal"
+    ],
+    "bytes": 16484,
+    "sha256": "47a0d04e5c6f1e09e5c5bf10097c893b671a65465cad67bbba23e00cc898392b",
+    "meshes": 9,
+    "vertices": 216,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
+  },
+  {
+    "id": "toilet",
+    "dimensionsMm": [
+      420,
+      780,
+      680
+    ],
+    "boundsMm": {
+      "min": [
+        -210,
+        0,
+        -340
+      ],
+      "max": [
+        210,
+        780,
+        340
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "linen",
+      "metal"
+    ],
+    "bytes": 135432,
+    "sha256": "982ae78e0551331c14b06361b3216c3cb72a50265ec0c3f98f1a20e110a9120c",
+    "meshes": 5,
+    "vertices": 3624,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
+  },
+  {
+    "id": "shower",
+    "dimensionsMm": [
+      900,
+      2000,
+      900
+    ],
+    "boundsMm": {
+      "min": [
+        -450,
+        0,
+        -450
+      ],
+      "max": [
+        450,
+        2000,
+        450
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "linen",
+      "metal"
+    ],
+    "bytes": 62772,
+    "sha256": "c8bf4eff73b47389a822f80b43e36ad4a7289f1c42724087088f11a331304d7b",
+    "meshes": 12,
+    "vertices": 1412,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
+  },
+  {
+    "id": "plant",
+    "dimensionsMm": [
+      500,
+      1000,
+      500
+    ],
+    "boundsMm": {
+      "min": [
+        -250,
+        0,
+        -250
+      ],
+      "max": [
+        250,
+        1000,
+        250
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "oak"
+    ],
+    "bytes": 40280,
+    "sha256": "0779df1e6253fec27c765de858f944fce00aba283aeea469a1345a3ff9674957",
+    "meshes": 6,
+    "vertices": 764,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
+  },
+  {
+    "id": "bookcase",
+    "dimensionsMm": [
+      900,
+      1800,
+      300
+    ],
+    "boundsMm": {
+      "min": [
+        -450,
+        0,
+        -150
+      ],
+      "max": [
+        450,
+        1800,
+        150
+      ]
+    },
+    "pivot": "bottom-centre",
+    "slotIds": [
+      "body",
+      "linen",
+      "oak"
+    ],
+    "bytes": 23312,
+    "sha256": "4dd19010ac07fcc7c3cec2f2e46ebb1e19d5e60b49f2fc9d39a7a93a20f80dc2",
+    "meshes": 13,
+    "vertices": 312,
+    "licence": "MIT",
+    "source": "Authored procedural geometry in scripts/spatial-models.mjs"
   }
 ]

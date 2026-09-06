@@ -2,21 +2,17 @@
 version: 1
 slug: "frontend-src-app-page-tsx"
 primary_target: "src/app/page.tsx"
-related_targets: ["src/app/project-view.tsx", "src/app/globals.css", "src/components/onboarding.tsx", "src/components/onboarding.module.css", "src/lib/examples.ts", "src/app/welcome/page.tsx", "src/app/landing.css", "src/components/landing.tsx", "src/app/layout.tsx"]
+related_targets: ["src/components/spatial/home-workspace.tsx", "src/components/spatial/home-studio.css", "src/lib/home-api.ts", "src/components/spatial/use-home-session.ts"]
 ---
 
-# VibeEstimate home, product tour, and project review
+# Your homes
 
-Modes: Onboard for first use, Operate for the project workspace, Persuade for the optional product tour.
+Mode: Operate. The confirmed v1 front door creates a private project without an intake form, then opens the authored home gallery. Returning owners see real saved home projects and exact useful next actions. The illustration is an actual starting layout, never a fabricated screenshot of a working product.
 
-The user pinned Petpooja's visual style on 5 September 2026, then requested a simpler Google/NotebookLM-style workflow with less header space. The latest clarification retains the existing landing page, generated images, explanatory flows, and navy/red theming. Preserve both intents: / is the compact workspace; /welcome retains the illustrated product tour. Link the tour from the workspace and the workspace from the tour. Do not reopen brand or concept selection.
+Keep the pinned navy/red identity, self-hosted Poppins headings and DM Sans controls. A compact brand row contains room joining and optional account access; the main row pairs Your homes with New project. First use earns its space with a wide actual home preview and direct explanation. Saved projects carry real titles, revision counts and dates. No deprecated workflow stack, agent-feed simulation, fake progress or nonfunctional controls belongs on this route.
 
-Home: a compact white header, navy/red brand, one-sentence purpose, Sources → Review → Draft, and Start a project. Let owners enter sources in two steps before sign-in is required at Save project. Keep one-click fictional example creation and show saved projects first for returning owners. Use real persisted state for row labels and useful next actions.
+An anonymous Firebase identity enables private persistence. Google linking preserves that UID. Switching to returning Google access rechecks both the home and legacy project lists; read failure or any saved guest work prevents switching. Authentication changes hide previous-owner content immediately. Errors retain work and provide reconnection.
 
-Workspace: pair original sources with one active Review or Draft pane. Stack on phones, with sources initially collapsed and opened/focused by the Sources action or citations. Distinguish included work, proposed additions, and unresolved details. Continue to draft introduces owner-entered description, quantity, and confirmed price. Later clarifications must not overwrite those draft choices. Preserve APIs, original wording, exact evidence links, leave protection, revision history, and export. Only confirmed writes earn saved milestones; client approval is not collected.
+Scope & proposals is a quiet secondary route at /proposals. Old root project query links resolve there. New projects enter /projects/:id; /studio redirects to /. The isolated PoC and developer JSON workbench are not customer navigation.
 
-Tour: retain the navy hero and white headline, red actions, overlapping laptop/phone preview, four workflow tabs, illustrated feature region, and final action. Keep original art in frontend/public/images and readable fictional preview text in HTML. Scope tour styles to avoid changing the compact workspace after navigation.
-
-DESIGN.md owns shared typography, tokens, route composition, responsive behavior, and accessibility. Do not adopt Google or Petpooja identity, invent customers or savings, or add fake progress and urgency. Keep safe retry and real unsaved/error states.
-
-Verification must cover both routes and navigation between them, first-save onboarding, keyboard/mobile interactions, source focus, review/clarification, pricing, revisions, persistence, download, and failure recovery. Tests, the shadcn audit, and the completed-pass Impeccable detector are required evidence to collect; execution results belong in docs/verification.md.
+Verification: first creation, all three template routes, saved home reopening, auth changes and access guards, keyboard/touch at 1440/390/320 pixels, accessibility and account/connection failure. Executed evidence belongs in the release reports.

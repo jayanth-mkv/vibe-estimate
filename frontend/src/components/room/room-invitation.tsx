@@ -15,6 +15,7 @@ interface Props {
   joinCode: string;
   busy: boolean;
   local: boolean;
+  homeDesign?: boolean;
   notice: string;
   error: string;
   onOpenChange: () => void;
@@ -23,12 +24,12 @@ interface Props {
   onCopyCode: () => void;
 }
 
-export function RoomInvitation({ roomId, clientJoined, open, inviteHref, joinCode, busy, local, notice, error, onOpenChange, onCreate, onCopyLink, onCopyCode }: Props) {
+export function RoomInvitation({ roomId, clientJoined, open, inviteHref, joinCode, busy, local, homeDesign = false, notice, error, onOpenChange, onCreate, onCopyLink, onCopyCode }: Props) {
   const loopback = inviteHref && ["localhost", "127.0.0.1", "[::1]"].includes(new URL(inviteHref).hostname);
   return <Dialog open={open} onOpenChange={(next) => { if (next !== open) onOpenChange(); }}>
     <DialogTrigger asChild><Button className="button secondary"><Users size={17} aria-hidden="true" />{clientJoined ? "Client access" : "Invite client"}</Button></DialogTrigger>
     <DialogContent className={styles.inviteDialog}>
-      <DialogHeader><DialogTitle>{clientJoined ? "Your client has joined." : "Bring your client into the room."}</DialogTitle><DialogDescription>{clientJoined ? "They can read the shared conversation and the drafts you choose to share." : "Share a QR code, room code, or link. Your client can see the agreed scope and room conversation. Your private draft stays with you until you share it."}</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>{clientJoined ? "Your client has joined." : "Bring your client into the room."}</DialogTitle><DialogDescription>{homeDesign ? "Your client can explore and refine this home, discuss it with your assistant, and accept a saved design. You both see the conversation and draft agreement library. Private pricing records remain private." : clientJoined ? "They can read the shared conversation and the drafts you choose to share." : "Share a QR code, room code, or link. Your client can see the agreed scope and room conversation. Your private draft stays with you until you share it."}</DialogDescription></DialogHeader>
       {clientJoined ? <div className={styles.joinedInvitation}><span><CheckCheck size={26} aria-hidden="true" /></span><p>This room has its two people. Your invitation is no longer available to someone else.</p><Button asChild className="button primary"><a href={`/client/rooms/${encodeURIComponent(roomId)}`} target="_blank" rel="noopener noreferrer">{local ? "Open client demo" : "Open client view"}<ExternalLink size={15} aria-hidden="true" /></a></Button><small>Use the browser where the client joined to reopen their view.</small></div> : inviteHref ? <>
         <div className={styles.inviteMethods}>
           <figure className={styles.inviteQr}><QRCodeSVG value={inviteHref} size={192} marginSize={4} level="M" bgColor="#ffffff" fgColor="#102b3f" title="Scan to join the project room" role="img" aria-label="Scan to join the project room" /><figcaption>Scan to open the client view</figcaption></figure>

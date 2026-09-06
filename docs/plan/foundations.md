@@ -29,14 +29,14 @@ The existing code already solves several of the hardest problems in this plan. E
 
 | Concern | Choice | Note |
 | --- | --- | --- |
-| Agents | `@google/adk` **2.0.0** + `@google/adk-devtools` | Zod tool schemas; sequential, parallel, loop and routed workflows; native A2A remote agents. Spiked in [v1](v1.md#spike-adk-js) before anything depends on it. |
+| Agents | Existing `@google/genai` for V1; official TypeScript ADK for later workers | The [compatibility spike](v1.md#scope-boundaries) is required before adopting worker orchestration, tools or remote agents. It is not yet an executed result. |
 | Skills | ADK `SkillToolset` with SKILL.md folders | L1/L2/L3 progressive disclosure. Same shape as the vendored `.agents/skills/impeccable/`. |
 | MCP | ADK `MCPToolset(connectionParams, toolFilter?, prefix?)` | Streamable HTTP for our own servers, stdio for local development. `toolFilter` allowlists per agent. |
 | MCP we publish | `@modelcontextprotocol/sdk` | Already a root devDependency. |
-| Model | Vertex `gemini-3.7-flash` | Keep `@google/genai` and the existing `LocalVertexGeminiProvider` fresh-token-per-call path. A bounded fallback ladder is added in [v1](v1.md#model-fallback). |
+| Model | Vertex `gemini-3.7-flash` | Keep `@google/genai` and the existing `LocalVertexGeminiProvider` fresh-token-per-call path. A bounded fallback ladder is added in [v1](v1.md#scene-catalog-and-gemini). |
 | Vision | The same model — `box_2d` + `mask` + `label`, coordinates normalised to 0–1000 | Plan extraction and photo reading. |
-| 3D | `three` + `@react-three/fiber` **9.x** + `@react-three/drei` | R3F 9 is the React 19 / Next 16 line; v8 is incompatible. Lazy-loaded on studio entry only. |
-| Assets | CC0 GLB from Poly Haven, Kenney, Quaternius, KayKit | Roughly 24 admitted, each with the full admission record in [v1](v1.md). |
+| 3D | Pascal core/viewer 0.9.2 and nodes 0.1.1 through the shared adapter | Actual Pascal/Three geometry mirrors canonical scenes; the independent Plan view remains available if graphics fail. |
+| Assets | Sixteen locally authored MIT GLBs in V1 | Bounds, pivots, material slots, hashes and actual-model thumbnails are admitted. A later expansion may admit approximately 24 assets with separate license records. |
 | Memory | Canonical project preferences in Firestore; optional Vertex Agent Engine Memory Bank projection | Project-scoped by default; edit/forget and same-studio cross-project opt-in follow [controls](controls.md). Provider choice must not block preference persistence. |
 | Voice | `gemini-3.1-flash-live-preview` over WebSocket | [v3](v3.md#voice) only. |
 

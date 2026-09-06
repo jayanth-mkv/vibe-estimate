@@ -89,7 +89,7 @@ test("live shared room observes two people and preserves owner-priced shared dra
   await page.route(api + "/api/**", guard);
 
   try {
-    await page.goto("/");
+    await page.goto("/proposals");
     await expect(page.getByText("Local workspace · Gemini enabled", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Start a project", exact: true }).click();
     await page.getByLabel("Project name", { exact: true }).fill("Synthetic live shared lighting");

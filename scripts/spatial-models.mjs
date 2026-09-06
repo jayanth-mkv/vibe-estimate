@@ -10,6 +10,9 @@ const output = resolve(root, 'frontend/public/models');
 const definitions = [
   ['sofa', [2.2, .85, .9]], ['table', [1.4, .75, .8]], ['chair', [.5, .9, .55]],
   ['bed', [1.6, .65, 2.1]], ['cabinet', [1.2, 2.1, .5]], ['pendant', [.4, .3, .4]], ['floor-lamp', [.4, 1.6, .4]],
+  ['armchair', [.9, .85, .85]], ['coffee-table', [.9, .45, .5]], ['side-table', [.45, .55, .45]],
+  ['desk', [1.2, .75, .6]], ['kitchen-counter', [1.8, .9, .6]], ['toilet', [.42, .78, .68]],
+  ['shower', [.9, 2, .9]], ['plant', [.5, 1, .5]], ['bookcase', [.9, 1.8, .3]],
 ];
 const materials = {
   body: new MeshStandardMaterial({ name: 'slot_body', color: '#b4866b', roughness: .82 }),
@@ -74,6 +77,47 @@ function authored(id) {
     cylinder(g, .125, .20, .27, [0, 1.465, 0], materials.body);
     cylinder(g, .185, .185, .015, [0, 1.3375, 0], materials.linen);
     part(g, new SphereGeometry(.038, 16, 10), [0, 1.37, 0], materials.bulb);
+  } else if (id === 'armchair') {
+    box(g, [.82, .18, .78], [0, .32, 0]);
+    box(g, [.9, .42, .15], [0, .64, -.35]);
+    for (const x of [-.4, .4]) box(g, [.1, .4, .8], [x, .51, 0]);
+    box(g, [.65, .14, .58], [0, .46, .06], materials.linen, .035);
+    for (const x of [-.3, .3]) for (const z of [-.28, .28]) box(g, [.065, .22, .065], [x, .11, z], materials.oak, 0);
+  } else if (['coffee-table', 'side-table', 'desk'].includes(id)) {
+    const [w, h, d] = definitions.find(([name]) => name === id)[1];
+    box(g, [w, .055, d], [0, h - .0275, 0]);
+    for (const x of [-w * .4, w * .4]) for (const z of [-d * .35, d * .35]) box(g, [.05, h - .055, .05], [x, (h - .055) / 2, z], materials.oak, 0);
+    if (id === 'desk') box(g, [.4, .12, d * .8], [w * .25, h - .14, 0], materials.body, 0);
+  } else if (id === 'kitchen-counter') {
+    box(g, [1.78, .8, .57], [0, .45, 0], materials.body, 0);
+    box(g, [1.8, .045, .6], [0, .8775, 0], materials.linen, 0);
+    for (const x of [-.6, 0, .6]) { box(g, [.584, .72, .025], [x, .46, .295], materials.body, 0); box(g, [.18, .016, .028], [x, .75, .322], materials.metal, 0); }
+    box(g, [1.64, .1, .45], [0, .05, 0], materials.metal, 0);
+  } else if (id === 'toilet') {
+    box(g, [.37, .4, .2], [0, .58, -.24], materials.body, .04);
+    box(g, [.29, .34, .46], [0, .17, .04], materials.body, .045);
+    box(g, [.42, .1, .49], [0, .38, .095], materials.linen, .04);
+    box(g, [.28, .015, .31], [0, .438, .105], materials.body, .025);
+    box(g, [.085, .018, .035], [.09, .789, -.24], materials.metal, 0);
+  } else if (id === 'shower') {
+    box(g, [.9, .08, .9], [0, .04, 0], materials.linen, .015);
+    for (const x of [-.43, .43]) for (const z of [-.43, .43]) box(g, [.025, 1.96, .025], [x, 1.02, z], materials.metal, 0);
+    for (const x of [-.43, .43]) box(g, [.025, .025, .88], [x, 1.985, 0], materials.metal, 0);
+    for (const z of [-.43, .43]) box(g, [.88, .025, .025], [0, 1.985, z], materials.metal, 0);
+    cylinder(g, .012, .012, 1.4, [0, 1.1, -.39], materials.metal);
+    cylinder(g, .10, .10, .028, [0, 1.87, -.27], materials.metal);
+    box(g, [.08, .015, .08], [0, .09, 0], materials.metal, 0);
+  } else if (id === 'plant') {
+    cylinder(g, .16, .12, .3, [0, .15, 0], materials.body);
+    cylinder(g, .018, .025, .7, [0, .65, 0], materials.oak);
+    for (const [x, y, z] of [[-.14,.65,0],[.13,.78,0],[0,.88,-.12],[0,.58,.14]]) {
+      const leaf = part(g, new SphereGeometry(.18, 12, 8), [x, y, z], materials.body); leaf.scale.set(.7, .75, .35); leaf.rotation.z = x > 0 ? -.7 : .7;
+    }
+  } else if (id === 'bookcase') {
+    for (const x of [-.4325, .4325]) box(g, [.035, 1.8, .3], [x, .9, 0], materials.body, 0);
+    for (const y of [.025, .45, .9, 1.35, 1.775]) box(g, [.9, .035, .3], [0, y, 0], materials.body, 0);
+    box(g, [.87, 1.76, .018], [0, .9, -.141], materials.oak, 0);
+    for (const [x,y] of [[-.3,.6],[-.24,.6],[-.18,.6],[.2,1.08],[.27,1.08]]) box(g, [.045, .25, .2], [x, y, 0], materials.linen, 0);
   }
   return g;
 }
@@ -83,7 +127,7 @@ function authored(id) {
 // independent of a downstream importer's pivot and hierarchy conventions.
 function toGlb(group, dimensions) {
   group.updateMatrixWorld(true);
-  const original = new Box3().setFromObject(group), size = original.getSize(new Vector3());
+  const original = new Box3().setFromObject(group, true), size = original.getSize(new Vector3());
   group.scale.set(...dimensions.map((value, i) => value / size.getComponent(i)));
   group.position.set(-(original.min.x + original.max.x) / 2 * group.scale.x, -original.min.y * group.scale.y, -(original.min.z + original.max.z) / 2 * group.scale.z);
   group.updateMatrixWorld(true);
@@ -130,7 +174,7 @@ const manifest = [];
 for (const [id, dimensions] of definitions) {
   const model = authored(id), result = toGlb(model, dimensions);
   await writeFile(resolve(output, `${id}.glb`), result.bytes);
-  manifest.push({ id, dimensionsMm: dimensions.map(n => Math.round(n * 1000)), boundsMm: { min: [-dimensions[0] * 500, 0, -dimensions[2] * 500], max: [dimensions[0] * 500, dimensions[1] * 1000, dimensions[2] * 500] }, pivot: 'bottom-centre', slotIds: result.slotIds, bytes: result.bytes.length, sha256: createHash('sha256').update(result.bytes).digest('hex'), meshes: result.meshCount, vertices: result.vertexCount, licence: 'MIT', source: 'Authored procedural geometry in scripts/generate-models.mjs' });
+  manifest.push({ id, dimensionsMm: dimensions.map(n => Math.round(n * 1000)), boundsMm: { min: [-dimensions[0] * 500, 0, -dimensions[2] * 500], max: [dimensions[0] * 500, dimensions[1] * 1000, dimensions[2] * 500] }, pivot: 'bottom-centre', slotIds: result.slotIds, bytes: result.bytes.length, sha256: createHash('sha256').update(result.bytes).digest('hex'), meshes: result.meshCount, vertices: result.vertexCount, licence: 'MIT', source: 'Authored procedural geometry in scripts/spatial-models.mjs' });
   model.traverse(object => { if (object.isMesh) object.geometry.dispose(); });
 }
 await writeFile(resolve(output, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
@@ -171,6 +215,6 @@ if (process.argv.includes('--thumbnails')) {
       await page.locator('canvas').screenshot({ path: resolve(output, `${id}.png`) }); checks.push({ id, bounds });
     }
     await writeFile(resolve(output, 'thumbnail-verification.json'), JSON.stringify({ browser: 'headed Chromium', renderer: 'Three WebGL model-thumbnail renderer; house scene uses Pascal Viewer', models: checks }, null, 2) + '\n');
-    console.log('Captured seven actual-model thumbnails and checked loaded GLB bounds.');
+    console.log(`Captured ${definitions.length} actual-model thumbnails and checked loaded GLB bounds.`);
   } finally { await browser?.close(); await new Promise(done => server.close(done)); }
 }

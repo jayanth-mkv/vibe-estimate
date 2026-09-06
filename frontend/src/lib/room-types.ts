@@ -35,6 +35,7 @@ export interface SharedDraft {
 
 export interface Room {
   id: string;
+  homeId?: string;
   projectId: string;
   name: string;
   scope: string;

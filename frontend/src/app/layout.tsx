@@ -12,7 +12,7 @@ const headingFont = localFont({ src: [
   { path: "../../public/fonts/poppins-semibold.woff2", weight: "600", style: "normal" },
 ], variable: "--font-poppins", display: "swap" });
 
-export const metadata: Metadata = { title: "VibeEstimate · Make the change clear", description: "Review agreed scope, clarify client changes, and prepare a source-linked draft proposal.", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "VibeEstimate · Imagine your home, together", description: "Choose a home, design it with Gemini, and explore furniture, lighting and finishes together. Keep saved options and agree on a design with your client.", robots: { index: false, follow: false } };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const config = firebaseConfigScript(process.env.FIREBASE_WEB_CONFIG);

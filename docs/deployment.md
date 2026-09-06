@@ -43,7 +43,7 @@ The native [Cloud Build configuration](../cloudbuild.yaml) then:
 3. Builds the root Dockerfile from that Git checkout, pushes the commit-tagged image and resolves its immutable Artifact Registry digest.
 4. Initializes the runtime GCS backend, creates a saved Terraform plan, and accepts only a no-op or update to the one adopted service. Create/delete/replace actions and unrelated resource changes fail the release.
 5. Checks the current GitHub main commit before apply, skips an older commit, and applies the verified saved plan with state locking. A plan invalidated by another release is not automatically replanned.
-6. Checks production health for Firebase Auth, cloud Firestore and Vertex configuration. This check does not call Gemini or establish an end-to-end review test.
+6. Checks production health for Firebase Auth, cloud Firestore, Vertex configuration and the exact triggering Git commit. The image receives `BUILD_GIT_SHA` at build time; `/health.gitRevision` must match the release. This check does not call Gemini or establish an end-to-end journey test.
 
 The image starts the Express API on an internal port and `next start` on the public port, so the browser reaches the frontend and its same-origin API gateway through one Cloud Run URL. The browser never receives a Gemini or service-account credential.
 
@@ -73,3 +73,5 @@ The optional private `frontend-hosting.json` supplies `firebaseProjectId` and `e
 Keep the existing repository-local setup, emulator snapshot/restore, fixture, connected-development and Playwright tools. They support development and regression testing; they are not manual deployment scripts. `npm run test:isolated` uses the isolated local workflow. Connected, live and production verification remain explicit operator actions using private configuration and bounded model-call scope.
 
 Pipeline unit tests and public health are separate from live multi-turn review, draft/revision persistence, export, room sharing and access-denial evidence. Record the exact commit, image/revision, URLs, executed checks and remaining blockers in the verification record rather than treating a configured trigger or a successful build as complete product verification.
+
+The current home-to-agreement rehearsal uses `npm run test:v1:production -- --target <authorized-https-origin> --expected-git-sha <full-commit>`. It first checks the external private target records and exact deployed revision. Its headed browser journeys allow at most three explicit model jobs and six reserved attempts, retain recordings privately, and cover shared design acceptance and stored agreement downloads in addition to all three starting homes. Local fixture results and production results are recorded separately in [V1 verification](v1-verification.md).

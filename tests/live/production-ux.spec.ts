@@ -58,7 +58,7 @@ async function accessible(page: Page) {
 }
 
 async function openFreshHome(page: Page) {
-  await page.goto(baseURL);
+  await page.goto(baseURL + "/proposals");
   await expect(page.getByRole("heading", { name: "Turn client changes into clear drafts.", exact: true })).toBeVisible();
   await expect(page.getByText("Cloud workspace · Gemini enabled", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Start a project", exact: true })).toBeEnabled();
@@ -146,7 +146,7 @@ for (const width of [320, 390, 768, 1440]) {
     }
     await accessible(page);
     await page.getByRole("link", { name: "Open workspace", exact: true }).click();
-    await expect(page).toHaveURL(baseURL + "/");
+    await expect(page).toHaveURL(baseURL + "/proposals");
     await expect(page.getByRole("heading", { name: "Turn client changes into clear drafts.", exact: true })).toBeVisible();
     const header = await page.getByRole("banner").boundingBox();
     expect(header).not.toBeNull();
@@ -215,7 +215,7 @@ test("production source wizard validates, retains Back and cancelled-leave edits
   await sourceView(page, source);
   await page.reload();
   await sourceView(page, source);
-  await expect(page).toHaveURL(baseURL + "/?project=" + id);
+  await expect(page).toHaveURL(baseURL + "/proposals?project=" + id);
   await page.getByRole("button", { name: "All projects", exact: true }).click();
   await page.getByRole("button", { name: new RegExp(source.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) }).click();
   await sourceView(page, source);
@@ -239,7 +239,7 @@ test("production lighting, wardrobe and finish example buttons save their own so
       await sourceView(page, example.source);
       await page.reload();
       await sourceView(page, example.source);
-      await expect(page).toHaveURL(baseURL + "/?project=" + id);
+      await expect(page).toHaveURL(baseURL + "/proposals?project=" + id);
       await page.getByRole("button", { name: "All projects", exact: true }).click();
       await expect(page.getByRole("heading", { name: "Your projects", exact: true })).toBeVisible();
       await page.getByRole("button").filter({ has: page.getByText(example.source.name, { exact: true }) }).click();

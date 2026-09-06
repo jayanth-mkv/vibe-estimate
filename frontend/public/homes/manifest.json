@@ -1,0 +1,32 @@
+{
+  "renderer": "Headed Chromium, canonical SVG plan; 3D is verified separately through Pascal",
+  "templates": [
+    {
+      "id": "compact-apartment",
+      "source": "Canonical HousePlan component",
+      "rooms": 5,
+      "areaM2": 59.5,
+      "openings": 9,
+      "bytes": 17011,
+      "sha256": "633251a49d78538481891f86fa44fe0ad043ca1b357dd63fad7188d5e95758c3"
+    },
+    {
+      "id": "family-home",
+      "source": "Canonical HousePlan component",
+      "rooms": 6,
+      "areaM2": 93.8,
+      "openings": 11,
+      "bytes": 21228,
+      "sha256": "f793f719902038b1beda46997a789f9c6f37094bdec641ad7e94aaba00f576cd"
+    },
+    {
+      "id": "garden-home",
+      "source": "Canonical HousePlan component",
+      "rooms": 7,
+      "areaM2": 123.3,
+      "openings": 13,
+      "bytes": 20956,
+      "sha256": "ab7fce8b2f4c7a1e5d7d7e16a41d0fb637beccf66ee11fbe5a6d9bd2392b81e3"
+    }
+  ]
+}

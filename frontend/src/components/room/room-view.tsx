@@ -77,7 +77,7 @@ export function RoomView(props: Props) {
   const working = agent.status === "queued" || agent.status === "thinking";
   const currentReview = agent.status === "ready" && agent.reviewedMessageCount === room.messages.length && !!agent.analysis;
   const canPrepare = currentReview && !busy && !text.trim() && !pending;
-  const draftHref = room.draftProjectId ? `/?project=${encodeURIComponent(room.draftProjectId)}&room=${encodeURIComponent(room.id)}` : "";
+  const draftHref = room.draftProjectId ? `/proposals?project=${encodeURIComponent(room.draftProjectId)}&room=${encodeURIComponent(room.id)}` : "";
 
   useEffect(() => {
     const log = logRef.current;
@@ -112,7 +112,7 @@ export function RoomView(props: Props) {
     <main id="room-main" className={styles.main}>
       <div className={styles.roomHeading}>
         <div className={styles.roomIdentity}>
-          {designer ? <Link className={styles.backLink} href={`/?project=${encodeURIComponent(room.projectId)}`} onClick={(event) => { event.preventDefault(); onNavigate(`/?project=${encodeURIComponent(room.projectId)}`); }}><ArrowLeft size={14} aria-hidden="true" />Back to project</Link> : <span className={styles.roomCaption}>Your shared project room</span>}
+          {designer ? <Link className={styles.backLink} href={`/proposals?project=${encodeURIComponent(room.projectId)}`} onClick={(event) => { event.preventDefault(); onNavigate(`/proposals?project=${encodeURIComponent(room.projectId)}`); }}><ArrowLeft size={14} aria-hidden="true" />Back to project</Link> : <span className={styles.roomCaption}>Your shared project room</span>}
           <h1>{room.name}</h1>
           <p>One conversation. A clearer scope. Every draft kept.</p>
         </div>

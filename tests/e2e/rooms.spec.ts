@@ -3,10 +3,10 @@ import AxeBuilder from "@axe-core/playwright";
 import fs from "node:fs/promises";
 import { FIXTURE_SCOPE, FIXTURE_MESSAGES } from "../../backend/src/fixtures";
 import { decodedQr } from "./qr";
-import { apiOrigin, appOrigin } from "./target";
+import { apiOrigin, appOrigin, authOrigin } from "./target";
 
 const api = apiOrigin;
-const authEmulator = "http://127.0.0.1:9099";
+const authEmulator = authOrigin;
 const clientRequest = "Could we quote 6 display lights?";
 const designerReply = "I will prepare a draft for 6 display lights at ₹2,000 each.";
 const clientReminder = "Please keep the kitchen lighting in the agreed scope.";
@@ -143,7 +143,7 @@ async function createApiRoom(request: APIRequestContext, owner: Headers) {
 
 test("independent designer and client exchange messages, preserve shared revisions, and reopen their room", async ({ page, browser, request }, testInfo) => {
   test.setTimeout(150000);
-  await page.goto("/");
+  await page.goto("/proposals");
   const created = page.waitForResponse(responseFor("/api/projects", "POST"));
   await page.getByRole("button", { name: "Try the lighting example", exact: true }).click();
   const createdResponse = await created;
@@ -389,7 +389,7 @@ test("room API enforces roles, replay and paused-observer boundaries before prep
 
 test("unsupported fixture messages remain saved with a visible observer failure and bounded explicit retry", async ({ request, page }) => {
   test.setTimeout(45000);
-  await page.goto("/");
+  await page.goto("/proposals");
   const created = page.waitForResponse(responseFor("/api/projects", "POST"));
   await page.getByRole("button", { name: "Try the lighting example", exact: true }).click();
   const projectResponse = await created;
@@ -423,7 +423,7 @@ test("unsupported fixture messages remain saved with a visible observer failure 
 
 test("guest room codes and scannable invitations support rotation, keyboard entry, and private membership", async ({ page, browser, request }, testInfo) => {
   test.setTimeout(90000);
-  await page.goto("/");
+  await page.goto("/proposals");
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toHaveCount(0);
   const created = page.waitForResponse(responseFor("/api/projects", "POST"));
   await page.getByRole("button", { name: "Try the lighting example", exact: true }).click();
@@ -475,7 +475,7 @@ test("guest room codes and scannable invitations support rotation, keyboard entr
   });
   const clientPage = await clientContext.newPage();
   try {
-    await clientPage.goto("/");
+    await clientPage.goto("/proposals");
     await clientPage.getByRole("link", { name: "Join a room", exact: true }).focus();
     await clientPage.keyboard.press("Enter");
     await expect(clientPage).toHaveURL(/\/join$/);

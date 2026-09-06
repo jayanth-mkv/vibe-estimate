@@ -31,7 +31,7 @@ async function guestIdentity(response: Response) {
 
 async function openEmptyHome(page: Page) {
   const listing = page.waitForResponse(responseFor("/api/projects"));
-  await page.goto(baseURL + "/");
+  await page.goto(baseURL + "/proposals");
   const response = await listing;
   expect(response.status()).toBe(200);
   expect((await response.json()).projects).toHaveLength(0);

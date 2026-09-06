@@ -10,7 +10,8 @@ const materialRef = (id: string) => `scene:mat_${id}`;
 export function houseToPascal(input: HouseDocument, origin: string) {
   const document = validateHouse(input);
   const local = new URL(origin);
-  if (local.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(local.hostname)) throw new Error('House assets require the loopback preview origin');
+  const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(local.hostname);
+  if ((local.protocol !== 'https:' && !(local.protocol === 'http:' && loopback)) || local.username || local.password || local.pathname !== '/' || local.search || local.hash) throw new Error('House assets require the application HTTPS origin or a loopback preview');
   const materials = Object.fromEntries(document.materials.map(entry => {
     const material = SceneMaterial.parse({ id: `mat_${entry.id}`, name: entry.name, material: { preset: 'custom', properties: { color: entry.color, roughness: entry.roughness, side: 'front' } } });
     return [material.id, material];

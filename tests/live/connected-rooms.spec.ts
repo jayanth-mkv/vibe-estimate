@@ -126,7 +126,7 @@ test("connected guests join by room code and preserve real Gemini shared draft r
 
   try {
     const initialList = page.waitForResponse(responseFor("/api/projects", "GET"));
-    await page.goto(baseURL);
+    await page.goto(baseURL + "/proposals");
     expect(new URL(page.url()).origin).toBe(baseURL);
     await expect(page.getByText("Cloud workspace · Gemini enabled", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign in", exact: true })).toHaveCount(0);

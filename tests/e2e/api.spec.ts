@@ -1,10 +1,10 @@
 import { test, expect, APIRequestContext } from "@playwright/test";
 import { FIXTURE_SCOPE, FIXTURE_MESSAGES } from "../../backend/src/fixtures";
-import { apiOrigin } from "./target";
+import { apiOrigin, authOrigin } from "./target";
 
 const api = apiOrigin;
 async function account(request: APIRequestContext) {
-  const result = await request.post("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key", {
+  const result = await request.post(authOrigin + "/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key", {
     data: { returnSecureToken: true }
   });
   expect(result.ok()).toBeTruthy();

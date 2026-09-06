@@ -121,6 +121,7 @@ export function publicRoom(room: StoredRoom, uid: string, shareableDraft?: Share
   const role = memberRole(room, uid);
   return {
     id: room.id, projectId: room.projectId, name: room.name, scope: room.scope, sourceMessages: room.sourceMessages,
+    ...(room.homeId ? { homeId: room.homeId } : {}),
     createdAt: room.createdAt, updatedAt: room.updatedAt, role, clientJoined: Boolean(room.clientId),
     messages: room.messages.map(({ id, role: senderRole, text, createdAt }) => ({ id, role: senderRole, text, createdAt })),
     observer: structuredClone(room.observer), sharedDrafts: structuredClone(room.sharedDrafts),

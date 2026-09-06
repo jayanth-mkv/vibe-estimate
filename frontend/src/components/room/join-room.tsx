@@ -53,7 +53,7 @@ export function JoinRoom() {
     <header className={styles.header}><Link className="brand" href="/"><span className="brand-mark"><CheckCheck size={19} aria-hidden="true" /></span>VibeEstimate</Link><span className={styles.viewBadge}>Client view</span></header>
     <main id="join-main" className={styles.joinPage}>
       <Link className={styles.backLink} href="/"><ArrowLeft size={14} aria-hidden="true" />Back to home</Link>
-      <div className={styles.joinHeading}><span className={styles.largeRoomMark}><MessageCircle size={27} aria-hidden="true" /></span><h1>Join your project room.</h1><p>Your designer, the conversation, and every shared draft — together in one place.</p></div>
+      <div className={styles.joinHeading}><span className={styles.largeRoomMark}><MessageCircle size={27} aria-hidden="true" /></span><h1>Join your project room.</h1><p>Your designer, shared conversation, and project documents — together in one place.</p></div>
       <form className={styles.joinForm} onSubmit={(event) => void join(event)} noValidate>
         <label htmlFor="join-code">Room code</label><p id="join-help" className={styles.joinHelp}>Enter the code your designer shared with you.</p>
         <Input id="join-code" name="room-code" ref={input} value={code} onChange={(event) => { setCode(event.target.value.toUpperCase()); setError(""); setFieldError(false); }} placeholder="ABCD-EFGH-JKMP" maxLength={32} autoCapitalize="characters" autoCorrect="off" autoComplete="off" spellCheck={false} aria-describedby={`join-help${error ? " join-error" : ""}`} aria-invalid={fieldError} disabled={busy} className={styles.joinCodeInput} />
@@ -61,7 +61,7 @@ export function JoinRoom() {
         <Button type="submit" className="button primary" disabled={busy}>{busy ? "Joining room…" : usesAnonymousAuth ? "Join room" : "Sign in and join"}<ArrowRight size={17} aria-hidden="true" /></Button>
         <p className={styles.joinPrivacy}>{usesAnonymousAuth ? "No account setup needed. This browser keeps your access to the room." : "Sign in to connect with your designer securely."}</p>
       </form>
-      <div className={styles.joinExplanation}><h2>A clear conversation from here.</h2><p>Your designer and the scope agent can read messages you send. The agent helps spot included work and open questions. Only your designer can prepare and share a draft.</p><span>Drafts are for review. Approval is not collected here.</span></div>
+      <div className={styles.joinExplanation}><h2>A clear conversation from here.</h2><p>Your designer and the room’s assistant can read messages you send. Discuss open questions, explore any shared home, and review project documents together.</p><span>Rooms with a shared home record decisions on saved designs. Proposal drafts remain for review. No legal signature is collected.</span></div>
     </main>
   </div>;
 }

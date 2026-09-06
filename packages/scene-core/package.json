@@ -1,1 +1,23 @@
-{"name":"@vibeestimate/scene-core","version":"0.0.1","private":true,"type":"module","exports":"./src/index.ts","dependencies":{"@vibeestimate/scene-schema":"0.0.1"}}
+{
+  "name": "@vibeestimate/scene-core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@vibeestimate/scene-schema": "0.0.1"
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

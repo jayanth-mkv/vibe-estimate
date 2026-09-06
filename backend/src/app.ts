@@ -14,6 +14,10 @@ import { registerRoomRoutes } from "./room-routes.js";
 import type { RoomStore } from "./room-store.js";
 import type { RoomObserver } from "./room-observer.js";
 import type { RoomTasks } from "./room-tasks.js";
+import type { HomeService } from "./home-service.js";
+import { registerHomeRoutes } from "./home-routes.js";
+import type { HomeCollaboration } from "./home-collaboration.js";
+import { registerHomeCollaborationRoutes } from "./home-collaboration-routes.js";
 
 export type AppDependencies = {
   config: AppConfig;
@@ -24,9 +28,11 @@ export type AppDependencies = {
   observer?: RoomObserver;
   tasks?: RoomTasks;
   notifyRoom?: (id: string) => Promise<void>;
+  homes?: HomeService;
+  homeCollaboration?: HomeCollaboration;
 };
 
-export function createApp({ config, store, provider, verifyToken, rooms, observer, tasks, notifyRoom }: AppDependencies) {
+export function createApp({ config, store, provider, verifyToken, rooms, observer, tasks, notifyRoom, homes, homeCollaboration }: AppDependencies) {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
@@ -51,7 +57,7 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
     });
   }
   app.get("/health", (_request, response) => {
-    response.json({ status: "ok", aiProvider: provider.kind, storage: "firestore", auth: config.appEnv === "local" ? "emulator" : "firebase", storageConnection: config.appEnv === "local" ? "emulator" : "cloud", runtime: config.appEnv, ...(provider.kind === "gemini" ? { geminiTransport: config.geminiTransport ?? "developer" } : {}) });
+    response.json({ status: "ok", aiProvider: provider.kind, storage: "firestore", auth: config.appEnv === "local" ? "emulator" : "firebase", storageConnection: config.appEnv === "local" ? "emulator" : "cloud", runtime: config.appEnv, ...(config.gitRevision ? { gitRevision: config.gitRevision } : {}), ...(provider.kind === "gemini" ? { geminiTransport: config.geminiTransport ?? "developer" } : {}) });
   });
   const authenticate: RequestHandler = async (request, response, next) => {
     const header = request.header("authorization");
@@ -141,6 +147,8 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
     response.type("text/plain").send(exportProposal(project));
   });
   if (rooms) registerRoomRoutes(app, rooms, notifyRoom);
+  if (homes) registerHomeRoutes(app, homes);
+  if (homeCollaboration) registerHomeCollaborationRoutes(app, homeCollaboration);
   app.use((_request, _response, next) => next(new AppError(404, "NOT_FOUND", "This endpoint could not be found.")));
   const errors: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
     if (error instanceof AppError) { response.status(error.status).json({ error: { code: error.code, message: error.message, ...(error instanceof ReviewRequestError && error.reviewRequest ? { reviewRequest: error.reviewRequest } : {}) } }); return; }

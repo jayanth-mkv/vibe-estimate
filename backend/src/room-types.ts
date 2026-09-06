@@ -28,6 +28,7 @@ export type SharedDraft = {
 export type Room = {
   id: string;
   projectId: string;
+  homeId?: string;
   name: string;
   scope: string;
   sourceMessages: string;
