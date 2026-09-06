@@ -308,6 +308,10 @@ test('Production V1 story — Gemini furnishes a home, client refines one face a
     expect(guard.submitted).toBe(3);
     expect(jobs.reduce((sum, job) => sum + job.attemptsUsed, 0)).toBeLessThanOrEqual(6);
     await info.attach('production-v1-value-proof', { body: JSON.stringify({ gitRevision: target.expectedGitRevision, provider: 'gemini', explicitJobBudget: 3, providerAttemptBudget: 6, submittedJobs: guard.submitted, reservedAttempts: jobs.reduce((sum, job) => sum + job.attemptsUsed, 0), jobs, separateSyntheticGuestIdentities: true, assistantProfileSource: 'configured-default', agreedRevision: agreement.revisionId, savedDraftAgreement: true, redactions: ['invitation code', 'invitation QR'], tokensAndInvitationFragmentsCaptured: false }), contentType: 'application/json' });
+    // A completed app story is insufficient for an accepted recording when its
+    // browser/network guard failed. Keep the manifest incomplete in that case.
+    expect(guard.blocked).toBe(0);
+    expect(guard.pageErrors).toBe(0);
     complete = true;
   } finally {
     if (recording) await recording.finish(complete);

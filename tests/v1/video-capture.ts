@@ -43,7 +43,13 @@ export async function synchronizeCapture(designer: Page, homeowner: Page, info: 
   const epoch = Date.now() + 2000;
   const markers: { atMilliseconds: number; event: string }[] = [];
   for (const page of [designer, homeowner]) {
-    await page.context().addInitScript(value => sessionStorage.setItem('v1-capture-epoch', String(value)), epoch);
+    await page.context().addInitScript(value => {
+      // Context init scripts also run inside auth/download frames. The video
+      // marker belongs to the top-level app page; opaque documents have no
+      // sessionStorage and must not produce a capture-induced page error.
+      if (window !== window.top) return;
+      try { sessionStorage.setItem('v1-capture-epoch', String(value)); } catch { /* Initial opaque top-level documents have no storage origin. */ }
+    }, epoch);
     await page.evaluate(value => { sessionStorage.setItem('v1-capture-epoch', String(value)); window.dispatchEvent(new Event('v1-capture-sync')); }, epoch);
   }
   await new Promise(resolve => setTimeout(resolve, Math.max(0, epoch - Date.now()) + 500));
