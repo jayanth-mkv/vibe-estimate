@@ -15,15 +15,17 @@ Two documents are cross-cutting. [Who controls what](controls.md) covers the set
 
 **The September 6 direction moves the complete shared design journey into v1.** Competition evidence is a separate delivery checklist and does not determine which core product capabilities may be omitted.
 
-That deployment is now largely delivered: a Cloud Run application, a bounded review queue and recovery scheduler, dedicated identities and a public `/health` returning HTTP 200 against production Firebase, cloud Firestore and live Vertex. See [production readiness](../production-readiness.md) and the [v1 record](v1.md#verification-videos-and-release). Full public user journeys remain the release gate.
+V1 is deployed with production Firebase, cloud Firestore and live Vertex. Its home-to-agreement journey has been exercised against the exact deployed application, including separate designer/homeowner identities and a synchronized live recording. The [current verification record](../v1-verification.md) distinguishes complete passes, retained failures and targeted rechecks. [Production readiness](../production-readiness.md) retains the earlier infrastructure and proposal evidence.
 
 V1 now includes real Gemini edits and the designer/homeowner review flow. The isolated Pascal proof established the renderer; the current v1 plan supersedes earlier manual-only boundaries.
 
 ## Relationship to the existing plan
 
-[docs/spatial-home-studio-plan.md](../spatial-home-studio-plan.md) remains a technical reference for geometry, units, storage and evaluation. The current [controls](controls.md), [platform contracts](v2.md#platform-contracts) and release gates take precedence over its older private-option, preview/Apply, sharing and delivery policies. [PRODUCT.md](../../PRODUCT.md) records confirmed intent; implemented status requires evidence in [verification.md](../verification.md).
+[docs/spatial-home-studio-plan.md](../spatial-home-studio-plan.md) remains a technical reference for geometry, units, storage and evaluation. The current [controls](controls.md), [platform contracts](v2.md#platform-contracts) and release gates take precedence over its older private-option, preview/Apply, sharing and delivery policies. [PRODUCT.md](../../PRODUCT.md) records confirmed intent; current implemented status is supported by the [v1 verification record](../v1-verification.md).
 
-## Product direction
+## Product direction after v1
+
+V1 begins with three measured templates and a designer-configured room assistant. Image intake, website embedding and the wider service crew below remain later release gates.
 
 **Upload a home plan. Explore the home in 3D. Let the crew build and refine reversible working options, then choose what you like. Bring in the designer when needed; commercial commitments and structural changes require human review.**
 
@@ -64,4 +66,4 @@ Reverting to that snapshot stays straightforward at every stage.
 
 ## Working rules
 
-Each release is built on a task branch, with a conventional commit and a named snapshot per verified stage. Cloud resources are created only through Terraform. Planned checks stay distinct from executed results in [verification.md](../verification.md). No deployment claim is made without evidence recorded against the public URL.
+Each release is built on a task branch, with a conventional commit and a named snapshot per verified stage. Cloud resources are created only through Terraform. Planned checks stay distinct from the [current executed results](../v1-verification.md). No deployment claim is made without evidence recorded against the public URL.

@@ -2,6 +2,8 @@
 
 Use this checklist for the home-to-agreement release defined in [v1](plan/v1.md). Check results against a named source/build and provider; requirements are not executed evidence.
 
+Completed checks, retained failures and the live two-person video are indexed in the [current verification record](v1-verification.md).
+
 The [September 5 checklist](quick-test-checklist-2026-09-05.md) is a frozen historical record for the earlier proposal-first application. Its passes do not certify the new home studio.
 
 | Surface | Current responsibility |
@@ -19,7 +21,7 @@ The [September 5 checklist](quick-test-checklist-2026-09-05.md) is a frozen hist
 
 - Record exact source commit, provider, browser, viewports and evidence directory.
 - Use empty demo Auth/Firestore emulators for deterministic tests; never point fixture tests at production.
-- Keep live Gemini jobs separately labelled and bounded: five explicit jobs, at most ten reserved provider attempts, no test retries.
+- Keep live Gemini jobs separately labelled and bounded: the local all-home journey allows five jobs/ten reserved attempts; the production recording allows three jobs/six attempts. Neither permits test retries.
 - Verify actual Pascal meshes, openings, transforms, selected wall faces and light effects in addition to canonical JSON.
 - Inspect normal 3D screenshots personally with Playwright MCP; fallback screenshots are separate.
 - Preserve successful headed videos of all six flows and a clean synthetic live narrative.

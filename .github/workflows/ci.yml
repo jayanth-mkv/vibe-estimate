@@ -45,9 +45,9 @@ jobs:
         run: xvfb-run -a npm run test:v1:browser -- --grep 'Flow 6'
       - run: npm run check:public
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
-          name: fixture-browser-failure-report
+          name: fixture-browser-report
           path: |
             .cache/v1/*/report/
             .cache/v1/*/evidence/

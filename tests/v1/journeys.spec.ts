@@ -255,6 +255,7 @@ test('Flow 6 — designer and client shape one home, accept its revision and lea
   await page.getByRole('button', { name: 'Return to current design', exact: true }).click();
   await expect.poll(async () => (await geometry(page)).wallFaces[wall.id].front.color).toBe(different.color);
   await info.attach('collaborative-value-proof', { body: JSON.stringify({ roomId, separateIdentities, designRequestCount: 2, clientRevision: lighting.home.headRevisionId, chosenRevision: refined.home.headRevisionId, agreementId: saved.agreements[0].id, agreementSource: 'fixture', agreementStatus: 'draft' }), contentType: 'application/json' });
-  await clientPage.close();
-  await clientPage.video()?.saveAs(info.outputPath('flow-6-client.webm'));
+  // Playwright closes the shared context and saves every participant's video
+  // during fixture teardown, which has its own bounded time budget. Closing
+  // just the client here needlessly makes video finalization part of the story.
 });
