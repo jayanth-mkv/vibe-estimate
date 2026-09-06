@@ -3,7 +3,8 @@ import path from "node:path";
 const systemKeys = new Map([
   "PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP",
   "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "HOME", "NUMBER_OF_PROCESSORS",
-  "PROCESSOR_ARCHITECTURE", "PROCESSOR_IDENTIFIER", "OS", "LANG", "LC_ALL", "TZ"
+  "PROCESSOR_ARCHITECTURE", "PROCESSOR_IDENTIFIER", "OS", "LANG", "LC_ALL", "TZ",
+  "DISPLAY", "XAUTHORITY"
 ].map(key => [key, key === "SYSTEMROOT" ? "SystemRoot" : key]));
 
 const overrideKeys = new Set([
@@ -27,6 +28,11 @@ export function productionVerificationEnvironment(overrides, inherited = process
       env[canonical] = value;
     }
   }
+  // xvfb-run passes its local display and cookie-file path to headed Linux
+  // browsers. Preserve that connection without admitting remote X displays or
+  // an authority file when no local display was selected. Never read the file.
+  if (!/^(?:unix\/?)?:[0-9]+(?:\.[0-9]+)?$/.test(env.DISPLAY ?? "")) delete env.DISPLAY;
+  if (!env.DISPLAY || !path.posix.isAbsolute(env.XAUTHORITY ?? "") || /[\r\n]/.test(env.XAUTHORITY ?? "")) delete env.XAUTHORITY;
   for (const [key, value] of Object.entries(overrides)) {
     if (!overrideKeys.has(key) || !textValue(value)
       || key === "PLAYWRIGHT_NO_COPY_PROMPT" && value !== "1"

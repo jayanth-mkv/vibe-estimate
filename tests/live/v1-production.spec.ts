@@ -32,6 +32,7 @@ class RehearsalGuard {
   submitted = 0;
   blocked = 0;
   pageErrors = 0;
+  private readonly browserErrors: { name: string; message: string; stack: string }[] = [];
   private nextPath: string | null = null;
   private readonly receipts = new Map<Request, Record<string, unknown>>();
   private readonly receiving: Promise<void>[] = [];
@@ -39,6 +40,7 @@ class RehearsalGuard {
   async evidence(info: TestInfo) {
     await Promise.allSettled(this.receiving);
     await info.attach('production-model-receipts', { contentType: 'application/json', body: JSON.stringify({ submittedJobs: this.submitted, allowedJobs: 3, allowedReservedAttempts: 6, receipts: [...this.receipts.values()] }) });
+    await info.attach('production-browser-errors', { contentType: 'application/json', body: JSON.stringify(this.browserErrors) });
   }
   async install(context: BrowserContext) {
     // Installed before pages exist: codes and QR tokens never enter video pixels.
@@ -51,7 +53,14 @@ class RehearsalGuard {
       };
       install(); new MutationObserver(install).observe(document, { childList: true, subtree: true });
     });
-    context.on('page', page => page.on('pageerror', () => { this.pageErrors++; }));
+    context.on('page', page => page.on('pageerror', error => {
+      this.pageErrors++;
+      // This report is private, but still remove URLs, bearer strings and JWTs.
+      // Keep exception text so a failed guard can be diagnosed without another
+      // paid request. Browser errors are never turned into a passing result.
+      const sanitize = (value: string) => value.slice(0, 8192).replace(/https?:\/\/[^\s)]+/g, '[URL omitted]').replace(/Bearer\s+\S+/gi, '[authorization omitted]').replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[token omitted]');
+      this.browserErrors.push({ name: error.name, message: sanitize(error.message), stack: sanitize(error.stack ?? '') });
+    }));
     context.on('response', response => {
       const receipt = this.receipts.get(response.request());
       if (!receipt) return;
