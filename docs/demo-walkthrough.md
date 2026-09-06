@@ -12,6 +12,8 @@ Install the pinned repository-local encoder with `rtk proxy node scripts/v1-vide
 
 Run `rtk proxy node scripts/v1-video-compose.mjs --manifest <story-directory>/dual-capture.json` on the completed story. The resulting `designer-homeowner.mp4` presents desktop and mobile side by side at their actual synchronized timing. Original clips, synchronization measurements, hashes and source mode remain in the evidence directory. A completed production rehearsal supplies the same manifest format and uses the same compositor; it is a separate live recording.
 
+The reviewed live delivery is `.cache/v1-release/designer-homeowner-live.mp4` in the original main checkout, with chapter timings and capture disclosures in the adjacent `README.md`. Its 2:55.60 sequence includes actual Gemini, separate identities, both chat directions, exact design decisions, identical agreement downloads and reopening. The [verification record](v1-verification.md) identifies the passing production run and preserved original footage. These local recordings have not been submitted or published.
+
 ## 1. An idea becomes a home
 
 Open **Your homes → New project**. Choose **Family home**. The measured single-floor layout appears immediately, with authored furniture and assumed ceiling height disclosed. Show **Plan**, then **Overview**. Enter “Add warm ceiling lights throughout the home” and choose **Generate design**. Wait for the saved result and explain the concrete changes. Repeat with **City apartment** and **Home with a study** to show every advertised layout works.

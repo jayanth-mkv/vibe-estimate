@@ -129,7 +129,9 @@ async function createHome(page: Page, templateId = 'family-home') {
 async function capture(page: Page, info: TestInfo, filename: string) {
   expect(new URL(page.url()).hash === '', 'No invitation fragment may remain in captured state.').toBe(true);
   await info.attach(filename + '-actual-geometry', { body: JSON.stringify(await geometry(page)), contentType: 'application/json' });
-  await page.screenshot({ path: info.outputPath(filename + '.png'), fullPage: true });
+  // Full-page capture can temporarily resize a recorded Chromium viewport.
+  // Keep the actual video framing; the story scrolls to its agreement controls.
+  await page.screenshot({ path: info.outputPath(filename + '.png') });
 }
 async function savedJob(response: Response, request: APIRequestContext) {
   const requestId = response.request().postDataJSON().requestId;
