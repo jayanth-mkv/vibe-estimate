@@ -189,7 +189,10 @@ test('Flow 5 — recover from an unavailable model, compare options and reopen t
 });
 
 test('Flow 6 — designer and client shape one home, accept its revision and leave with a shared draft agreement', async ({ page }, info) => {
-  test.setTimeout(360000);
+  // Recorded Linux software rendering exhausted the six-minute whole-story
+  // budget during its final edit. Keep each action/assertion bounded while
+  // allowing both participants, downloads and historical reopening to finish.
+  test.setTimeout(480000);
   const original = await createHome(page);
   const { clientPage, roomId, separateIdentities } = await openSharedHome(page);
   await page.getByLabel('Message', { exact: true }).fill('Let’s make this a warm home with room to gather.');

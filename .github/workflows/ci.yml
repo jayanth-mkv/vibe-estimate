@@ -2,6 +2,15 @@ name: Local checks
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      browser_scope:
+        description: Browser verification scope
+        type: choice
+        required: true
+        default: full
+        options:
+          - full
+          - shared-agreement
 permissions:
   contents: read
 jobs:
@@ -30,7 +39,10 @@ jobs:
       - run: node --test tests/v1/runtime-command.test.mjs
       - run: npm run lint --workspace @vibeestimate/frontend
       - run: npm run build
-      - run: xvfb-run -a npm run test:v1:browser -- --legacy
+      - if: github.event_name != 'workflow_dispatch' || inputs.browser_scope != 'shared-agreement'
+        run: xvfb-run -a npm run test:v1:browser -- --legacy
+      - if: github.event_name == 'workflow_dispatch' && inputs.browser_scope == 'shared-agreement'
+        run: xvfb-run -a npm run test:v1:browser -- --grep 'Flow 6'
       - run: npm run check:public
       - uses: actions/upload-artifact@v4
         if: failure()
