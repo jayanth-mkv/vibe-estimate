@@ -1,80 +1,120 @@
 # VibeEstimate
 
-Choose a complete home, describe your ideas, and explore the saved design together. Gemini selects from admitted furniture, lights and finishes; deterministic geometry checks keep each change inside its selected area. A designer and homeowner can share the same home, refine it through chat, review an exact saved version, and keep its draft agreement in one shared library.
+**From a home idea to a shared design decision.**
 
-The primary journey is **New project → Choose a home → Generate design → Design together → Accept and approve → Download draft agreement**. Descriptive briefs and agreement drafts are prepared for review. Prices, legal signatures and permission to start work are never inferred by AI.
+Choose a complete home, describe what you want to change, and explore it in 2D and 3D. Gemini helps with furniture, lights and finishes. Invite your designer or homeowner, refine the same saved design through chat, and keep the reviewed changes in a downloadable draft agreement.
 
-The existing source-linked scope and pricing workflow remains at /proposals. /studio redirects to the home library. The independent Pascal proof of concept remains outside this checkout; the application retains frontend/, backend/ and reusable scene packages.
+**[Try the live app →](https://vibeestimate-205778525293.asia-southeast1.run.app)** · **[Watch the 2:56 walkthrough](https://vibeestimate-205778525293.asia-southeast1.run.app/demo/index.html)** · [Verification](docs/v1-verification.md)
 
-## Try locally
+[![Watch the live walkthrough: a designer on desktop and homeowner on mobile viewing the same saved 3D home.](frontend/public/demo/walkthrough-poster.png)](https://vibeestimate-205778525293.asia-southeast1.run.app/demo/index.html)
 
-Requires Node.js 22.17+, Java 21 and a browser-capable desktop. Dependencies, browser binaries, emulators and generated reports stay inside this checkout.
+*Real Gemini, separate identities, visible clicks and synchronized desktop/mobile views. The silent recording includes chat, a selected wall change, both design decisions, matching agreement downloads and reopening. [Video file](frontend/public/demo/walkthrough.mp4) · [Recording provenance](docs/demo-media.md)*
 
-~~~sh
+## See it become a shared plan
+
+| Start with an idea | Leave with something useful |
+| --- | --- |
+| **Choose a home.** Start with one of three measured, single-floor layouts. | A private project with a complete furnished home and Plan, Overview and Inside views. |
+| **Describe the atmosphere.** Ask for warmer lights, a side table or softer finishes. | Gemini fills the design brief and proposes changes from the admitted asset catalog. |
+| **Select precisely.** Pick a room, object, wall face or Plan region. | Validated changes stay within the chosen area; geometry, collisions and locks constrain the result. |
+| **Keep a useful option.** Compare, undo, restore and reopen. | Immutable saved revisions, matching-camera comparison and exact-version exports. |
+| **Design together.** A homeowner and designer join the same room with separate identities. | Shared geometry, attributed chat and explicit requests to a designer-configured assistant. |
+| **Record the decision.** The homeowner accepts a version; the designer approves that same version. | A stored draft agreement both can download. Later edits require fresh decisions; older agreements remain available. |
+
+### Three complete starting homes
+
+| City apartment | Family home | Home with a study |
+| :---: | :---: | :---: |
+| ![Measured City apartment floor plan](frontend/public/homes/compact-apartment.png) | ![Measured Family home floor plan](frontend/public/homes/family-home.png) | ![Measured Home with a study floor plan](frontend/public/homes/garden-home.png) |
+
+These previews come from the actual scene data. All three layouts use the same editor, sixteen locally authored catalog models and real wall openings. Dimensions are authored starting points; the 2.8m ceiling is disclosed as assumed. Lighting is illustrative, and agreements are drafts rather than legal signatures or permission to begin work.
+
+## How the Google Cloud services fit together
+
+```mermaid
+flowchart LR
+  People[Designer and homeowner] --> App[Next.js and Express on Cloud Run]
+  App --> Auth[Firebase Authentication]
+  App --> Store[Cloud Firestore]
+  App --> AI[Gemini on Vertex AI]
+  Secrets[Secret Manager] -->|Firebase web configuration| App
+```
+
+| Service | What the application actually does |
+| --- | --- |
+| **Cloud Run** | Serves the frontend and API together from one container and one origin. Native Cloud Build and Terraform deploy a verified commit and immutable image. |
+| **Firebase Authentication** | Establishes separate user identities. The API verifies ID tokens and derives ownership from the verified UID. Guest entry is supported, with optional Google account linking. |
+| **Cloud Firestore** | Stores private projects, chat, immutable design revisions, explicit room membership and draft agreements. Every API operation checks owner or member access; direct browser database access is denied. |
+| **Gemini** | Generates context-dependent design edits, briefs and agreement drafts through the server-side `@google/genai` SDK. Follow-up design requests use the saved scene and brief; proposal reviews retain multi-turn history. |
+| **Secret Manager** | Injects a pinned Firebase browser-configuration version into Cloud Run. Gemini uses the attached Vertex runtime identity; this deployment does **not** demonstrate Gemini API-key retrieval from Secret Manager. |
+
+The canonical JSON scene is authoritative. Zod validates model output; deterministic code enforces permitted operations, admitted assets, selection scope and geometry before publishing a revision. Pascal renders the result. Viewing, selecting, orbiting and downloading a saved agreement make no model calls.
+
+See the [API contract](docs/v1-home-contract.md), [threats and controls](docs/plan/v1.md#threats-and-required-tests) and [submission service confirmations](docs/submission.md).
+
+## Run locally
+
+Use **Node.js 22.17+**, **Java 21** and a desktop capable of running a headed browser. Tooling, browsers, emulators and reports stay inside the checkout. These commands use the repository's RTK convention; developers without RTK can run the underlying `npm` commands directly.
+
+```sh
 rtk npm ci
 rtk npm run setup
 rtk npm run build
 rtk npm run start:v1
-~~~
+```
 
-Open **http://127.0.0.1:3100**. This runner builds a fresh production frontend and starts the API on 8181, Auth emulator on 9299 and Firestore emulator on 8285. It refuses occupied ports and preserves the connected development environment on 3000/8080.
+Open **http://127.0.0.1:3100**. The isolated runner uses API `8181`, Auth emulator `9299` and Firestore emulator `8285`; it refuses occupied ports. Local mode uses an explicitly labelled deterministic AI fixture, with no paid calls or production data. Suggested prompts exercise the complete journey. Arbitrary model requests require the separately configured live provider.
 
-The default provider is an explicitly labelled deterministic fixture. It exercises the complete interface and persistence without paid model calls or production Firebase data. Use the supplied prompt suggestions in fixture mode. Arbitrary requests require the real Gemini provider; a model failure is never replaced by a fixture response.
+<details>
+<summary><strong>Use live Gemini with isolated local identities and storage</strong></summary>
 
-For separately authorized live Gemini with isolated local identities and storage:
-
-~~~sh
+```sh
 rtk npm run start:v1 -- --gemini-config ../docs/private/vertex-local.json
-~~~
+```
 
-The configuration must be an existing private operator file, outside this public repository. See [local setup](docs/local-setup.md) and [connected setup](docs/connected-setup.md) for the separate connected Firebase workflow.
+Supply an existing, explicitly authorized private configuration outside the repository. Credentials stay server-side. Live failures remain visible and are never replaced with fixture results. [Local setup](docs/local-setup.md) · [Connected Firebase setup](docs/connected-setup.md)
 
-## The six demonstration flows
+</details>
 
-1. Create and generate a design in each of the three complete home layouts.
-2. Add ceiling lights throughout a home; inspect actual lighting inside and adjust one lamp.
-3. Refine one room, including a table, while neighbouring rooms remain unchanged.
-4. Change one shared wall face and verify the opposite face is preserved.
-5. Recover from a failed request, compare saved options, reopen and export the design.
-6. Invite a separate homeowner identity, make chat changes together, accept and approve one version, then store and download its draft agreement.
+## Deploy to Cloud Run
 
-Follow the [recording walkthrough](docs/demo-walkthrough.md). The [v1 plan](docs/plan/v1.md) defines acceptance gates and current scope; the [API contract](docs/v1-home-contract.md) describes persistence and collaboration. Historical PoC and production evidence remains labelled with the version it tested.
+The production topology is one Cloud Run service, with separate frontend and backend code boundaries. Infrastructure is managed through Terraform; the repository contains no operator credentials or Terraform state.
 
-Home templates are authored concept layouts with disclosed assumed ceiling heights. Catalog models are local assets with bounds and admission records. Lighting is illustrative and does not model wall occlusion. Upload extraction, additional floors and the wider agent service architecture remain later work; the interface does not advertise unavailable actions.
+1. **Configure your own targets privately.** Identify the Firebase project, backend project, regions and existing resources. Follow the [foundation setup](infra/production/README.md) and [Firebase adoption guide](docs/terraform-setup.md#firebase-adoption); import existing resources before managing them.
+2. **Configure identity, storage and runtime access.** Enable the required APIs through Terraform, deploy the [Firestore rules](firestore.rules), authorize the application domain, and grant the runtime only its required Firebase, Vertex and Secret Manager permissions. The [deployment guide](docs/deployment.md#private-configuration) documents the exact configuration contract.
+3. **Adopt native delivery.** Set up the Terraform-managed GitHub connection, build trigger and [runtime state](infra/runtime/README.md). Preserve `dev-tutorial=cloud-run-ai-challenge` on the service; the [runtime configuration](infra/runtime/main.tf) owns that campaign label.
+4. **Verify and release.** Run the local checks below, review the task branch, then push the reviewed commit to `main`. [Cloud Build](cloudbuild.yaml) checks the source, builds and publishes the image, binds its digest, applies a restricted runtime plan and checks the deployed Git SHA.
 
-## Verify
-
-~~~sh
+```sh
 rtk npm run verify:v1
-~~~
+rtk git push origin main
+```
 
-This command runs configuration/startup checks, typecheck, lint, frontend/backend and geometry tests, production build, Firebase Rules, headed desktop/mobile browser journeys, legacy proposal regressions, public-content scanning and offline Terraform checks. The browser stage starts its own empty local stack and saves screenshots, renderer reports and videos under .cache/v1/.
+The push command is the release action **after the one-time Terraform setup**. Deployment success is checked against the exact source commit, image digest, serving revision and production health. [Complete deployment instructions](docs/deployment.md) · [Infrastructure inventory](docs/infrastructure-inventory.md)
 
-Live inference is a separate bounded rehearsal. It runs five explicit model jobs, at most two reserved provider attempts each, with no test retries:
+## Tested beyond the JSON
 
-~~~sh
-rtk npm run test:v1:browser -- --gemini-config ../docs/private/vertex-local.json
-~~~
+Verification checks canonical data, actual Pascal mesh bounds/openings/materials, and real pointer/keyboard interactions. Browser evidence includes desktop, mobile, a narrow-screen Plan fallback, failures and accessibility checks.
 
-A fixture pass establishes deterministic behaviour, not live model accuracy. A local pass also does not establish deployment readiness: the exact deployed Git SHA and production journeys require their own evidence. See [verification records](docs/verification.md) and [build provenance](docs/ai-studio-evidence.md).
+| Executed evidence | Result |
+| --- | --- |
+| Complete headed Windows suite | **51/51 passed**, including all six flows, security and retained proposal regressions. |
+| Linux shared-agreement recheck | **2/2 passed**, with both participant recordings preserved. The earlier Linux run's other fifty passing cases and retained failures are documented separately. |
+| Live production rehearsal | **2/2 passed**; three actual Gemini jobs, three reserved attempts, no test retries. |
+| Source and release checks | Typechecks, lint, frontend/backend tests, scene tests, Firestore Rules, production build and deployment provenance passed. |
 
-Verify an already-built local production image with `npm run test:v1:container -- --image <local-tag> --expected-sha <embedded-full-commit> --context <local-docker-context>`. The probe starts only its own containers, disables networking and uses synthetic configuration. It checks both servers, local assets, authentication denial and failure before server startup when production settings are missing.
+[Read the complete verification record](docs/v1-verification.md) for exact tested commits, limitations and retained failure evidence. Reproduce the complete local gate with `rtk npm run verify:v1`; the headed browser reports and videos are written under `.cache/v1/`.
 
-## Project structure
+## Explore the code
 
 | Path | Responsibility |
 | --- | --- |
-| frontend/ | Next.js App Router, shadcn/ui, home and shared-room interfaces |
-| backend/ | Verified Firebase identity, ownership, immutable revisions, bounded Gemini jobs and money |
-| packages/scene-schema/ | Strict versioned scene, patch, selection and catalog contracts |
-| packages/scene-core/ | Renderer-independent geometry, scoped changes and deterministic descriptions |
-| packages/pascal-adapter/ | Pascal rendering mirror, native selection and actual geometry inspection |
-| infra/ | Terraform infrastructure and runtime release configuration |
-| tests/ and scripts/ | Local tools, security and browser verification, recordings |
-| PRODUCT.md / DESIGN.md | Confirmed product context and interface decisions |
+| [frontend/](frontend/) | Next.js, shadcn/ui, home studio, shared room and public walkthrough |
+| [backend/](backend/) | Verified identity, access control, persistence, bounded Gemini jobs and money calculations |
+| [packages/scene-schema/](packages/scene-schema/) | Strict scene, patch, selection and catalog contracts |
+| [packages/scene-core/](packages/scene-core/) | Geometry, permitted edits and deterministic change descriptions |
+| [packages/pascal-adapter/](packages/pascal-adapter/) | Pascal rendering, native selection and actual-geometry inspection |
+| [infra/](infra/) | Terraform foundations and native delivery |
+| [tests/](tests/) | Security, geometry, browser journeys and recording verification |
 
-## Automatic deployment
-
-One Cloud Run image serves the frontend and API on the same origin. The Terraform-managed GitHub main trigger checks the source, builds an immutable image and applies the runtime plan. Follow the [deployment guide](docs/deployment.md); account/project values and Terraform state stay in private operator configuration.
-
-The repository is the authentic agent-assisted build record for the submission. Publication, outreach and submission are separate activities. The app does not collect legal signatures or payments, and does not claim verified savings.
+The existing source-linked scope/pricing workflow remains available at `/proposals`. Image-to-layout extraction, multiple floors and the wider agent-service crew are later scope. [Product context](PRODUCT.md) · [Design system](DESIGN.md) · [V1 plan](docs/plan/v1.md) · [Authentic build history](docs/ai-studio-evidence.md)
