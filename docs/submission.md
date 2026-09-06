@@ -6,8 +6,8 @@ Prepared for the form supplied on September 6, 2026. This is copy to review and 
 
 | Form field | Use |
 | --- | --- |
-| Working prototype | https://vibeestimate-205778525293.asia-southeast1.run.app |
-| Optional walkthrough | https://vibeestimate-205778525293.asia-southeast1.run.app/demo/index.html |
+| Working prototype | https://vibe-estimate.xplormity.com |
+| Optional walkthrough | https://vibe-estimate.xplormity.com/demo/index.html |
 | Public code | The public GitHub repository address already entered in the form; [open the repository](..). Public access was checked without authentication. |
 | Demo social post | The permalink of your actual published post containing **#AccelerateAIwithCloudRun**. A repository or video URL alone is not the social-post permalink. |
 
@@ -39,9 +39,9 @@ The walkthrough shows two separate sessions side by side, real Gemini requests a
 
 Built with Firebase Authentication, Cloud Firestore, Gemini on Vertex AI and Google Cloud Run, with Terraform and Cloud Build handling deployment.
 
-Try it: https://vibeestimate-205778525293.asia-southeast1.run.app
+Try it: https://vibe-estimate.xplormity.com
 
-Watch the 2:56 demo: https://vibeestimate-205778525293.asia-southeast1.run.app/demo/index.html
+Watch the 2:56 demo: https://vibe-estimate.xplormity.com/demo/index.html
 
 #AccelerateAIwithCloudRun #GoogleCloud #Gemini #Firebase
 

@@ -27,7 +27,10 @@ for (const name of files) {
   if (text.includes("\0")) continue;
   checked++;
   if (/AIza[A-Za-z0-9_-]{30,}/.test(text) || /ya29\.[A-Za-z0-9._~-]{25,}/.test(text) || /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/.test(text)) failures.push(name + ": possible credential");
-  if (forbidden.some(value => text.includes(value))) failures.push(name + ": private operator value");
+  // The explicitly published app origin can overlap a private project's name.
+  // Credential checks above still inspect the original, unmodified content.
+  const operatorText = text.replaceAll("https://vibe-estimate.xplormity.com", "");
+  if (forbidden.some(value => operatorText.includes(value))) failures.push(name + ": private operator value");
 }
 if (failures.length) {
   console.error(failures.join("\n"));

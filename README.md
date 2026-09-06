@@ -4,9 +4,9 @@
 
 Choose a complete home, describe what you want to change, and explore it in 2D and 3D. Gemini helps with furniture, lights and finishes. Invite your designer or homeowner, refine the same saved design through chat, and keep the reviewed changes in a downloadable draft agreement.
 
-**[Try the live app →](https://vibeestimate-205778525293.asia-southeast1.run.app)** · **[Watch the 2:56 walkthrough](https://vibeestimate-205778525293.asia-southeast1.run.app/demo/index.html)** · [Verification](docs/v1-verification.md)
+**[Try the live app →](https://vibe-estimate.xplormity.com)** · **[Watch the 2:56 walkthrough](https://vibe-estimate.xplormity.com/demo/index.html)** · [Verification](docs/v1-verification.md)
 
-[![Watch the live walkthrough: a designer on desktop and homeowner on mobile viewing the same saved 3D home.](frontend/public/demo/walkthrough-poster.png)](https://vibeestimate-205778525293.asia-southeast1.run.app/demo/index.html)
+[![Watch the live walkthrough: a designer on desktop and homeowner on mobile viewing the same saved 3D home.](frontend/public/demo/walkthrough-poster.png)](https://vibe-estimate.xplormity.com/demo/index.html)
 
 *Real Gemini, separate identities, visible clicks and synchronized desktop/mobile views. The silent recording includes chat, a selected wall change, both design decisions, matching agreement downloads and reopening. [Video file](frontend/public/demo/walkthrough.mp4) · [Recording provenance](docs/demo-media.md)*
 

@@ -12,7 +12,8 @@ Operate mode governs the product. People use the studio at a desk and on a phone
 
 | Route | Purpose |
 | --- | --- |
-| / | Your homes: New project, measured layout previews, real recent projects and account access |
+| / | Your homes: New project, Show tour, measured layout previews, real recent projects and account access |
+| /demo/index.html | Public video walkthrough with chapters, transcript and download, opened by Show tour |
 | /projects/:id | Persistent home: choose layout, describe change, inspect Plan/Overview/Inside, edit, compare/history and share |
 | /rooms/:id | Designer room: shared home, conversation, assistant, review and agreement library |
 | /client/rooms/:id | Homeowner room: same authorized design and conversation, homeowner acceptance and stored draft downloads |
