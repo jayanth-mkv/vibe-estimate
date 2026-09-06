@@ -6,6 +6,8 @@ Run `rtk npm run start:v1` for an isolated fixture rehearsal, or pass the existi
 
 ## Synchronized two-person capture
 
+Local live Gemini verification stays headed and retains geometry/screenshots but disables video: the recorded-browser workload on this Windows host reproducibly stalls the local profile CLI. Deterministic videos and the separate production live capture remain enabled. Final live footage uses the verified deployment's server identity.
+
 Install the pinned repository-local encoder with `rtk proxy node scripts/v1-video-tools.mjs`. With the isolated fixture preview ready, run `rtk proxy node scripts/v1-video-record.mjs`. It uses separate designer and homeowner identities, displays role labels and pointer/click indicators, masks invitation details before capture, and checks both chat directions and the saved agreement. It refuses a live or unexpected target.
 
 Run `rtk proxy node scripts/v1-video-compose.mjs --manifest <story-directory>/dual-capture.json` on the completed story. The resulting `designer-homeowner.mp4` presents desktop and mobile side by side at their actual synchronized timing. Original clips, synchronization measurements, hashes and source mode remain in the evidence directory. A completed production rehearsal supplies the same manifest format and uses the same compositor; it is a separate live recording.

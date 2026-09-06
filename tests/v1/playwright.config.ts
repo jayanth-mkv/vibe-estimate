@@ -14,7 +14,10 @@ export default defineConfig({
   timeout: 180_000, expect: { timeout: 60_000 },
   outputDir: path.join(evidence, 'evidence'),
   reporter: [['list'], ['html', { open: 'never', outputFolder: path.join(evidence, 'report') }], ['json', { outputFile: path.join(evidence, 'browser.json') }]],
-  use: { baseURL, headless: false, actionTimeout: 20_000, trace: 'off', screenshot: 'only-on-failure', video: { mode: 'on', size: { width: 1440, height: 1000 } }, serviceWorkers: 'block' },
+  // On this Windows host, recording plus 3D reproducibly stalls the local
+  // gcloud subprocess. Keep local live runs headed with geometry/screenshots;
+  // deterministic and separately configured production stories retain video.
+  use: { baseURL, headless: false, actionTimeout: 20_000, trace: 'off', screenshot: 'only-on-failure', video: { mode: live ? 'off' : 'on', size: { width: 1440, height: 1000 } }, serviceWorkers: 'block' },
   projects: [
     { name: live ? 'live-desktop' : 'desktop', testMatch: [...stories, ...(!live ? ['**/v1/access.spec.ts'] : []), ...(legacy ? ['**/e2e/*.spec.ts'] : [])], use: { viewport: { width: 1440, height: 1000 } } },
     ...(!live ? [
