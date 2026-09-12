@@ -8,7 +8,7 @@ This checkpoint verifies the prepared implementation. It does not establish a pr
 - Frontend: 61 unit tests passed, including forwarding the new internal action and its authentication header. Workspace typechecks and backend build passed.
 - Firebase emulators: five security-rules checks and two real Firestore transaction checks passed. The latter verify rollback and delivery persistence across store instances.
 - Browser regression: the full isolated run passed 25 of 28 checks; three desktop journeys exceeded their assertion window during first-time route compilation. After preparing routes before browser assertions, all six desktop/mobile room, failure/retry and guest-invitation journeys passed. No product UI behavior changed for this test-runner fix.
-- Terraform: production 10, delivery 3, runtime 11, event routing 7, Firebase adoption 2, Gemini local 6 and guardrails 7 mock checks passed. Five event-launcher guard tests passed. These are offline checks, not cloud deployment evidence.
+- Terraform: production 11, delivery 3, runtime 11, event routing 7, Firebase adoption 2, Gemini local 6 and guardrails 7 mock checks passed. The subsequent billing proposal passed seven mock checks; the event launcher now passes eight guard tests including its apply-only billing preflight. Five foundation-launcher tests passed, including explicit scheduler pause, target mismatch and path-escape denial. These are offline checks, not cloud deployment evidence.
 - Public-file scan and Git whitespace checks passed.
 
 ## Observed production behavior

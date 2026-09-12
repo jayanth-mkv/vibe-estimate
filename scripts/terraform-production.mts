@@ -32,6 +32,29 @@ function privateExtraAuthDomains(privateRoot: string, firebaseProjectId: string)
   return extraAuthDomains(JSON.parse(fs.readFileSync(canonical,'utf8')),firebaseProjectId);
 }
 
+/** The scheduler stays active unless a private setting explicitly targets this backend. */
+export function roomRecoveryPaused(config: unknown, backendProjectId: string): boolean {
+  if(config === undefined)return false;
+  if(!config||typeof config!=='object'||Array.isArray(config))throw new Error('Invalid private room recovery configuration');
+  const value=config as Record<string,unknown>;
+  if(Object.keys(value).length!==2||!Object.hasOwn(value,'backendProjectId')||!Object.hasOwn(value,'paused'))throw new Error('Invalid private room recovery configuration');
+  if(!backendProjectId||value.backendProjectId!==backendProjectId)throw new Error('Room recovery backend target mismatch');
+  if(typeof value.paused!=='boolean')throw new Error('Room recovery paused must be a boolean');
+  return value.paused;
+}
+
+export function privateRoomRecoveryPaused(privateRoot: string, backendProjectId: string): boolean {
+  const directory=fs.realpathSync(privateRoot);
+  const file=path.join(directory,'room-recovery.json');
+  try {fs.lstatSync(file);}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return false;throw new Error('Private room recovery configuration is unavailable');}
+  const canonical=fs.realpathSync(file);
+  const relative=path.relative(directory,canonical);
+  if(!relative||relative==='..'||relative.startsWith('..'+path.sep)||path.isAbsolute(relative))throw new Error('Room recovery configuration must stay in the private directory');
+  const stat=fs.statSync(canonical);
+  if(!stat.isFile()||stat.size>32768)throw new Error('Invalid private room recovery configuration');
+  return roomRecoveryPaused(JSON.parse(fs.readFileSync(canonical,'utf8')),backendProjectId);
+}
+
 async function main() {
   const action=process.argv[2];
   if(!['init','validate','plan','apply','outputs','fmt'].includes(action))throw new Error('Unsupported action');
@@ -44,6 +67,7 @@ async function main() {
   const connected=JSON.parse(fs.readFileSync(path.join(privateRoot,'firebase-connected.json'),'utf8'));
   if(operator.backendProjectId!==vertex.projectId||operator.account!==vertex.account||operator.gcloudConfiguration!==vertex.gcloudConfiguration||operator.firebaseProjectId!==connected.firebaseProjectId||operator.backendRegion!==discovery.region||operator.backendProjectId!==discovery.backendProjectId)throw new Error('Authorized target mismatch');
   const additionalDomains=privateExtraAuthDomains(privateRoot,operator.firebaseProjectId);
+  const pauseRecovery=privateRoomRecoveryPaused(privateRoot,operator.backendProjectId);
   const adc=path.join(vertex.gcloudConfigDir,'application_default_credentials.json');
   const digest=(data: string|Buffer)=>createHash('sha256').update(data).digest('hex');
   const adcHash=()=>fs.existsSync(adc)?digest(fs.readFileSync(adc)):'absent';
@@ -63,7 +87,7 @@ async function main() {
   if(web.projectId!==operator.firebaseProjectId)throw new Error('Firebase public config target mismatch');
   const publicConfig=Object.fromEntries(['projectId','apiKey','authDomain','appId'].map(k=>[k,web[k]]));
   const vars={backend_project_id:operator.backendProjectId,firebase_project_id:operator.firebaseProjectId,project_number:discovery.projectNumber,region:operator.backendRegion,
-    existing_auth_domains:discovery.results.find((r:any)=>r.name==='firebaseAuth').data.authorizedDomains,extra_auth_domains:additionalDomains,firestore_database_id:connected.firestoreDatabaseId,gemini_model:vertex.model,image};
+    existing_auth_domains:discovery.results.find((r:any)=>r.name==='firebaseAuth').data.authorizedDomains,extra_auth_domains:additionalDomains,pause_room_recovery:pauseRecovery,firestore_database_id:connected.firestoreDatabaseId,gemini_model:vertex.model,image};
   const varsFile=path.join(stateDir,'production.tfvars.json');fs.writeFileSync(varsFile,JSON.stringify(vars));
   const env={...process.env};
   for(const k of Object.keys(env))if(/^(TF_|GOOGLE_|GCLOUD_|CLOUDSDK_|GEMINI_|VERTEX_)/i.test(k))delete env[k];

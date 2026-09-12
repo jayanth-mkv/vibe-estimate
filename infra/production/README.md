@@ -48,6 +48,16 @@ The ownership handoff follows this order; consult the inventory and verification
 
 The retained private `image` input still controls the public-invocation and scheduler resource counts. Keep it set to the current verified digest during adoption; clearing it is not the way to transfer service ownership. The foundation launcher rejects delete/replacement plans and permits Terraform's explicit forget action.
 
+## Pause recovery after event cutover
+
+After verifying the deployed event-delivery journey, the optional external `../docs/private/room-recovery.json` can pause the existing scheduler through this foundation:
+
+```json
+{ "backendProjectId": "backend-project-id", "paused": true }
+```
+
+The backend must match the authorized private configuration, and `paused` must be a boolean. An absent file or `false` keeps the every-minute schedule active. Run the launcher `plan`, review the scheduler pause, then `apply`; the setting is included in the saved plan's input hash. Terraform retains the job, cron and authenticated target for rollback. Set `paused` to `false` and review/apply a new plan to resume recovery. This configuration support does not itself pause the live job; complete [event delivery verification](../../docs/event-delivery.md) first.
+
 ## Firebase authorized domains
 
 The Cloud Run hostname is added automatically. For a custom domain added later, the optional private `frontend-hosting.json` supplies additional domains:

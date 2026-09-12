@@ -34,6 +34,11 @@ variable "extra_auth_domains" {
 }
 variable "firestore_database_id" { type = string }
 variable "gemini_model" { type = string }
+variable "pause_room_recovery" {
+  type        = bool
+  default     = false
+  description = "Pause the existing recovery schedule only after event delivery has been verified."
+}
 variable "access_token" {
   type      = string
   sensitive = true
@@ -256,6 +261,7 @@ resource "google_cloud_scheduler_job" "reconcile" {
   name      = "vibeestimate-review-recovery"
   schedule  = "* * * * *"
   time_zone = "Etc/UTC"
+  paused    = var.pause_room_recovery
   http_target {
     uri         = "${local.origin}/internal/reconcile"
     http_method = "POST"

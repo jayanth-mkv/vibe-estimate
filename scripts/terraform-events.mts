@@ -15,6 +15,41 @@ const plain = (value: unknown): value is RecordValue => !!value && typeof value 
 const settingsKeys = ['backendProjectId', 'firebaseProjectId', 'firestoreDatabaseId', 'firebaseLocation', 'region', 'projectNumber', 'gcloudConfiguration', 'account'];
 const requiredApis = ['eventarc.googleapis.com', 'eventarcpublishing.googleapis.com', 'workflows.googleapis.com', 'workflowexecutions.googleapis.com', 'pubsub.googleapis.com'];
 
+class EventBillingPreflightError extends Error {
+  constructor(reason: 'disabled' | 'mismatch' | 'unavailable') {
+    super({
+      disabled: 'Event apply stopped: billing is not enabled on the configured Firebase source project. No Terraform changes were started.',
+      mismatch: 'Event apply stopped: the billing response did not match the configured Firebase source project. No Terraform changes were started.',
+      unavailable: 'Event apply stopped: source-project billing could not be verified. No Terraform changes were started.',
+    }[reason]);
+    this.name = 'EventBillingPreflightError';
+  }
+}
+
+/** Read-only preflight: do not partially activate paid source services. */
+export async function checkEventApplyBilling(action: string, settings: EventSettings, token: string, request: typeof fetch = fetch): Promise<void> {
+  if (action !== 'apply') return;
+  let info: unknown;
+  try {
+    const response = await request(`https://cloudbilling.googleapis.com/v1/projects/${settings.firebaseProjectId}/billingInfo?fields=projectId,billingEnabled`, {
+      method: 'GET',
+      // Cloud Billing's global API must not inherit a quota-project override:
+      // that would require activating the API on an otherwise unrelated quota
+      // project. The resource path and response bind the explicit source target.
+      headers: { Authorization: `Bearer ${token}` },
+      redirect: 'error',
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error('Billing read failed');
+    info = await response.json();
+  } catch {
+    // Never surface response bodies, account IDs, tokens or network diagnostics.
+    throw new EventBillingPreflightError('unavailable');
+  }
+  if (!plain(info) || info.projectId !== settings.firebaseProjectId) throw new EventBillingPreflightError('mismatch');
+  if (info.billingEnabled !== true) throw new EventBillingPreflightError('disabled');
+}
+
 /** Private discovery is explicit and checked against the existing operator files. */
 export function validateEventSettings(value: unknown, operator: RecordValue, vertex: RecordValue, connected: RecordValue, discovery: RecordValue): EventSettings {
   if (!plain(value) || Object.keys(value).length !== settingsKeys.length || settingsKeys.some(key => typeof value[key] !== 'string')) throw new Error('Incomplete private event configuration');
@@ -175,6 +210,7 @@ async function main() {
       token = await obtainNamedProfileToken({ projectId: settings.backendProjectId, gcloudConfiguration: settings.gcloudConfiguration, gcloudAccount: settings.account, gcloudConfigDir: vertex.gcloudConfigDir });
       Object.assign(env, { TF_VAR_access_token: token, GOOGLE_OAUTH_ACCESS_TOKEN: token });
     } else env.TF_VAR_access_token = 'unused-offline-validation-token';
+    await checkEventApplyBilling(action, settings, token);
     const startingSourceHash = sourceHash();
     let args: string[];
     if (action === 'init') args = ['init', '-input=false', '-no-color', '-backend-config=bucket=' + stateBucket, '-backend-config=prefix=events'];
@@ -231,5 +267,5 @@ async function main() {
 }
 
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
-  main().catch(() => { console.error('Event Terraform operation stopped; private values and raw errors omitted.'); process.exitCode = 1; });
+  main().catch(error => { console.error(error instanceof EventBillingPreflightError ? error.message : 'Event Terraform operation stopped; private values and raw errors omitted.'); process.exitCode = 1; });
 }

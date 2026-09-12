@@ -19,6 +19,16 @@ The bootstrap apply partially completed: two API activations succeeded and two w
 
 The operator subsequently requested investigating consolidation into the application project. That migration is being assessed separately; no users or documents have been moved. The prepared workflow carries event routing metadata, while the authenticated API retains ownership, task creation and model work.
 
+### Billing proposal and consolidation assessment
+
+Read-only discovery confirmed that the application project already has Firebase enabled, but no initialized Auth configuration or web app. A safe consolidation needs a destination Google sign-in configuration and transfer of existing guest sessions, in addition to preserving nested documents and revisions. See the [migration assessment](firebase-consolidation.md). No data export or migration was performed.
+
+As the smaller alternative, `infra/firebase-billing` manages only the source project's billing information. Its existing unbilled state was imported into the private GCS `firebase-billing` prefix. A saved plan proposes **one in-place billing-link update, zero resource creates/deletes/replacements, and no budget change**, using the already-open billing account attached to the application project. Read-only permission checks confirmed both required billing-assignment permissions. This is a proposal: billing remains disabled on the Firebase source and the plan has not been applied. Seven offline mock tests passed, and shared ADC fingerprints matched.
+
+The event launcher now checks source billing immediately before any apply, preventing another partial bootstrap when billing is disabled or cannot be verified. Eight launcher boundary tests passed. Planning and importing existing state remain available without enabling billing.
+
+The foundation root now accepts a private, explicitly targeted scheduler-pause setting for the eventual cutover. It defaults to the current active schedule; no pause setting was written for production. Eleven foundation mock checks and five launcher checks passed, including preservation of the existing scheduler endpoint and OIDC identity when paused.
+
 ## Cost guardrail — 6 September 2026
 
 The operator authorized a monthly spending allocation for the backend project. Read-only discovery first established the facts: the project is linked to an open billing account whose currency is **INR**, the Cloud Billing Budget API had never been enabled on the project, and a permission test confirmed budget create/read/update rights. Because the API was disabled, no budget could previously have been created through it.

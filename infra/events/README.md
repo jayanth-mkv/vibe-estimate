@@ -22,6 +22,14 @@ a short-lived token from the explicit operator profile, keeps state and plans in
 the private directory, verifies source/configuration/plan hashes before apply,
 rejects resource updates/deletion, and checks shared ADC before/after each run:
 
+The Firebase source project must already have billing enabled for Eventarc and
+Workflows. Before every apply, including API bootstrap, the launcher checks that
+project's billing status using the same ephemeral profile token and an explicit
+project resource path. This global billing read omits a quota override so it does
+not require activating another API. Disabled billing, a mismatched project or an unreadable
+billing response stops the apply before any Terraform changes. The launcher does
+not link or enable billing; planning and existing-resource imports remain available.
+
 ```text
 rtk proxy node --experimental-strip-types scripts/terraform-events.mts init
 rtk proxy node --experimental-strip-types scripts/terraform-events.mts import pubsub.googleapis.com

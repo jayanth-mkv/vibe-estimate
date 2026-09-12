@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allowedEventResources, inspectEventPlan, validateEventSettings } from '../../../scripts/terraform-events.mts';
+import { allowedEventResources, checkEventApplyBilling, inspectEventPlan, validateEventSettings } from '../../../scripts/terraform-events.mts';
 
 const settings = {
   backendProjectId: 'example-backend', firebaseProjectId: 'example-firebase',
@@ -81,4 +81,43 @@ test('an imported unchanged API may omit its state-only lifecycle flag; newly en
   assert.equal(inspectEventPlan({ resource_changes: [creation] }, settings).length, 1);
   const destructiveFlag = structuredClone(item); destructiveFlag.change.after.disable_on_destroy = true;
   assert.throws(() => inspectEventPlan({ resource_changes: [destructiveFlag] }, settings));
+});
+
+test('billing preflight runs only for apply and reads the explicit source without a quota override', async () => {
+  let calls = 0;
+  const request = async (url, options) => {
+    calls++;
+    assert.equal(url, 'https://cloudbilling.googleapis.com/v1/projects/example-firebase/billingInfo?fields=projectId,billingEnabled');
+    assert.equal(options.method, 'GET');
+    assert.equal(options.headers.Authorization, 'Bearer synthetic-token');
+    assert.equal(options.headers['X-Goog-User-Project'], undefined);
+    assert.equal(options.redirect, 'error');
+    assert.ok(options.signal instanceof AbortSignal);
+    return Response.json({ projectId: settings.firebaseProjectId, billingEnabled: true });
+  };
+  for (const action of ['init', 'plan', 'import', 'outputs', 'validate', 'fmt']) await checkEventApplyBilling(action, settings, 'synthetic-token', request);
+  assert.equal(calls, 0);
+  await checkEventApplyBilling('apply', settings, 'synthetic-token', request);
+  assert.equal(calls, 1);
+});
+
+test('apply fails closed for disabled, missing, or mismatched source billing', async () => {
+  for (const info of [{ projectId: settings.firebaseProjectId, billingEnabled: false }, { projectId: settings.firebaseProjectId }]) {
+    await assert.rejects(checkEventApplyBilling('apply', settings, 'synthetic-token', async () => Response.json(info)), /billing is not enabled.*No Terraform changes were started/);
+  }
+  await assert.rejects(checkEventApplyBilling('apply', settings, 'synthetic-token', async () => Response.json({ projectId: 'wrong-project', billingEnabled: true })), /billing response did not match.*No Terraform changes were started/);
+});
+
+test('billing lookup failures expose no token, response body, or raw network error', async () => {
+  for (const request of [
+    async () => new Response('private-response-body', { status: 403 }),
+    async () => new Response('invalid-private-json', { status: 200 }),
+    async () => { throw new Error('network failure containing synthetic-token'); },
+  ]) {
+    await assert.rejects(checkEventApplyBilling('apply', settings, 'synthetic-token', request), error => {
+      assert.match(error.message, /billing could not be verified.*No Terraform changes were started/);
+      assert.doesNotMatch(error.message, /private|synthetic-token|network failure/);
+      return true;
+    });
+  }
 });

@@ -159,10 +159,34 @@ run "review_delivery_retries_are_bounded_and_authenticated" {
   }
   assert {
     condition = (
+      !google_cloud_scheduler_job.reconcile[0].paused &&
+      google_cloud_scheduler_job.reconcile[0].schedule == "* * * * *" &&
       google_cloud_scheduler_job.reconcile[0].http_target[0].uri == "https://vibeestimate-${var.project_number}.${var.region}.run.app/internal/reconcile" &&
       google_cloud_scheduler_job.reconcile[0].http_target[0].oidc_token[0].service_account_email == google_service_account.delivery.email
     )
-    error_message = "Recovery must call this service's own origin with a verified OIDC identity, never an unauthenticated request."
+    error_message = "Recovery stays active every minute by default and calls this service's own origin with a verified OIDC identity."
+  }
+}
+
+run "event_cutover_pauses_the_existing_scheduler_and_preserves_its_target" {
+  command = plan
+  variables {
+    pause_room_recovery = true
+  }
+
+  assert {
+    condition = (
+      length(google_cloud_scheduler_job.reconcile) == 1 &&
+      google_cloud_scheduler_job.reconcile[0].paused &&
+      google_cloud_scheduler_job.reconcile[0].name == "vibeestimate-review-recovery" &&
+      google_cloud_scheduler_job.reconcile[0].schedule == "* * * * *" &&
+      google_cloud_scheduler_job.reconcile[0].time_zone == "Etc/UTC" &&
+      google_cloud_scheduler_job.reconcile[0].http_target[0].http_method == "POST" &&
+      google_cloud_scheduler_job.reconcile[0].http_target[0].uri == "https://vibeestimate-${var.project_number}.${var.region}.run.app/internal/reconcile" &&
+      google_cloud_scheduler_job.reconcile[0].http_target[0].oidc_token[0].service_account_email == google_service_account.delivery.email &&
+      google_cloud_scheduler_job.reconcile[0].http_target[0].oidc_token[0].audience == "https://vibeestimate-${var.project_number}.${var.region}.run.app"
+    )
+    error_message = "Event cutover must pause the retained scheduler without changing its schedule, endpoint or OIDC identity."
   }
 }
 
