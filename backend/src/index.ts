@@ -20,7 +20,7 @@ if (config.appEnv === "local") {
 const { firestore, verifyToken } = createFirebaseRuntime(config);
 const store = new FirestoreProjectStore(firestore);
 const provider = createProvider(config);
-const rooms = new RoomStore(new FirestoreRoomDatabase(firestore), provider.kind);
+const rooms = new RoomStore(new FirestoreRoomDatabase(firestore), provider.kind, Date.now, Boolean(config.eventServiceAccount));
 const observer = new RoomObserver(rooms, provider);
 const tasks = config.appEnv === "production" ? createRoomTasks(config) : undefined;
 const homes = new HomeService(new HomeStore(new FirestoreHomeDatabase(firestore)), createHomeProvider(config), store);

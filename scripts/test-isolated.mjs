@@ -165,6 +165,16 @@ try {
     const response = await fetch(appOrigin + "/", { signal: AbortSignal.timeout(15000) });
     return response.ok && new URL(response.url).origin === appOrigin;
   }), serviceFailure]);
+  // Compile dynamic room routes before timing user interactions. Cold Next dev
+  // compilation can exceed a navigation assertion without an application failure.
+  // These document requests create no identity, room, job or model call.
+  for (const route of ["/proposals", "/join", "/rooms/00000000-0000-4000-8000-000000000000", "/client/rooms/00000000-0000-4000-8000-000000000000", "/welcome"]) {
+    await Promise.race([waitUntil("isolated route " + route, async () => {
+      const response = await fetch(appOrigin + route, { signal: AbortSignal.timeout(60000) });
+      await response.arrayBuffer();
+      return response.ok && new URL(response.url).origin === appOrigin;
+    }), serviceFailure]);
+  }
   stages.fixtureGateway = true;
   console.log("Fixture API and frontend gateway verified. Running rules, then browser regression.");
   await runCheck("rules", "node_modules/vitest/vitest.mjs", ["run", "--config", "vitest.rules.config.ts"], env);

@@ -62,7 +62,8 @@ resource "google_cloud_run_v2_service" "application" {
           VERTEX_PROJECT_ID          = var.backend_project_id, VERTEX_LOCATION = "global",
           FIREBASE_PROJECT_ID        = var.firebase_project_id, FIRESTORE_DATABASE_ID = var.firestore_database_id,
           GOOGLE_CLOUD_QUOTA_PROJECT = var.firebase_project_id, FRONTEND_ORIGIN = local.origin,
-          ROOM_TASK_QUEUE            = var.task_queue, ROOM_TASK_SERVICE_ACCOUNT = var.task_service_account
+          ROOM_TASK_QUEUE            = var.task_queue, ROOM_TASK_SERVICE_ACCOUNT = var.task_service_account,
+          ROOM_EVENT_SERVICE_ACCOUNT = "vibeestimate-events@${var.firebase_project_id}.iam.gserviceaccount.com"
         }
         content {
           name  = env.key

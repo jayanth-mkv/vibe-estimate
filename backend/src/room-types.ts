@@ -58,6 +58,7 @@ export type StoredRoom = Omit<Room, "role" | "clientJoined" | "messages" | "shar
   paused: boolean;
   nextRunAt: number;
   run?: ObserverRun;
+  delivery?: { id: string; deadline: number };
   snapshots: ReviewSnapshot[];
 };
 export type RoomOwner = {

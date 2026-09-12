@@ -9,7 +9,7 @@ export function registerRoomRoutes(app: Express, store: RoomStore, notify?: (id:
   const schedule = async (id: string) => {
     try { await notify?.(id); }
     catch { console.error(JSON.stringify({ event: "room_task_enqueue_unavailable" })); }
-    // The saved queued state is the durable outbox. The reconciler recovers it.
+    // Local notifications and legacy cutover only. Production outbox events deliver independently.
   };
   app.param("roomId", (_request, _response, next, value: string) => {
     if (!z.string().uuid().safeParse(value).success) { next(roomNotFound()); return; }

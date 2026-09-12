@@ -2,6 +2,23 @@
 
 The original local setup created no cloud resources. Live Gemini setup and the later authorized production deployment took place on 5 September 2026. The sections below retain those separate historical stages. Public documentation omits personal account names, real project IDs, connection paths, and credentials; exact operational records and Terraform state remain in the outer private workspace.
 
+## Event-driven review delivery — 12 September 2026
+
+The operator requested replacing the once-per-minute room-recovery calls with delivery triggered by saved work. The existing Firebase and application project assignments remain intact. See the [delivery contract and threat controls](event-delivery.md).
+
+| Classification | Resources and intended action | Status |
+| --- | --- | --- |
+| Existing, discovered | Cloud Run service, review queue, recovery scheduler, Firestore database and private state bucket | Preserved; current scheduler remains enabled until cutover |
+| Existing, imported | Pub/Sub API in the Firebase project | Imported into the event root; API configuration unchanged |
+| Created | Eventarc and Eventarc Publishing API activation in the Firebase project | Enabled through the reviewed Terraform bootstrap apply |
+| Planned, blocked | Workflows and Workflow Executions API activation in the Firebase project | Google rejected activation because this project has no billing account; these APIs were not enabled |
+| Planned additions | Document-created trigger, short dispatcher workflow, two dedicated identities and scoped invocation/event-receive IAM | Owned by new `infra/events`, private GCS state prefix `events`; discovery follows API activation |
+| Planned changes | Compatible backend/gateway release and event identity configuration; pause the existing scheduler after real event verification | Runtime release through native GitHub delivery; scheduler through `infra/production` |
+
+The bootstrap apply partially completed: two API activations succeeded and two were rejected. No trigger, workflow, event identity or invocation grant was created. The application revision and recovery scheduler remain unchanged. Private state and apply diagnostics record this partial result, and shared ADC fingerprints matched.
+
+The operator subsequently requested investigating consolidation into the application project. That migration is being assessed separately; no users or documents have been moved. The prepared workflow carries event routing metadata, while the authenticated API retains ownership, task creation and model work.
+
 ## Cost guardrail — 6 September 2026
 
 The operator authorized a monthly spending allocation for the backend project. Read-only discovery first established the facts: the project is linked to an open billing account whose currency is **INR**, the Cloud Billing Budget API had never been enabled on the project, and a permission test confirmed budget create/read/update rights. Because the API was disabled, no budget could previously have been created through it.

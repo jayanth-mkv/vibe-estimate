@@ -47,3 +47,10 @@ test("home scenes, immutable revisions and summaries cannot bypass the owner-aut
     await assertFails(getDocs(collection(db, "users/owner-a/homes")));
   }
 });
+test("only backend transactions may create or read event delivery jobs", async () => {
+  for (const db of [environment.authenticatedContext("owner-a").firestore(), environment.authenticatedContext("owner-b").firestore(), environment.unauthenticatedContext().firestore()]) {
+    await assertFails(setDoc(doc(db, "roomReviewOutbox/forged-job"), { roomId: "room-a", ownerId: "owner-a", status: "pending" }));
+    await assertFails(getDoc(doc(db, "roomReviewOutbox/forged-job")));
+    await assertFails(getDocs(collection(db, "roomReviewOutbox")));
+  }
+});

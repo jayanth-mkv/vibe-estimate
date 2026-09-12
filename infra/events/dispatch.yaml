@@ -1,0 +1,55 @@
+# Eventarc acknowledges when this execution starts. Delivery retries therefore
+# belong here; exhausted jobs remain durable and are exposed for owner retry.
+# Only envelope identifiers travel to the API, which reloads the job itself.
+main:
+  params: [event]
+  steps:
+    - dispatch:
+        try:
+          call: http.post
+          args:
+            url: ${sys.get_env("DISPATCH_ORIGIN") + "/internal/outbox"}
+            timeout: 20
+            auth:
+              type: OIDC
+              audience: ${sys.get_env("DISPATCH_ORIGIN")}
+            body:
+              id: ${event.id}
+              source: ${event.source}
+              subject: ${event.subject}
+              type: ${event.type}
+          result: delivery
+        retry:
+          predicate: ${retry_dispatch}
+          max_retries: 10
+          backoff:
+            initial_delay: 2
+            max_delay: 60
+            multiplier: 2
+        except:
+          as: delivery_error
+          steps:
+            - failed:
+                raise:
+                  code: OUTBOX_DELIVERY_FAILED
+                  eventId: ${event.id}
+                  subject: ${event.subject}
+                  executionId: ${sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
+                  httpStatus: ${map.get(delivery_error, "code")}
+    - delivered:
+        return:
+          status: delivered
+          eventId: ${event.id}
+          httpStatus: ${delivery.code}
+
+retry_dispatch:
+  params: [error]
+  steps:
+    - transient:
+        switch:
+          - condition: ${"ConnectionError" in error.tags or "ConnectionFailedError" in error.tags or "TimeoutError" in error.tags}
+            return: true
+          - condition: ${"HttpError" in error.tags}
+            return: ${error.code == 429 or (error.code >= 500 and error.code <= 599)}
+    - permanent:
+        return: false

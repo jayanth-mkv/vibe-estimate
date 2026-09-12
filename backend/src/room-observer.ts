@@ -44,13 +44,13 @@ export class RoomObserver {
   }
 
   /** A managed task awaits the whole operation, keeping Cloud Run CPU allocated. */
-  async process(id: string) {
+  async process(id: string, deliveryId?: string) {
     if (this.running.has(id)) { await this.running.get(id); return; }
     if (this.running.size >= ROOM_GLOBAL_ACTIVE_LIMIT) throw new AppError(503, "WORKER_BUSY", "The review worker is busy.");
     // Reserve the slot before awaiting Firestore. Concurrent task deliveries
     // share a pending claim and cannot all pass the capacity check together.
     const work = Promise.resolve().then(async () => {
-      const claim = await this.store.claim(id);
+      const claim = await this.store.claim(id, deliveryId);
       if (claim) await this.perform(claim);
     }).finally(() => { this.running.delete(id); });
     this.running.set(id, work);

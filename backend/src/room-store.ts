@@ -9,9 +9,12 @@ import {
   ROOM_OWNER_LIMIT, ROOM_TRANSCRIPT_LIMIT, roomNotFound, roomTranscript
 } from "./room-domain.js";
 import type { ObserverRun, RoomOwner, StoredRoom } from "./room-types.js";
+import { ROOM_DELIVERY_TIMEOUT_MS, ROOM_OUTBOX_COLLECTION, roomDeliverySchema, type RoomDelivery } from "./room-outbox.js";
 
 /** All dependent reads occur before writes; the Firestore adapter commits them atomically. */
 export interface RoomTransaction {
+  getDelivery(id: string): Promise<RoomDelivery | undefined>;
+  putDelivery(delivery: RoomDelivery): void;
   getRoom(id: string): Promise<StoredRoom | undefined>;
   putRoom(room: StoredRoom): void;
   getOwner(uid: string): Promise<RoomOwner>;
@@ -31,6 +34,11 @@ export class FirestoreRoomDatabase implements RoomDatabase {
   private project(uid: string, id: string) { return this.db.collection("users").doc(uid).collection("projects").doc(id); }
   transaction<T>(operation: (transaction: RoomTransaction) => Promise<T>) {
     return this.db.runTransaction(transaction => operation({
+      getDelivery: async id => {
+        const data = (await transaction.get(this.db.collection(ROOM_OUTBOX_COLLECTION).doc(id))).data();
+        return data ? roomDeliverySchema.parse(data) : undefined;
+      },
+      putDelivery: delivery => { transaction.set(this.db.collection(ROOM_OUTBOX_COLLECTION).doc(delivery.id), delivery); },
       getRoom: async id => (await transaction.get(this.room(id))).data() as StoredRoom | undefined,
       putRoom: room => { transaction.set(this.room(room.id), room); },
       getOwner: async uid => ((await transaction.get(this.owner(uid))).data() as RoomOwner | undefined) ?? { projects: {} },
@@ -51,7 +59,43 @@ export class FirestoreRoomDatabase implements RoomDatabase {
 
 export type ClaimedReview = { room: StoredRoom; run: ObserverRun };
 export class RoomStore {
-  constructor(private database: RoomDatabase, readonly provider: Analysis["provider"], private clock: () => number = Date.now) {}
+  constructor(private database: RoomDatabase, readonly provider: Analysis["provider"], private clock: () => number = Date.now, private eventDelivery = false) {}
+
+  /** One outstanding delivery per room coalesces messages without losing the atomic enqueue intent. */
+  private queueDelivery(transaction: RoomTransaction, room: StoredRoom) {
+    if (!this.eventDelivery || room.homeId || room.paused || !["queued", "thinking"].includes(room.observer.status) || room.delivery) return;
+    const delivery: RoomDelivery = { id: randomUUID(), roomId: room.id, ownerId: room.ownerId, createdAt: this.clock(), deadline: this.clock() + ROOM_DELIVERY_TIMEOUT_MS, status: "pending" };
+    room.delivery = { id: delivery.id, deadline: delivery.deadline };
+    transaction.putDelivery(delivery);
+  }
+
+  private async cancelDelivery(transaction: RoomTransaction, room: StoredRoom) {
+    if (!room.delivery) return;
+    const delivery = await transaction.getDelivery(room.delivery.id);
+    if (delivery?.status === "pending") transaction.putDelivery({ ...delivery, status: "failed" });
+    delete room.delivery;
+  }
+
+  /** No idle timer: a late worker or an authorized room read makes exhausted delivery visible. */
+  private async expireDelivery(transaction: RoomTransaction, room: StoredRoom) {
+    if (!this.eventDelivery || !room.delivery) return;
+    const now = this.clock();
+    const interrupted = room.run && room.run.leaseUntil <= now;
+    const overdue = !room.run && room.observer.status === "queued" && room.delivery.deadline <= now;
+    if (!interrupted && !overdue) return;
+    const delivery = await transaction.getDelivery(room.delivery.id);
+    const owner = interrupted ? await transaction.getOwner(room.ownerId) : undefined;
+    if (owner?.active && room.run && owner.active.runId === room.run.id) { delete owner.active; transaction.putOwner(room.ownerId, owner); }
+    if (delivery?.status === "pending") transaction.putDelivery({ ...delivery, status: "failed" });
+    delete room.delivery;
+    delete room.run;
+    room.observer.status = room.paused ? "paused" : "error";
+    room.observer.error = interrupted
+      ? "The review was interrupted. Your conversation is saved. Retry when you are ready."
+      : "The review could not be started. Your conversation is saved. Retry when you are ready.";
+    room.observer.updatedAt = new Date(now).toISOString();
+    transaction.putRoom(room);
+  }
 
   async create(uid: string, projectId: string) {
     const now = this.clock();
@@ -84,6 +128,7 @@ export class RoomStore {
       const room = await transaction.getRoom(id);
       const role = memberRole(room, uid);
       const project = role === "designer" && room!.draftProjectId ? await transaction.getProject(uid, room!.draftProjectId) : undefined;
+      await this.expireDelivery(transaction, room!);
       return publicRoom(room!, uid, role === "designer" ? checkedSharedDraft(room!, project, this.clock()) : undefined);
     });
   }
@@ -155,6 +200,7 @@ export class RoomStore {
       if (!room!.paused && room!.observer.status !== "error") {
         room!.observer.status = room!.run ? "thinking" : room!.observer.callsUsed >= ROOM_CALL_LIMIT ? "limit" : "queued";
       }
+      this.queueDelivery(transaction, room!);
       transaction.putRoom(room!);
     });
     return this.get(uid, id);
@@ -166,6 +212,8 @@ export class RoomStore {
       requireDesigner(room, uid);
       if (room.homeId && action !== "pause") throw new AppError(409, "HOME_ASSISTANT_REQUIRED", "Use the selected design assistant in this home's conversation.");
       const now = this.clock();
+      // A fresh owner retry creates a new immutable event; delayed old events cannot restart it.
+      if (action === "retry" || action === "pause") await this.cancelDelivery(transaction, room);
       if (action === "pause") {
         room.paused = true;
         room.observer.status = "paused";
@@ -183,6 +231,7 @@ export class RoomStore {
         room.nextRunAt = now;
       }
       room.updatedAt = new Date(now).toISOString();
+      this.queueDelivery(transaction, room);
       transaction.putRoom(room);
     });
     return this.get(uid, id);
@@ -231,6 +280,43 @@ export class RoomStore {
 
   scheduledIds() { return this.database.scheduledIds(); }
 
+  /** Administrative cutover/replay only; production never schedules a global scan. */
+  async ensureDelivery(id: string) {
+    return this.database.transaction(async transaction => {
+      const room = await transaction.getRoom(id);
+      if (!room) return;
+      this.queueDelivery(transaction, room);
+      transaction.putRoom(room);
+      return room.delivery?.id;
+    });
+  }
+
+  async delivery(id: string) {
+    return this.database.transaction(async transaction => {
+      const delivery = await transaction.getDelivery(id);
+      if (!delivery || delivery.id !== id || delivery.status !== "pending") return;
+      const room = await transaction.getRoom(delivery.roomId);
+      if (!room || room.ownerId !== delivery.ownerId || room.delivery?.id !== id || room.homeId) {
+        transaction.putDelivery({ ...delivery, status: "failed" });
+        return;
+      }
+      await this.expireDelivery(transaction, room);
+      return room.delivery?.id === id ? delivery : undefined;
+    });
+  }
+
+  async completeDelivery(id: string) {
+    return this.database.transaction(async transaction => {
+      const delivery = await transaction.getDelivery(id);
+      if (!delivery || delivery.status !== "pending") return false;
+      const room = await transaction.getRoom(delivery.roomId);
+      if (room?.delivery?.id === id && (room.run || room.observer.status === "queued")) return true;
+      transaction.putDelivery({ ...delivery, status: room?.observer.status === "ready" ? "completed" : "failed" });
+      if (room?.delivery?.id === id) { delete room.delivery; transaction.putRoom(room); }
+      return false;
+    });
+  }
+
   hasPendingReview(id: string) {
     return this.database.transaction(async transaction => {
       const room = await transaction.getRoom(id);
@@ -239,10 +325,11 @@ export class RoomStore {
   }
 
   /** The persisted room lease and owner lease prevent duplicate workers and tabs from spending twice. */
-  async claim(id: string): Promise<ClaimedReview | undefined> {
+  async claim(id: string, deliveryId?: string): Promise<ClaimedReview | undefined> {
     return this.database.transaction(async transaction => {
       const room = await transaction.getRoom(id);
       if (!room) return;
+      if (deliveryId && room.delivery?.id !== deliveryId) return;
       if (room.homeId) {
         if (room.observer.status !== "paused") { room.paused = true; room.observer.status = "paused"; transaction.putRoom(room); }
         return;
@@ -291,6 +378,7 @@ export class RoomStore {
       const room = await transaction.getRoom(id);
       if (!room?.run || room.run.id !== runId) return;
       const owner = await transaction.getOwner(room.ownerId);
+      const delivery = room.delivery ? await transaction.getDelivery(room.delivery.id) : undefined;
       const count = room.run.messageCount;
       const now = this.clock();
       delete room.run;
@@ -310,6 +398,11 @@ export class RoomStore {
       }
       room.observer.updatedAt = new Date(now).toISOString();
       room.updatedAt = new Date(now).toISOString();
+      // A completed review ends this task's retry budget. New messages get a fresh
+      // durable event, even when they arrived while this model call was running.
+      if (delivery?.status === "pending") transaction.putDelivery({ ...delivery, status: "analysis" in result ? "completed" : "failed" });
+      delete room.delivery;
+      this.queueDelivery(transaction, room);
       transaction.putRoom(room);
     });
   }

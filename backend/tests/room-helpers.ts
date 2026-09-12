@@ -2,11 +2,13 @@ import type { RoomDatabase, RoomTransaction } from "../src/room-store.js";
 import type { RoomOwner, StoredRoom } from "../src/room-types.js";
 import type { StoredProject } from "../src/types.js";
 import { MemoryProjectStore } from "./helpers.js";
+import type { RoomDelivery } from "../src/room-outbox.js";
 
 /** Serial, rollback-capable transaction double. Runtime browser tests exercise the Firestore adapter. */
 export class MemoryRoomDatabase implements RoomDatabase {
   rooms = new Map<string, StoredRoom>();
   owners = new Map<string, RoomOwner>();
+  deliveries = new Map<string, RoomDelivery>();
   private tail: Promise<unknown> = Promise.resolve();
   failNext = false;
   constructor(readonly projects: MemoryProjectStore) {}
@@ -16,7 +18,10 @@ export class MemoryRoomDatabase implements RoomDatabase {
       const rooms = new Map<string, StoredRoom>();
       const owners = new Map<string, RoomOwner>();
       const projects = new Map<string, StoredProject>();
+      const deliveries = new Map<string, RoomDelivery>();
       const value = await operation({
+        getDelivery: async id => structuredClone(this.deliveries.get(id)),
+        putDelivery: delivery => { deliveries.set(delivery.id, structuredClone(delivery)); },
         getRoom: async id => structuredClone(this.rooms.get(id)),
         putRoom: room => { rooms.set(room.id, structuredClone(room)); },
         getOwner: async uid => structuredClone(this.owners.get(uid) ?? { projects: {} }),
@@ -30,6 +35,7 @@ export class MemoryRoomDatabase implements RoomDatabase {
       for (const [key, room] of rooms) this.rooms.set(key, room);
       for (const [key, owner] of owners) this.owners.set(key, owner);
       for (const [key, project] of projects) this.projects.projects.set(key, project);
+      for (const [key, delivery] of deliveries) this.deliveries.set(key, delivery);
       return structuredClone(value);
     };
     const result = this.tail.then(execute, execute);

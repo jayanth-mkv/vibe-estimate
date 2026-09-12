@@ -108,6 +108,18 @@ run "the_frontend_origin_is_this_service_own_url" {
   }
 }
 
+run "event_delivery_uses_the_dedicated_firebase_project_identity" {
+  command = plan
+
+  assert {
+    condition = [
+      for env in google_cloud_run_v2_service.application.template[0].containers[0].env :
+      env.value if env.name == "ROOM_EVENT_SERVICE_ACCOUNT"
+    ] == ["vibeestimate-events@${var.firebase_project_id}.iam.gserviceaccount.com"]
+    error_message = "Event delivery must trust exactly the dedicated workflow identity in the independently configured Firebase project."
+  }
+}
+
 run "the_browser_sdk_config_arrives_by_pinned_secret_version" {
   command = plan
 

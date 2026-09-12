@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const infraRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const toolRoot = resolve(infraRoot, '.tools');
 const binary = resolve(toolRoot, 'terraform-1.13.5', process.platform === 'win32' ? 'terraform.exe' : 'terraform');
-const roots = ['production', 'delivery', 'runtime', 'firebase-adoption', 'gemini-local', 'guardrails'];
+const roots = ['production', 'delivery', 'runtime', 'events', 'firebase-adoption', 'gemini-local', 'guardrails'];
 
 if (!existsSync(binary)) {
   console.error('Project-local Terraform is missing. Run: node infra/scripts/install-terraform.mjs');

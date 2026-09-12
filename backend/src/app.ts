@@ -18,6 +18,7 @@ import type { HomeService } from "./home-service.js";
 import { registerHomeRoutes } from "./home-routes.js";
 import type { HomeCollaboration } from "./home-collaboration.js";
 import { registerHomeCollaborationRoutes } from "./home-collaboration-routes.js";
+import { outboxEventId } from "./room-outbox.js";
 
 export type AppDependencies = {
   config: AppConfig;
@@ -40,19 +41,38 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
   app.use(express.json({ limit: "48kb" }));
   app.use((_request, response, next) => { response.setHeader("Cache-Control", "no-store"); next(); });
   if (config.appEnv === "production" && rooms && observer && tasks) {
-    app.use("/internal", async (request, _response, next) => {
+    const internalIdentity = (purpose: "task" | "event"): RequestHandler => async (request, _response, next) => {
       const token = /^Bearer ([^\s]+)$/.exec(request.header("authorization") ?? "")?.[1];
-      if (!token || !await tasks.verify(token)) return next(new AppError(401, "TASK_AUTH_REQUIRED", "A verified task identity is required."));
+      if (!token || !await tasks.verify(token, purpose)) return next(new AppError(401, "TASK_AUTH_REQUIRED", "A verified task identity is required."));
       next();
-    });
-    app.post("/internal/observer", async (request, response) => {
-      const { roomId } = z.object({ roomId: z.string().uuid() }).strict().parse(request.body);
-      await observer.process(roomId);
-      if (await rooms.hasPendingReview(roomId)) throw new AppError(503, "TASK_PENDING", "The saved review is waiting for an available worker.");
+    };
+    app.post("/internal/observer", internalIdentity("task"), async (request, response) => {
+      const input = z.union([z.object({ roomId: z.string().uuid() }).strict(), z.object({ deliveryId: z.string().uuid() }).strict()]).parse(request.body);
+      if ("deliveryId" in input) {
+        const delivery = await rooms.delivery(input.deliveryId);
+        if (delivery) await observer.process(delivery.roomId, delivery.id);
+        if (await rooms.completeDelivery(input.deliveryId)) throw new AppError(503, "TASK_PENDING", "The saved review is waiting for an available worker.");
+      } else {
+        await observer.process(input.roomId);
+        if (await rooms.hasPendingReview(input.roomId)) throw new AppError(503, "TASK_PENDING", "The saved review is waiting for an available worker.");
+      }
       response.status(204).end();
     });
-    app.post("/internal/reconcile", async (_request, response) => {
-      for (const id of await rooms.scheduledIds()) await tasks.enqueue(id);
+    app.post("/internal/outbox", internalIdentity("event"), async (request, response) => {
+      if (!config.eventServiceAccount) throw new AppError(404, "NOT_FOUND", "This endpoint could not be found.");
+      const id = outboxEventId(request.body, config);
+      const delivery = await rooms.delivery(id);
+      if (delivery) await tasks.enqueueDelivery(delivery.id);
+      console.info(JSON.stringify({ event: "room_outbox_dispatch", outcome: delivery ? "accepted" : "already_resolved", deliveryId: id }));
+      response.status(204).end();
+    });
+    app.post("/internal/reconcile", internalIdentity("task"), async (_request, response) => {
+      for (const id of await rooms.scheduledIds()) {
+        if (config.eventServiceAccount) {
+          const deliveryId = await rooms.ensureDelivery(id);
+          if (deliveryId) await tasks.enqueueDelivery(deliveryId);
+        } else await tasks.enqueue(id);
+      }
       response.status(204).end();
     });
   }
@@ -146,7 +166,7 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
     response.setHeader("Content-Disposition", 'attachment; filename="vibeestimate-draft.txt"');
     response.type("text/plain").send(exportProposal(project));
   });
-  if (rooms) registerRoomRoutes(app, rooms, notifyRoom);
+  if (rooms) registerRoomRoutes(app, rooms, config.eventServiceAccount ? undefined : notifyRoom);
   if (homes) registerHomeRoutes(app, homes);
   if (homeCollaboration) registerHomeCollaborationRoutes(app, homeCollaboration);
   app.use((_request, _response, next) => next(new AppError(404, "NOT_FOUND", "This endpoint could not be found.")));

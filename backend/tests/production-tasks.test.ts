@@ -27,7 +27,7 @@ async function setup() {
     evidence: [{ source: "scope" as const, quote: "Kitchen lighting: 3m LED strip included." }], provider: "gemini" as const,
   }, conversation: [] })) };
   const observer = new RoomObserver(rooms, provider);
-  const tasks = { enqueue: vi.fn(async (_id: string) => {}), verify: vi.fn(async (token: string) => token === "verified-delivery") };
+  const tasks = { enqueue: vi.fn(async (_id: string) => {}), enqueueDelivery: vi.fn(async (_id: string) => {}), verify: vi.fn(async (token: string) => token === "verified-delivery") };
   const app = createApp({ config: readConfig(settings), store: projects, rooms, provider, observer, tasks, notifyRoom: tasks.enqueue, verifyToken: async token => ({ uid: token }) });
   const project = await projects.create("owner", { name: FIXTURE_NAME, scope: FIXTURE_SCOPE, messages: FIXTURE_MESSAGES });
   const created = await rooms.create("owner", project.id);

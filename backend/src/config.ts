@@ -20,6 +20,7 @@ export type AppConfig = {
   vertexAuthMode?: "named-profile" | "runtime";
   taskQueuePath?: string;
   taskServiceAccount?: string;
+  eventServiceAccount?: string;
   authEmulatorHost?: string;
   firestoreEmulatorHost?: string;
   connectedAuthProjectId?: string;
@@ -71,6 +72,10 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
   if (aiProvider === "gemini" && geminiTransport === "developer" && !env.GEMINI_API_KEY?.trim()) throw new Error("Developer Gemini mode requires GEMINI_API_KEY; fixture fallback is disabled.");
   if (geminiTransport === "vertex" && (env.GEMINI_API_KEY?.trim() || env.GOOGLE_API_KEY?.trim())) throw new Error("Local Vertex mode requires explicit user authentication without an API key.");
   const runtimeVertex = geminiTransport === "vertex" && appEnv === "production";
+  const eventServiceAccount = env.ROOM_EVENT_SERVICE_ACCOUNT;
+  if (eventServiceAccount !== undefined && (appEnv !== "production" || eventServiceAccount !== `vibeestimate-events@${projectId}.iam.gserviceaccount.com`)) {
+    throw new Error("Event delivery requires the dedicated workflow identity in the configured Firebase project.");
+  }
   if (runtimeVertex && (env.VERTEX_AUTH_MODE !== "runtime" || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(env.VERTEX_PROJECT_ID ?? "") || !/^(global|[a-z]+-[a-z]+[0-9])$/.test(env.VERTEX_LOCATION ?? "")
     || Object.keys(env).some(key => /^(?:VERTEX_GCLOUD_|CONNECTED_AUTH_|CLOUDSDK_AUTH_)/i.test(key) || /^(GOOGLE_APPLICATION_CREDENTIALS|GOOGLE_CREDENTIALS|GOOGLE_OAUTH_ACCESS_TOKEN)$/i.test(key) && Boolean(env[key])))) {
     throw new Error("Production Vertex requires an explicit runtime identity and target; local credentials are forbidden.");
@@ -101,7 +106,7 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
     appEnv, aiProvider, projectId, frontendOrigin, port, gitRevision, authEmulatorHost, firestoreEmulatorHost,
     firestoreDatabaseId, geminiApiKey: env.GEMINI_API_KEY?.trim(), geminiModel: env.GEMINI_MODEL?.trim(), geminiFallbackModel, geminiTransport,
     vertexProjectId: runtimeVertex ? env.VERTEX_PROJECT_ID : vertex?.projectId, vertexLocation: runtimeVertex ? env.VERTEX_LOCATION : vertex?.location,
-    vertexAuthMode: runtimeVertex ? "runtime" : "named-profile", taskQueuePath, taskServiceAccount,
+    vertexAuthMode: runtimeVertex ? "runtime" : "named-profile", taskQueuePath, taskServiceAccount, eventServiceAccount,
     vertexGcloudConfiguration: vertex?.gcloudConfiguration, vertexGcloudAccount: vertex?.gcloudAccount, vertexGcloudConfigDir: vertex?.gcloudConfigDir,
     connectedAuthProjectId: connected?.projectId, connectedAuthGcloudConfiguration: connected?.gcloudConfiguration,
     connectedAuthGcloudAccount: connected?.gcloudAccount, connectedAuthGcloudConfigDir: connected?.gcloudConfigDir
