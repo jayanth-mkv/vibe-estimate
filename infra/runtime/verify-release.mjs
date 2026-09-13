@@ -7,6 +7,8 @@ const metadataKeys = [
   'firestore_database_id', 'gemini_model', 'runtime_service_account', 'task_queue',
   'task_service_account', 'firebase_web_config_secret', 'firebase_web_config_version',
 ].sort();
+const optionalFlags = ['maintenance_mode', 'event_delivery_enabled'];
+const optionalStrings = ['event_delivery_audience'];
 const requireValue = (condition) => { if (!condition) throw new Error('Release input or verification boundary failed.'); };
 const projectId = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 
@@ -17,8 +19,13 @@ export function releaseInputs(env) {
   const bytes = Buffer.from(encoded, 'base64');
   requireValue(bytes.toString('base64') === encoded);
   const metadata = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-  requireValue(metadata && !Array.isArray(metadata) && Object.keys(metadata).sort().join(',') === metadataKeys.join(','));
-  requireValue(Object.values(metadata).every(value => typeof value === 'string' && value.length > 0 && value === value.trim() && !/[\r\n\0]/.test(value)));
+  requireValue(metadata && !Array.isArray(metadata) && metadataKeys.every(key => Object.hasOwn(metadata, key))
+    && Object.keys(metadata).every(key => metadataKeys.includes(key) || optionalFlags.includes(key) || optionalStrings.includes(key)));
+  requireValue(Object.entries(metadata).every(([key, value]) => typeof value === 'string' && (value.length > 0 || optionalStrings.includes(key)) && value === value.trim() && !/[\r\n\0]/.test(value)));
+  requireValue(optionalFlags.every(key => metadata[key] === undefined || ['true', 'false'].includes(metadata[key])));
+  const eventAudience = metadata.event_delivery_audience ?? '';
+  requireValue(eventAudience === '' || (metadata.event_delivery_enabled === 'true' && eventAudience.length <= 261
+    && /^https:\/\/[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app$/.test(eventAudience)));
   requireValue([metadata.backend_project_id, metadata.firebase_project_id].every(value => projectId.test(value) && !value.startsWith('demo-')));
   requireValue(/^[1-9][0-9]{5,19}$/.test(metadata.project_number) && /^[a-z]+-[a-z]+[0-9]$/.test(metadata.region));
   requireValue(metadata.firestore_database_id === '(default)' || /^[a-z][a-z0-9-]{2,61}[a-z0-9]$/.test(metadata.firestore_database_id));
@@ -37,7 +44,9 @@ export function releaseInputs(env) {
 
 export function runtimeVariables(inputs, digest) {
   requireValue(/^sha256:[a-f0-9]{64}$/.test(digest));
-  return { ...inputs.metadata, image: `${inputs.repository}@${digest}` };
+  return { ...inputs.metadata, maintenance_mode: inputs.metadata.maintenance_mode === 'true',
+    event_delivery_enabled: inputs.metadata.event_delivery_enabled === 'true', event_delivery_audience: inputs.metadata.event_delivery_audience ?? '',
+    image: `${inputs.repository}@${digest}` };
 }
 
 export function verifyPlan(plan, variables) {

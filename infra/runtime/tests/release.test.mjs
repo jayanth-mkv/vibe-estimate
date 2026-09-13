@@ -35,6 +35,43 @@ test('main metadata becomes an immutable runtime input without auth or payload v
   assert.equal(Object.hasOwn(variables, 'access_token'), false);
 });
 
+test('migration flags default disabled and accept only explicit boolean strings', () => {
+  assert.equal(variables.maintenance_mode, false);
+  assert.equal(variables.event_delivery_enabled, false);
+  const prepared = releaseInputs({ ...environment, RELEASE_RUNTIME_VARS_B64: encode({ ...metadata, maintenance_mode: 'true', event_delivery_enabled: 'false' }) });
+  assert.equal(runtimeVariables(prepared, digest).maintenance_mode, true);
+  assert.equal(runtimeVariables(prepared, digest).event_delivery_enabled, false);
+  for (const key of ['maintenance_mode', 'event_delivery_enabled']) {
+    for (const value of ['yes', '', 'TRUE', true, 1]) assert.throws(() => releaseInputs({ ...environment, RELEASE_RUNTIME_VARS_B64: encode({ ...metadata, [key]: value }) }));
+  }
+});
+
+test('event audience metadata defaults empty and preserves an exact separately configured native service origin', () => {
+  assert.equal(variables.event_delivery_audience, '');
+  for (const audience of ['', 'https://vibeestimate-example-as.a.run.app', 'https://vibeestimate-123456789012.asia-south1.run.app']) {
+    const prepared = releaseInputs({ ...environment, RELEASE_RUNTIME_VARS_B64: encode({ ...metadata, event_delivery_enabled: 'true', event_delivery_audience: audience }) });
+    const output = runtimeVariables(prepared, digest);
+    assert.equal(output.event_delivery_audience, audience);
+    assert.equal(output.event_delivery_enabled, true);
+    assert.equal(output.task_service_account, metadata.task_service_account);
+  }
+  const disabled = releaseInputs({ ...environment, RELEASE_RUNTIME_VARS_B64: encode({ ...metadata, event_delivery_audience: '' }) });
+  assert.equal(runtimeVariables(disabled, digest).event_delivery_audience, '');
+});
+
+test('rejects event audience credentials, paths, nonnative origins and use without event delivery', () => {
+  for (const audience of [
+    'http://service.run.app', 'https://example.test', 'https://run.app', 'https://service.run.app/',
+    'https://service.run.app/internal/firestore', 'https://service.run.app?x=1', 'https://service.run.app#fragment',
+    'https://user@service.run.app', 'https://user:password@service.run.app', 'https://service.run.app:443',
+    'https://service.run.app.evil.example', ' https://service.run.app', 'https://SERVICE.run.app',
+    'https://-service.run.app', 'https://service..run.app', `https://${'a'.repeat(64)}.run.app`, true, 1, null,
+  ]) assert.throws(() => releaseInputs({ ...environment, RELEASE_RUNTIME_VARS_B64: encode({ ...metadata, event_delivery_enabled: 'true', event_delivery_audience: audience }) }));
+  for (const enabled of [undefined, 'false']) {
+    assert.throws(() => releaseInputs({ ...environment, RELEASE_RUNTIME_VARS_B64: encode({ ...metadata, event_delivery_enabled: enabled, event_delivery_audience: 'https://service.run.app' }) }));
+  }
+});
+
 test('rejects non-main, missing or abbreviated commits and misdirected repository/state inputs', () => {
   for (const changes of [
     { BRANCH_NAME: 'feature/example' }, { BRANCH_NAME: '' }, { COMMIT_SHA: 'abcdef' },

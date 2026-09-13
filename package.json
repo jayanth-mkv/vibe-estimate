@@ -19,6 +19,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspace @vibeestimate/backend",
     "test:rules": "node scripts/rules.mjs",
+    "test:firebase-migration": "node scripts/test-firebase-migration.mjs",
     "test:e2e": "node scripts/playwright.mjs test",
     "test:local": "node scripts/test-local.mjs",
     "test:isolated": "node scripts/test-isolated.mjs",

@@ -41,7 +41,8 @@ export function createRoomTasks(config: AppConfig): RoomTasks {
       try {
         const expected = purpose === "event" ? config.eventServiceAccount : config.taskServiceAccount;
         if (!expected) return false;
-        const ticket = await verifier.verifyIdToken({ idToken: token, audience: config.frontendOrigin });
+        const audience = purpose === "event" ? config.eventAudience ?? config.frontendOrigin : config.frontendOrigin;
+        const ticket = await verifier.verifyIdToken({ idToken: token, audience });
         const identity = ticket.getPayload();
         return Boolean(identity && identity.email === expected && identity.email_verified === true);
       } catch { return false; }

@@ -5,6 +5,27 @@ variable "backend_project_id" {
     error_message = "Select the verified real backend project."
   }
 }
+variable "maintenance_mode" {
+  description = "Temporarily block API and worker operations for a verified migration snapshot."
+  type        = bool
+  default     = false
+}
+variable "event_delivery_enabled" {
+  description = "Enable durable event delivery only after its trigger and identity are ready."
+  type        = bool
+  default     = false
+}
+variable "event_delivery_audience" {
+  description = "Exact native Cloud Run origin used by Eventarc; empty retains the existing workflow audience."
+  type        = string
+  default     = ""
+  validation {
+    condition = var.event_delivery_audience == "" || (var.event_delivery_enabled && length(var.event_delivery_audience) <= 261 && can(regex(
+      "^https://[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app$", var.event_delivery_audience
+    )))
+    error_message = "An explicit event audience requires enabled event delivery and an exact HTTPS native Cloud Run origin."
+  }
+}
 variable "firebase_project_id" {
   type = string
   validation {

@@ -51,6 +51,43 @@ describe("same-origin API gateway", () => {
 });
 
 describe("internal delivery gateway", () => {
+  const eventHeaders = {
+    "ce-id": "synthetic-event", "ce-source": "//firestore.googleapis.com/projects/example-project/databases/(default)",
+    "ce-subject": "documents/roomReviewOutbox/dd080bf4-3b35-4c77-a12d-d73507c6a1ac",
+    "ce-type": "google.cloud.firestore.document.v1.created", "ce-specversion": "1.0",
+  };
+
+  it("preserves protobuf bytes and only the admitted CloudEvent headers for direct Firestore delivery", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 })); vi.stubGlobal("fetch", fetcher);
+    const body = new Uint8Array([0, 255, 128, 10, 13, 34, 123]);
+    const response = await internalPost(new Request("https://service.example/internal/firestore", {
+      method: "POST", headers: { ...eventHeaders, Authorization: "Bearer synthetic-event-identity", "Content-Type": "application/protobuf", "ce-untrusted": "drop", "x-forwarded-host": "untrusted.example" }, body,
+    }), { params: Promise.resolve({ action: "firestore" }) });
+    expect(response.status).toBe(204);
+    const forwarded = fetcher.mock.calls[0][1];
+    expect(forwarded.body).toEqual(body);
+    expect(forwarded.headers.get("content-type")).toBe("application/protobuf");
+    expect(forwarded.headers.get("authorization")).toBe("Bearer synthetic-event-identity");
+    for (const [key, value] of Object.entries(eventHeaders)) expect(forwarded.headers.get(key)).toBe(value);
+    expect(forwarded.headers.has("ce-untrusted")).toBe(false);
+    expect(forwarded.headers.has("x-forwarded-host")).toBe(false);
+  });
+
+  it.each(["/api/projects", "/internal/observer", "/internal/outbox"])("does not forward event routing headers on %s", async path => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 })); vi.stubGlobal("fetch", fetcher);
+    await forwardService(new Request(`https://service.example${path}`, { method: "POST", headers: eventHeaders, body: "{}" }), path);
+    for (const key of Object.keys(eventHeaders)) expect(fetcher.mock.calls[0][1].headers.has(key)).toBe(false);
+  });
+
+  it("rejects an oversized binary event before forwarding, including a streamed body without content-length", async () => {
+    const fetcher = vi.fn(); vi.stubGlobal("fetch", fetcher);
+    const response = await internalPost(new Request("https://service.example/internal/firestore", {
+      method: "POST", headers: { ...eventHeaders, "Content-Type": "application/protobuf" }, body: new Uint8Array(49153),
+    }), { params: Promise.resolve({ action: "firestore" }) });
+    expect(response.status).toBe(413);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it.each(["observer", "reconcile", "outbox"])("forwards authenticated JSON for %s without changing the payload", async action => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetcher);

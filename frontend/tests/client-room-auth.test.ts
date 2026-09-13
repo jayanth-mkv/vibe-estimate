@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const sdk = vi.hoisted(() => ({
-  apps: new Map<string, { name: string }>(),
-  auths: new Map<string, { app: { name: string }; currentUser: { uid: string; isAnonymous: boolean } | null }>(),
+  apps: new Map<string, { name: string; options: { projectId: string; apiKey: string } }>(),
+  auths: new Map<string, { app: { name: string }; authStateReady: () => Promise<void>; currentUser: { uid: string; isAnonymous: boolean } | null }>(),
   popup: vi.fn(),
   anonymous: vi.fn(),
   persistence: vi.fn(),
@@ -10,10 +10,10 @@ const sdk = vi.hoisted(() => ({
 
 vi.mock("firebase/app", () => ({
   getApps: () => [...sdk.apps.values()],
-  initializeApp: (_config: unknown, name: string) => {
-    const app = { name };
+  initializeApp: (options: { projectId: string; apiKey: string }, name: string) => {
+    const app = { name, options };
     sdk.apps.set(name, app);
-    sdk.auths.set(name, { app, currentUser: null });
+    sdk.auths.set(name, { app, authStateReady: async () => {}, currentUser: null });
     return app;
   },
 }));
@@ -27,6 +27,8 @@ vi.mock("firebase/auth", () => ({
   setPersistence: sdk.persistence,
   signInAnonymously: sdk.anonymous,
   signInWithPopup: sdk.popup,
+  signInWithCustomToken: vi.fn(),
+  signOut: vi.fn(),
 }));
 
 const roomId = "b88aa97d-cf7d-4fdd-a046-53547c732e88";
@@ -37,9 +39,9 @@ beforeEach(() => {
   sdk.apps.clear();
   sdk.auths.clear();
   for (const [name, uid] of [["vibeestimate-client", "guest-with-room-history"], ["[DEFAULT]", "designer-with-drafts"]]) {
-    const app = { name };
+    const app = { name, options: { projectId: "test-project", apiKey: "test-key" } };
     sdk.apps.set(name, app);
-    sdk.auths.set(name, { app, currentUser: Object.freeze({ uid, isAnonymous: true }) });
+    sdk.auths.set(name, { app, authStateReady: async () => {}, currentUser: Object.freeze({ uid, isAnonymous: true }) });
   }
   sdk.persistence.mockResolvedValue(undefined);
   sdk.popup.mockImplementation(async (auth) => {

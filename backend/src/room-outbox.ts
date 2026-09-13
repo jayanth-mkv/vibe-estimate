@@ -10,7 +10,7 @@ export const roomDeliverySchema = z.object({
 }).strict();
 export type RoomDelivery = z.infer<typeof roomDeliverySchema>;
 
-/** The workflow supplies routing metadata only. Sources and model inputs are read from owned storage. */
+/** Events supply routing metadata only. Sources and model inputs are read from owned storage. */
 export function outboxEventId(body: unknown, config: Pick<AppConfig, "projectId" | "firestoreDatabaseId">) {
   const event = z.object({
     id: z.string().min(1).max(256),

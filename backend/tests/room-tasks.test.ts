@@ -71,6 +71,26 @@ describe("managed room task transport", () => {
 });
 
 describe("separate task and event OIDC identities", () => {
+  it("uses an explicitly different Eventarc audience without changing task verification or delivery", async () => {
+    const eventAudience = "https://vibeestimate-example-as.a.run.app";
+    const configured = readConfig({ ...settings, ROOM_EVENT_AUDIENCE: eventAudience });
+    const tasks = createRoomTasks(configured);
+    mocks.verifyIdToken.mockImplementation(async ({ idToken, audience }) => {
+      const tokenAudience = idToken === "event-token" ? eventAudience : settings.FRONTEND_ORIGIN;
+      if (audience !== tokenAudience) throw new Error("audience mismatch");
+      return ticket(idToken === "task-token" ? settings.ROOM_TASK_SERVICE_ACCOUNT : settings.ROOM_EVENT_SERVICE_ACCOUNT);
+    });
+    expect(await tasks.verify("event-token", "event")).toBe(true);
+    expect(await tasks.verify("task-token", "task")).toBe(true);
+    expect(await tasks.verify("event-token", "task")).toBe(false);
+    expect(await tasks.verify("event-identity-with-task-audience", "event")).toBe(false);
+    expect(mocks.verifyIdToken.mock.calls.map(([options]) => options.audience)).toEqual([
+      eventAudience, settings.FRONTEND_ORIGIN, settings.FRONTEND_ORIGIN, eventAudience,
+    ]);
+    await tasks.enqueueDelivery(randomUUID());
+    expect(mocks.request.mock.calls[0]![0].data.task.httpRequest.oidcToken.audience).toBe(settings.FRONTEND_ORIGIN);
+  });
+
   it("verifies the service audience and only accepts the verified email for the requested purpose", async () => {
     const tasks = createRoomTasks(config());
     mocks.verifyIdToken.mockImplementation(async ({ idToken }) => ticket(idToken === "event-token" ? settings.ROOM_EVENT_SERVICE_ACCOUNT : settings.ROOM_TASK_SERVICE_ACCOUNT));
@@ -96,5 +116,29 @@ describe("separate task and event OIDC identities", () => {
     const legacy = createRoomTasks({ ...config(), eventServiceAccount: undefined });
     expect(await legacy.verify("event-token", "event")).toBe(false);
     expect(mocks.verifyIdToken).not.toHaveBeenCalled();
+  });
+});
+
+describe("Eventarc audience configuration", () => {
+  it("retains the workflow audience when the explicit event audience is absent", () => {
+    expect(config().eventAudience).toBe(settings.FRONTEND_ORIGIN);
+    expect(readConfig({ ...settings, ROOM_EVENT_SERVICE_ACCOUNT: undefined }).eventAudience).toBeUndefined();
+    for (const audience of ["https://service-example-as.a.run.app", "https://vibeestimate-123456789012.asia-southeast1.run.app"]) {
+      expect(readConfig({ ...settings, ROOM_EVENT_AUDIENCE: audience }).eventAudience).toBe(audience);
+    }
+  });
+
+  it.each([
+    "", "http://service.run.app", "https://service.example", "https://run.app", "https://service.run.app/",
+    "https://service.run.app/internal/firestore", "https://service.run.app?audience=another", "https://service.run.app#fragment",
+    "https://user@service.run.app", "https://user:password@service.run.app", "https://service.run.app:443",
+    "https://service.run.app.evil.example", " https://service.run.app", "https://SERVICE.run.app",
+    "https://-service.run.app", "https://service..run.app", `https://${"a".repeat(64)}.run.app`,
+  ])("rejects a noncanonical event audience %s", audience => {
+    expect(() => readConfig({ ...settings, ROOM_EVENT_AUDIENCE: audience })).toThrow("exact HTTPS Cloud Run service origin");
+  });
+
+  it("rejects an explicit event audience without its event identity", () => {
+    expect(() => readConfig({ ...settings, ROOM_EVENT_SERVICE_ACCOUNT: undefined, ROOM_EVENT_AUDIENCE: "https://service.run.app" })).toThrow("enabled event identity");
   });
 });

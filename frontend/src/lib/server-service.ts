@@ -5,7 +5,8 @@ export async function forwardService(request: Request, path: string) {
   // a revision selector cannot become a destination URL or replace the host.
   if (!path.startsWith("/") || path.startsWith("//") || /[\\?#]/.test(path)) return new Response(null, { status: 404 });
   const headers = new Headers();
-  for (const name of ["authorization", "content-type"]) {
+  const eventHeaders = path === "/internal/firestore" ? ["ce-id", "ce-source", "ce-subject", "ce-type", "ce-specversion"] : [];
+  for (const name of ["authorization", "content-type", ...eventHeaders]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }

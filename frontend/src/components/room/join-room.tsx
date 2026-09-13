@@ -4,7 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCheck, MessageCircle } from "lucide-react";
-import { clientAuth, startSession, usesAnonymousAuth } from "@/lib/firebase";
+import { ensureSessionReady, startSession, usesAnonymousAuth } from "@/lib/firebase";
 import { makeRoomApi } from "@/lib/room-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,8 +36,7 @@ export function JoinRoom() {
     setError("");
     setFieldError(false);
     try {
-      const auth = clientAuth("client");
-      await auth.authStateReady();
+      const auth = await ensureSessionReady("client");
       if (!auth.currentUser) await startSession("client");
       const result = await clientRooms.joinCode(normalized);
       setCode("");

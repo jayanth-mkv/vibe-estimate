@@ -56,15 +56,18 @@ resource "google_cloud_run_v2_service" "application" {
         failure_threshold     = 30
       }
       dynamic "env" {
-        for_each = {
+        for_each = merge({
           APP_ENV                    = "production", NODE_ENV = "production", AI_PROVIDER = "gemini",
           GEMINI_TRANSPORT           = "vertex", GEMINI_MODEL = var.gemini_model, VERTEX_AUTH_MODE = "runtime",
           VERTEX_PROJECT_ID          = var.backend_project_id, VERTEX_LOCATION = "global",
           FIREBASE_PROJECT_ID        = var.firebase_project_id, FIRESTORE_DATABASE_ID = var.firestore_database_id,
           GOOGLE_CLOUD_QUOTA_PROJECT = var.firebase_project_id, FRONTEND_ORIGIN = local.origin,
           ROOM_TASK_QUEUE            = var.task_queue, ROOM_TASK_SERVICE_ACCOUNT = var.task_service_account,
+          APP_MAINTENANCE            = tostring(var.maintenance_mode)
+          }, var.event_delivery_enabled ? {
           ROOM_EVENT_SERVICE_ACCOUNT = "vibeestimate-events@${var.firebase_project_id}.iam.gserviceaccount.com"
-        }
+          ROOM_EVENT_AUDIENCE        = var.event_delivery_audience != "" ? var.event_delivery_audience : local.origin
+        } : {})
         content {
           name  = env.key
           value = env.value

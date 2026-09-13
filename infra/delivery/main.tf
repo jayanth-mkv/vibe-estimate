@@ -29,7 +29,15 @@ variable "runtime_variables" {
     region                     = string, firestore_database_id = string, gemini_model = string,
     runtime_service_account    = string, task_queue = string, task_service_account = string,
     firebase_web_config_secret = string, firebase_web_config_version = string
+    maintenance_mode           = optional(string, "false"), event_delivery_enabled = optional(string, "false")
+    event_delivery_audience    = optional(string, "")
   })
+  validation {
+    condition = var.runtime_variables.event_delivery_audience == "" || (var.runtime_variables.event_delivery_enabled == "true" && length(var.runtime_variables.event_delivery_audience) <= 261 && can(regex(
+      "^https://[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app$", var.runtime_variables.event_delivery_audience
+    )))
+    error_message = "An explicit event audience requires enabled event delivery and an exact HTTPS native Cloud Run origin."
+  }
 }
 variable "access_token" {
   type      = string

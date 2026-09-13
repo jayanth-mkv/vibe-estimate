@@ -1,4 +1,5 @@
 import { validateNamedGcloudTarget, validateVertexTarget } from "./vertex-config.js";
+import { readFirebaseMigration, type FirebaseMigrationConfig } from "./firebase-migration.js";
 
 export type AppConfig = {
   appEnv: "local" | "connected" | "production";
@@ -21,6 +22,9 @@ export type AppConfig = {
   taskQueuePath?: string;
   taskServiceAccount?: string;
   eventServiceAccount?: string;
+  eventAudience?: string;
+  firebaseMigration?: FirebaseMigrationConfig;
+  maintenance?: boolean;
   authEmulatorHost?: string;
   firestoreEmulatorHost?: string;
   connectedAuthProjectId?: string;
@@ -74,8 +78,14 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
   const runtimeVertex = geminiTransport === "vertex" && appEnv === "production";
   const eventServiceAccount = env.ROOM_EVENT_SERVICE_ACCOUNT;
   if (eventServiceAccount !== undefined && (appEnv !== "production" || eventServiceAccount !== `vibeestimate-events@${projectId}.iam.gserviceaccount.com`)) {
-    throw new Error("Event delivery requires the dedicated workflow identity in the configured Firebase project.");
+    throw new Error("Event delivery requires the dedicated event identity in the configured Firebase project.");
   }
+  const explicitEventAudience = env.ROOM_EVENT_AUDIENCE;
+  if (explicitEventAudience !== undefined && (!eventServiceAccount || explicitEventAudience.length > 261
+    || !/^https:\/\/[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app$/.test(explicitEventAudience))) {
+    throw new Error("Event audience requires an enabled event identity and an exact HTTPS Cloud Run service origin.");
+  }
+  const eventAudience = eventServiceAccount ? explicitEventAudience ?? frontendOrigin : undefined;
   if (runtimeVertex && (env.VERTEX_AUTH_MODE !== "runtime" || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(env.VERTEX_PROJECT_ID ?? "") || !/^(global|[a-z]+-[a-z]+[0-9])$/.test(env.VERTEX_LOCATION ?? "")
     || Object.keys(env).some(key => /^(?:VERTEX_GCLOUD_|CONNECTED_AUTH_|CLOUDSDK_AUTH_)/i.test(key) || /^(GOOGLE_APPLICATION_CREDENTIALS|GOOGLE_CREDENTIALS|GOOGLE_OAUTH_ACCESS_TOKEN)$/i.test(key) && Boolean(env[key])))) {
     throw new Error("Production Vertex requires an explicit runtime identity and target; local credentials are forbidden.");
@@ -100,13 +110,17 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
   const gitRevision = env.BUILD_GIT_SHA || undefined;
   if (gitRevision !== undefined && !/^[0-9a-f]{40}$/.test(gitRevision)) throw new Error("BUILD_GIT_SHA must be a complete 40-character lowercase hexadecimal Git revision.");
   const taskQueuePath = env.ROOM_TASK_QUEUE;
+  const firebaseMigration = readFirebaseMigration(env.FIREBASE_WEB_CONFIG, projectId, appEnv);
+  if (env.APP_MAINTENANCE !== undefined && !["true", "false"].includes(env.APP_MAINTENANCE)) throw new Error("APP_MAINTENANCE must be an explicit boolean.");
+  const maintenance = env.APP_MAINTENANCE === "true";
+  if (maintenance && appEnv !== "production") throw new Error("Migration maintenance requires production configuration.");
   const taskServiceAccount = env.ROOM_TASK_SERVICE_ACCOUNT;
   if (appEnv === "production" && (!/^projects\/[a-z][a-z0-9-]+\/locations\/[a-z]+-[a-z]+[0-9]\/queues\/[a-z][a-z0-9-]+$/.test(taskQueuePath ?? "") || !/^[a-z][a-z0-9-]+@[a-z][a-z0-9-]+\.iam\.gserviceaccount\.com$/.test(taskServiceAccount ?? ""))) throw new Error("Production requires a managed room task queue and delivery identity.");
   return {
     appEnv, aiProvider, projectId, frontendOrigin, port, gitRevision, authEmulatorHost, firestoreEmulatorHost,
     firestoreDatabaseId, geminiApiKey: env.GEMINI_API_KEY?.trim(), geminiModel: env.GEMINI_MODEL?.trim(), geminiFallbackModel, geminiTransport,
     vertexProjectId: runtimeVertex ? env.VERTEX_PROJECT_ID : vertex?.projectId, vertexLocation: runtimeVertex ? env.VERTEX_LOCATION : vertex?.location,
-    vertexAuthMode: runtimeVertex ? "runtime" : "named-profile", taskQueuePath, taskServiceAccount, eventServiceAccount,
+    vertexAuthMode: runtimeVertex ? "runtime" : "named-profile", taskQueuePath, taskServiceAccount, eventServiceAccount, eventAudience, firebaseMigration, maintenance,
     vertexGcloudConfiguration: vertex?.gcloudConfiguration, vertexGcloudAccount: vertex?.gcloudAccount, vertexGcloudConfigDir: vertex?.gcloudConfigDir,
     connectedAuthProjectId: connected?.projectId, connectedAuthGcloudConfiguration: connected?.gcloudConfiguration,
     connectedAuthGcloudAccount: connected?.gcloudAccount, connectedAuthGcloudConfigDir: connected?.gcloudConfigDir

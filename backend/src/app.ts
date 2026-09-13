@@ -19,12 +19,14 @@ import { registerHomeRoutes } from "./home-routes.js";
 import type { HomeCollaboration } from "./home-collaboration.js";
 import { registerHomeCollaborationRoutes } from "./home-collaboration-routes.js";
 import { outboxEventId } from "./room-outbox.js";
+import type { FirebaseSessionMigration } from "./firebase-migration.js";
 
 export type AppDependencies = {
   config: AppConfig;
   store: ProjectStore;
   provider: AnalysisProvider;
   verifyToken: (token: string) => Promise<{ uid: string }>;
+  sessionMigration?: FirebaseSessionMigration;
   rooms?: RoomStore;
   observer?: RoomObserver;
   tasks?: RoomTasks;
@@ -33,13 +35,17 @@ export type AppDependencies = {
   homeCollaboration?: HomeCollaboration;
 };
 
-export function createApp({ config, store, provider, verifyToken, rooms, observer, tasks, notifyRoom, homes, homeCollaboration }: AppDependencies) {
+export function createApp({ config, store, provider, verifyToken, sessionMigration, rooms, observer, tasks, notifyRoom, homes, homeCollaboration }: AppDependencies) {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
   app.use(cors({ origin: config.frontendOrigin, methods: ["GET", "POST"], allowedHeaders: ["Content-Type", "Authorization"] }));
-  app.use(express.json({ limit: "48kb" }));
   app.use((_request, response, next) => { response.setHeader("Cache-Control", "no-store"); next(); });
+  if (config.maintenance) app.use(["/api", "/internal"], (_request, response) => {
+    response.setHeader("Retry-After", "60");
+    response.status(503).json({ error: { code: "MIGRATION_MAINTENANCE", message: "Your saved workspace is being moved. Please keep this page open and try again shortly." } });
+  });
+  app.use(express.json({ limit: "48kb" }));
   if (config.appEnv === "production" && rooms && observer && tasks) {
     const internalIdentity = (purpose: "task" | "event"): RequestHandler => async (request, _response, next) => {
       const token = /^Bearer ([^\s]+)$/.exec(request.header("authorization") ?? "")?.[1];
@@ -66,6 +72,18 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
       console.info(JSON.stringify({ event: "room_outbox_dispatch", outcome: delivery ? "accepted" : "already_resolved", deliveryId: id }));
       response.status(204).end();
     });
+    app.post("/internal/firestore", internalIdentity("event"), express.raw({ type: "application/protobuf", limit: "48kb" }), async (request, response) => {
+      if (!config.eventServiceAccount) throw new AppError(404, "NOT_FOUND", "This endpoint could not be found.");
+      if (!request.is("application/protobuf") || request.header("ce-specversion") !== "1.0") throw new AppError(422, "INVALID_EVENT", "The event envelope is invalid.");
+      // The protobuf document is intentionally unused. Only authenticated envelope
+      // metadata selects a job, which the API reloads from its own Firestore.
+      const id = outboxEventId({ id: request.header("ce-id"), source: request.header("ce-source"),
+        subject: request.header("ce-subject"), type: request.header("ce-type") }, config);
+      const delivery = await rooms.delivery(id);
+      if (delivery) await tasks.enqueueDelivery(delivery.id);
+      console.info(JSON.stringify({ event: "room_outbox_dispatch", outcome: delivery ? "accepted" : "already_resolved", deliveryId: id }));
+      response.status(204).end();
+    });
     app.post("/internal/reconcile", internalIdentity("task"), async (_request, response) => {
       for (const id of await rooms.scheduledIds()) {
         if (config.eventServiceAccount) {
@@ -77,8 +95,16 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
     });
   }
   app.get("/health", (_request, response) => {
-    response.json({ status: "ok", aiProvider: provider.kind, storage: "firestore", auth: config.appEnv === "local" ? "emulator" : "firebase", storageConnection: config.appEnv === "local" ? "emulator" : "cloud", runtime: config.appEnv, ...(config.gitRevision ? { gitRevision: config.gitRevision } : {}), ...(provider.kind === "gemini" ? { geminiTransport: config.geminiTransport ?? "developer" } : {}) });
+    response.json({ status: "ok", aiProvider: provider.kind, storage: "firestore", auth: config.appEnv === "local" ? "emulator" : "firebase", storageConnection: config.appEnv === "local" ? "emulator" : "cloud", runtime: config.appEnv, ...(config.maintenance ? { maintenance: true } : {}), ...(config.gitRevision ? { gitRevision: config.gitRevision } : {}), ...(provider.kind === "gemini" ? { geminiTransport: config.geminiTransport ?? "developer" } : {}) });
   });
+  if (config.appEnv === "production" && config.firebaseMigration && sessionMigration) {
+    app.post("/api/auth/migrate", async (request, response) => {
+      z.object({}).strict().parse(request.body);
+      const token = /^Bearer ([^\s]{1,16384})$/.exec(request.header("authorization") ?? "")?.[1];
+      if (!token) throw new AppError(401, "MIGRATION_AUTH_REQUIRED", "Your existing session is required.");
+      response.json(await sessionMigration.exchange(token));
+    });
+  }
   const authenticate: RequestHandler = async (request, response, next) => {
     const header = request.header("authorization");
     const match = /^Bearer ([^\s]+)$/.exec(header ?? "");

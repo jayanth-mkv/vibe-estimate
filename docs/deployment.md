@@ -11,6 +11,7 @@ This document defines the workflow, not proof of a successful native release. Re
 | `infra/production` | Foundation APIs, identities/IAM, registry, queue/scheduler, secret metadata/version, Firebase domains and public service access | Private versioned GCS bucket, prefix `production` |
 | `infra/delivery` | Existing-connection repository child, native main trigger, dedicated runtime state bucket and release IAM | Private versioned GCS bucket, prefix `delivery` |
 | `infra/runtime` | The single adopted Cloud Run service and its complete template | Private versioned GCS bucket, prefix `runtime` |
+| `infra/firebase-migration` | Imported destination Firebase membership, protected new Firebase foundation, migration signing and direct event delivery | Private versioned GCS bucket, prefix `firebase-migration` |
 
 The Gemini-local and Firebase-adoption roots retain separate ownership. A release must not recreate the existing database, change Firebase providers, replace the GitHub connection, or copy the entire foundation state into the runtime root.
 
@@ -67,6 +68,8 @@ The public browser settings are baked into the image at build time and the runti
 Firebase SDK fields are browser-visible configuration, even though their platform storage is marked sensitive. A Gemini key or service-account credential is never one of these values: the runtime calls Vertex with its own Cloud Run identity.
 
 The optional private `frontend-hosting.json` supplies `firebaseProjectId` and `extraFirebaseAuthDomains` to the foundation launcher, for a custom domain added later. Only explicit hostnames are admitted, the Firebase project must match, and previously discovered domains remain in the Terraform-managed list. See [Firebase authorized domains](../infra/production/README.md#firebase-authorized-domains).
+
+During [Firebase consolidation](firebase-consolidation.md), optional native-release metadata explicitly selects migration maintenance and event delivery. Both default off, preserving ordinary releases. Maintenance keeps process health available while returning retryable responses from all API/internal routes. Enabling event delivery supplies its dedicated identity and exact discovered Cloud Run audience. The target SDK secret is a separate pinned version; the old source secret is retained until rollback and session-transfer requirements end. The destination app namespace remains stable when the temporary legacy bridge is removed.
 
 ## Local verification remains available
 

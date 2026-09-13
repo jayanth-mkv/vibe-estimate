@@ -65,6 +65,27 @@ beforeEach(() => { vi.spyOn(console, "info").mockImplementation(() => {}); vi.sp
 afterEach(() => { vi.restoreAllMocks(); });
 
 describe("event-driven durable room review delivery", () => {
+  it("dispatches only authenticated direct Firestore creation metadata and ignores the protobuf document", async () => {
+    const value = await setup(); await postMessage(value).expect(200); const id = jobId(value);
+    const headers = { "ce-id": "synthetic-event", "ce-specversion": "1.0", "ce-source": eventBody(id).source,
+      "ce-type": eventBody(id).type, "ce-subject": eventBody(id).subject };
+    const direct = (token = "verified-event", extra = {}) => request(value.app).post("/internal/firestore")
+      .set("Authorization", `Bearer ${token}`).set("Content-Type", "application/protobuf").set({ ...headers, ...extra });
+    await direct("verified-task").send(Buffer.from([10, 0])).expect(401);
+    await direct("client").send(Buffer.from([10, 0])).expect(401);
+    await direct("verified-event", { "ce-source": "//firestore.googleapis.com/projects/other-project/databases/(default)" }).send(Buffer.from([10, 0])).expect(422);
+    await direct("verified-event", { "ce-type": "google.cloud.firestore.document.v1.updated" }).send(Buffer.from([10, 0])).expect(422);
+    await direct("verified-event", { "ce-specversion": "0.3" }).send(Buffer.from([10, 0])).expect(422);
+    expect(value.tasks.enqueueDelivery).not.toHaveBeenCalled();
+    await direct().send(Buffer.from([255, 0, 17, 128])).expect(204);
+    await direct().send(Buffer.from([10, 0])).expect(204);
+    expect(value.tasks.enqueueDelivery.mock.calls).toEqual([[id], [id]]);
+    expect(value.provider.analyze).not.toHaveBeenCalled();
+    await direct().send(Buffer.alloc(49153)).expect(413);
+    await request(value.app).post("/internal/firestore").set("Authorization", "Bearer verified-event").set(headers).send(eventBody(id)).expect(422);
+    expect(value.tasks.enqueueDelivery).toHaveBeenCalledTimes(2);
+  });
+
   it("atomically saves messages and one coalesced outbox event without directly enqueuing from the API", async () => {
     const value = await setup();
     expect(value.database.deliveries.size).toBe(0);

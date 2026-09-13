@@ -7,12 +7,12 @@ import { ArrowLeft, Check, CheckCheck, CircleHelp } from "lucide-react";
 import { Home, SourceWizard } from "@/components/onboarding";
 import { ProjectView } from "../project-view";
 import { examples, type SourceInput } from "@/lib/examples";
-import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { onAuthStateChanged, type User } from "firebase/auth";
 import { api } from "@/lib/api";
 import { roomApi } from "@/lib/room-api";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { clientAuth, googleAuthEnabled, openGoogleWorkspace, saveAccessWithGoogle, startSession, usesEmulators, usesGuestAccess, usesAnonymousAuth } from "@/lib/firebase";
+import { clientAuth, ensureSessionReady, isGuestUser, googleAuthEnabled, openGoogleWorkspace, saveAccessWithGoogle, signOutSession, startSession, usesEmulators, usesGuestAccess, usesAnonymousAuth } from "@/lib/firebase";
 import { workspaceStatus } from "@/lib/workspace-status";
 import { ServiceError } from "@/lib/service-request";
 import { forgetReview, readReviewRequest, rememberReview, restoreReview, resumeReviewInput, retryReview, reviewInput, startReview, withReviewMetadata, type PendingReview } from "@/lib/review-request";
@@ -35,6 +35,7 @@ export default function Workspace() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [authRetry, setAuthRetry] = useState(0);
   const [accessSaved, setAccessSaved] = useState(false);
   const [health, setHealth] = useState<Health | null>(null);
   const [serviceChecked, setServiceChecked] = useState(false);
@@ -109,8 +110,7 @@ export default function Workspace() {
     // Browser-only SDK initialization shares the asynchronous subscription lifecycle.
     void Promise.resolve().then(async () => {
       if (!active) return;
-      const auth = clientAuth();
-      await auth.authStateReady();
+      const auth = await ensureSessionReady();
       if (!active) return;
       if (usesGuestAccess && !auth.currentUser) await startSession();
       if (!active) return;
@@ -128,7 +128,7 @@ export default function Workspace() {
           window.history.replaceState(null, "", "/proposals");
         }
         setUser(currentUser);
-        setAccessSaved(Boolean(currentUser && !currentUser.isAnonymous));
+        setAccessSaved(Boolean(currentUser && !isGuestUser(currentUser)));
         setProjectsKnown(false);
         setAuthReady(true);
         setLoadingProjects(Boolean(currentUser));
@@ -138,7 +138,7 @@ export default function Workspace() {
       if (active) { setError(describeError(cause)); setAuthReady(true); }
     });
     return () => { active = false; unsubscribe(); };
-  }, []);
+  }, [authRetry]);
 
   useEffect(() => {
     if (!user) return;
@@ -189,7 +189,7 @@ export default function Workspace() {
   const create = (body: SourceInput) => action("create", async () => {
     startingProjectRef.current = true;
     try {
-      if (!clientAuth().currentUser) await startSession();
+      if (!clientAuth().currentUser) { await startSession(); setAuthRetry(value => value + 1); }
       const result = await api.create(body);
       setProjects((existing) => [result.project, ...existing.filter((project) => project.id !== result.project.id)]);
       choose(result.project);
@@ -210,7 +210,7 @@ export default function Workspace() {
   const startRoomDemo = () => action("room-demo", async () => {
     startingProjectRef.current = true;
     try {
-      if (!clientAuth().currentUser) await startSession();
+      if (!clientAuth().currentUser) { await startSession(); setAuthRetry(value => value + 1); }
       const result = await api.create({ ...examples[0].source });
       const shared = await roomApi.create(result.project.id);
       router.push(`/rooms/${shared.room.id}`);
@@ -221,7 +221,7 @@ export default function Workspace() {
     setLeaveAction(null);
     if (destination === "room") { openRoom(); return; }
     setNewProject({ name: "", scope: "", messages: "" });
-    if (destination === "signout") void action("signout", async () => { await signOut(clientAuth()); choose(null); });
+    if (destination === "signout") void action("signout", async () => { await signOutSession(); choose(null); });
     else { choose(null); if (user) { setLoadingProjects(true); setReloadProjects((value) => value + 1); } }
   };
 
@@ -341,6 +341,7 @@ export default function Workspace() {
         if (fresh.projects.length) throw new Error("Your guest workspace has saved work. Use Save access with Google to keep these projects with you.");
       }
       await openGoogleWorkspace();
+      setAuthRetry(value => value + 1);
       setNotice("Your Google workspace is open.");
     });
   };
@@ -367,7 +368,7 @@ export default function Workspace() {
       {error && <div className="alert" role="alert"><span>{error}</span><Button variant="ghost" className="button text-button" aria-label="Dismiss error" onClick={() => setError("")}>Dismiss</Button></div>}
       <div className={notice ? "notice visible" : "notice"} role="status" aria-live="polite">{notice && <><Check size={17} aria-hidden="true" />{notice}</>}</div>
       {isLoading ? <div className="loading-state" aria-label={authReady ? "Loading projects" : "Opening workspace"}><div className="skeleton" /><div className="skeleton short" /><p>Opening your workspace…</p></div> : <>
-        {!selected && !creating && <Home guest={usesAnonymousAuth && !accessSaved} cloud={health?.storageConnection === "cloud"} googleContinue={canOpenGoogle} onGoogleContinue={continueGoogle} onRoomDemo={() => void startRoomDemo()} projects={projects} signedIn={!!user} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} onNew={startNew} onExample={(source) => void create(source)} onOpen={choose} onRefresh={() => { setLoadingProjects(true); setReloadProjects((value) => value + 1); }} onSignIn={() => void action("signin", async () => { if (!clientAuth().currentUser) await startSession(); else { setLoadingProjects(true); setReloadProjects((value) => value + 1); } })} />}
+        {!selected && !creating && <Home guest={usesAnonymousAuth && !accessSaved} cloud={health?.storageConnection === "cloud"} googleContinue={canOpenGoogle} onGoogleContinue={continueGoogle} onRoomDemo={() => void startRoomDemo()} projects={projects} signedIn={!!user} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} onNew={startNew} onExample={(source) => void create(source)} onOpen={choose} onRefresh={() => { setLoadingProjects(true); setReloadProjects((value) => value + 1); }} onSignIn={() => void action("signin", async () => { if (!clientAuth().currentUser) { await startSession(); setAuthRetry(value => value + 1); } else { setAuthRetry(value => value + 1); setLoadingProjects(true); setReloadProjects((value) => value + 1); } })} />}
         {creating && <><Button variant="ghost" className="button back-button" disabled={!!busy} onClick={() => requestLeave("projects")}><ArrowLeft size={17} />All projects</Button><SourceWizard value={newProject} onChange={setNewProject} onSave={() => void create(newProject)} onCancel={() => requestLeave("projects")} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} /></>}
         {selected && <ProjectView roomId={sourceRoomId} onRoom={() => requestLeave("room")} key={selected.id} project={selected} health={health} busy={busy} hasUnsavedChanges={hasUnsavedChanges} draftChanged={draftChanged} pendingReview={pendingReview} reviewStorageUnavailable={reviewStorageUnavailable} onCheckReview={() => void runReview("check")} onRetryReview={() => void runReview("retry")} fields={{ quantity, unitPrice, description, clarification }} setters={{ quantity: setQuantity, unitPrice: setUnitPrice, description: setDescription, clarification: setClarification }} onLeave={() => requestLeave("projects")} onAnalyze={(event) => void analyze(event)} onSave={(event) => void save(event)} onDownload={() => void download()} />}
       </>}

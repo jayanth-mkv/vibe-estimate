@@ -17,7 +17,7 @@ if (config.appEnv === "local") {
   process.env.FIRESTORE_EMULATOR_HOST = config.firestoreEmulatorHost;
   process.env.GCLOUD_PROJECT = config.projectId;
 }
-const { firestore, verifyToken } = createFirebaseRuntime(config);
+const { firestore, verifyToken, sessionMigration } = createFirebaseRuntime(config);
 const store = new FirestoreProjectStore(firestore);
 const provider = createProvider(config);
 const rooms = new RoomStore(new FirestoreRoomDatabase(firestore), provider.kind, Date.now, Boolean(config.eventServiceAccount));
@@ -25,7 +25,7 @@ const observer = new RoomObserver(rooms, provider);
 const tasks = config.appEnv === "production" ? createRoomTasks(config) : undefined;
 const homes = new HomeService(new HomeStore(new FirestoreHomeDatabase(firestore)), createHomeProvider(config), store);
 const homeCollaboration = new HomeCollaboration(new FirestoreHomeCollaborationDatabase(firestore), homes, rooms);
-const app = createApp({ config, store, provider, rooms, homes, homeCollaboration, verifyToken, observer, tasks, notifyRoom: tasks ? id => tasks.enqueue(id) : async () => { observer.notify(); } });
+const app = createApp({ config, store, provider, rooms, homes, homeCollaboration, verifyToken, sessionMigration, observer, tasks, notifyRoom: tasks ? id => tasks.enqueue(id) : async () => { observer.notify(); } });
 const host = apiHost(config);
 const server = app.listen(config.port, host, () => {
   console.info(JSON.stringify({ event: "server_ready", port: config.port, mode: config.appEnv, aiProvider: config.aiProvider }));

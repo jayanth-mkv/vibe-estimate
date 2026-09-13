@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCheck } from "lucide-react";
-import { clientAuth, googleAuthEnabled, openGoogleClientRoom, saveAccessWithGoogle, startSession, usesAnonymousAuth, usesEmulators, type SessionIdentity } from "@/lib/firebase";
+import { ensureSessionReady, isGuestUser, googleAuthEnabled, openGoogleClientRoom, saveAccessWithGoogle, startSession, usesAnonymousAuth, usesEmulators, type SessionIdentity } from "@/lib/firebase";
 import { recoverClientRoom, selectedClientIdentity, verifiedClientRoom } from "@/lib/client-room-access";
 import { api as projectApi } from "@/lib/api";
 import { workspaceStatus } from "@/lib/workspace-status";
@@ -67,8 +67,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
           setActiveIdentity(selectedIdentity);
           return;
         }
-        const auth = clientAuth(activeIdentity);
-        await auth.authStateReady();
+        const auth = await ensureSessionReady(activeIdentity);
         if (cancelled) return;
         setLoading(true);
         setInitialError("");
@@ -84,7 +83,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
           return;
         }
         setNeedsSignIn(false);
-        setAnonymous(auth.currentUser.isAnonymous);
+        setAnonymous(isGuestUser(auth.currentUser));
         const result = activeIdentity === "client" && inviteToken.current
           ? await api.join(roomId, inviteToken.current)
           : await api.get(roomId);

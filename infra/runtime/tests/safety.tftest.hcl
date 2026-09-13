@@ -110,13 +110,82 @@ run "the_frontend_origin_is_this_service_own_url" {
 
 run "event_delivery_uses_the_dedicated_firebase_project_identity" {
   command = plan
+  variables { event_delivery_enabled = true }
 
   assert {
     condition = [
       for env in google_cloud_run_v2_service.application.template[0].containers[0].env :
       env.value if env.name == "ROOM_EVENT_SERVICE_ACCOUNT"
     ] == ["vibeestimate-events@${var.firebase_project_id}.iam.gserviceaccount.com"]
-    error_message = "Event delivery must trust exactly the dedicated workflow identity in the independently configured Firebase project."
+    error_message = "Event delivery must trust exactly the dedicated event identity in the configured Firebase project."
+  }
+  assert {
+    condition = [
+      for env in google_cloud_run_v2_service.application.template[0].containers[0].env :
+      env.value if env.name == "ROOM_EVENT_AUDIENCE"
+    ] == ["https://vibeestimate-${var.project_number}.${var.region}.run.app"]
+    error_message = "An absent explicit audience must retain the existing workflow audience."
+  }
+}
+
+run "direct_eventarc_can_use_its_exact_canonical_service_audience" {
+  command = plan
+  variables {
+    event_delivery_enabled  = true
+    event_delivery_audience = "https://vibeestimate-example-as.a.run.app"
+  }
+  assert {
+    condition = (
+      [for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env.value if env.name == "ROOM_EVENT_AUDIENCE"] == [var.event_delivery_audience] &&
+      [for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env.value if env.name == "FRONTEND_ORIGIN"] == ["https://vibeestimate-${var.project_number}.${var.region}.run.app"] &&
+      [for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env.value if env.name == "ROOM_TASK_SERVICE_ACCOUNT"] == [var.task_service_account]
+    )
+    error_message = "Only Eventarc verification may use the separately configured audience; task and frontend settings stay unchanged."
+  }
+}
+
+run "reject_event_audience_without_event_delivery" {
+  command = plan
+  variables { event_delivery_audience = "https://service.run.app" }
+  expect_failures = [var.event_delivery_audience]
+}
+
+run "reject_event_audience_with_a_path" {
+  command = plan
+  variables {
+    event_delivery_enabled  = true
+    event_delivery_audience = "https://service.run.app/internal/firestore"
+  }
+  expect_failures = [var.event_delivery_audience]
+}
+
+run "reject_event_audience_outside_native_cloud_run" {
+  command = plan
+  variables {
+    event_delivery_enabled  = true
+    event_delivery_audience = "https://service.run.app.unrelated.example"
+  }
+  expect_failures = [var.event_delivery_audience]
+}
+
+run "ordinary_releases_keep_api_access_and_legacy_delivery_until_explicit_cutover" {
+  command = plan
+  assert {
+    condition = (
+      length([for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env if env.name == "ROOM_EVENT_SERVICE_ACCOUNT"]) == 0 &&
+      length([for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env if env.name == "ROOM_EVENT_AUDIENCE"]) == 0 &&
+      [for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env.value if env.name == "APP_MAINTENANCE"] == ["false"]
+    )
+    error_message = "Neither maintenance nor event delivery may be enabled implicitly during the preparatory release."
+  }
+}
+
+run "migration_maintenance_is_an_explicit_reversible_runtime_setting" {
+  command = plan
+  variables { maintenance_mode = true }
+  assert {
+    condition     = [for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env.value if env.name == "APP_MAINTENANCE"] == ["true"]
+    error_message = "The frozen-copy stage must block application mutations through its explicit maintenance setting."
   }
 }
 
