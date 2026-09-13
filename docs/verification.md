@@ -2,6 +2,14 @@
 
 This file records **executed** results only. The checks each future release must pass before it can be called done are specified separately, as gates in the [release plan](plan/README.md) — [v1](plan/v1.md#verification-videos-and-release), [v2](plan/v2.backup.md#v2-gate) and [v3](plan/v3.md). A planned gate is not evidence; copy a result here only once it has actually run.
 
+## Google-only consolidation checks — 13 September 2026
+
+The operator excluded anonymous migration and selected Google-only production access. Backend checks passed **325/325**, the isolated Firebase SDK suite passed **8/8**, and data migration checks passed **19/19**. The real SDK cases verify Google identities on custom-token sessions, same-UID linking and safe rejection of an already-linked credential; these do not establish real Google browser consent.
+
+Frontend checks passed **113/113**, with production build, typechecks and lint passing. Local browser verification covered five sign-in entry routes at desktop, mobile and narrow-phone widths: **15/15** passed, with keyboard-accessible Google actions, no overflow, no external sign-in requests and no business API requests while signed out. The narrow-phone pass included a full accessibility scan with no serious or critical findings; the earlier desktop/mobile scan excluded color contrast. The final error-copy corrections passed the full unit suite and targeted lint after the production build.
+
+Destination Google-only Terraform checks passed **12/12**; the source signup/deletion freeze root passed **3/3**. The offline selection preview from the complete private backup selects one Google account and 15 documents, excludes 86 anonymous accounts and 116 documents, and creates no session-transfer mappings. These results describe verified preparation, not a completed data copy or cutover.
+
 ## Firebase consolidation preparation — 13 September 2026
 
 The initial read-only production backup captured **87 Auth accounts and 131 Firestore documents**, including descendants beneath missing parent documents. Snapshot and manifest files remain private; fingerprints bind the complete inventory. Shared ADC was unchanged. This is backup evidence, not destination-copy or production-cutover evidence.

@@ -153,3 +153,32 @@ run "google_signin_requires_private_operator_credentials" {
   }
   expect_failures = [var.google_oauth_client_secret]
 }
+
+run "google_only_access_preserves_imported_accounts_and_disables_guest_creation" {
+  command = plan
+  variables {
+    enable_foundation          = true
+    enable_google_auth         = true
+    google_only_auth           = true
+    google_oauth_client_id     = "unused.apps.googleusercontent.com"
+    google_oauth_client_secret = "unused-offline-test-secret"
+    firestore_location         = "asia-southeast1"
+    authorized_domains         = ["example-backend.firebaseapp.com", "app.example.com"]
+  }
+  assert {
+    condition = (
+      !google_identity_platform_config.destination["destination"].sign_in[0].anonymous[0].enabled &&
+      !google_identity_platform_config.destination["destination"].sign_in[0].email[0].enabled &&
+      !google_identity_platform_config.destination["destination"].sign_in[0].phone_number[0].enabled &&
+      !google_identity_platform_config.destination["destination"].autodelete_anonymous_users &&
+      google_identity_platform_default_supported_idp_config.google["destination"].enabled
+    )
+    error_message = "Google-only access must disable guest/password/phone sign-up while retaining imported account records and Google sign-in."
+  }
+}
+
+run "google_only_access_requires_google_provider" {
+  command = plan
+  variables { google_only_auth = true }
+  expect_failures = [var.google_only_auth]
+}

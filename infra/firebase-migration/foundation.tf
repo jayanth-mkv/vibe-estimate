@@ -41,9 +41,9 @@ resource "google_identity_platform_config" "destination" {
   authorized_domains         = var.authorized_domains
   sign_in {
     allow_duplicate_emails = false
-    anonymous { enabled = true }
+    anonymous { enabled = !var.google_only_auth }
     email {
-      enabled           = true
+      enabled           = !var.google_only_auth
       password_required = true
     }
     phone_number { enabled = false }

@@ -255,6 +255,176 @@ export function mappedDocuments(snapshot: Snapshot, settings: MigrationSettings)
   const target = docsName(settings.targetProjectId, settings.targetDatabaseId);
   return snapshot.documents.map(doc => ({ path: doc.path, fields: remapFirestoreFields(doc.fields, source, target) }));
 }
+
+export type MigrationCopyOptions = { googleOnly?: boolean; expectedSelectionSha256?: string };
+const decodeSelectionValue = (value: JsonObject): any => value.mapValue
+  ? Object.fromEntries(Object.entries(value.mapValue.fields ?? {}).map(([key, item]) => [key, decodeSelectionValue(item as JsonObject)]))
+  : value.arrayValue ? (value.arrayValue.values ?? []).map(decodeSelectionValue)
+    : value.stringValue ?? value.booleanValue ?? value.integerValue ?? null;
+const selectionFields = (document: Document): JsonObject => Object.fromEntries(Object.entries(document.fields).map(([key, value]) => [key, decodeSelectionValue(value)]));
+
+/** Select existing Google ownership without importing or merging guest accounts.
+ * This deliberately refuses ambiguous shared or dangling dependencies. The full
+ * source snapshot remains immutable, including excluded accounts and records.
+ */
+export function googleOnlySelection(snapshot: Snapshot, settings: MigrationSettings, manifestHash: string) {
+  validateSnapshot(snapshot, settings);
+  if (!/^[a-f0-9]{64}$/.test(manifestHash)) fail('MANIFEST_HASH_INVALID');
+  const users = snapshot.users.filter(user => importableUser(user).providerUserInfo?.some((provider: JsonObject) => provider.providerId === 'google.com'));
+  if (!users.length) fail('GOOGLE_SELECTION_EMPTY');
+  const selectedUids = new Set(users.map(user => user.localId));
+  const excludedUids = new Set(snapshot.users.filter(user => !selectedUids.has(user.localId)).map(user => user.localId));
+  const uidRoots = new Set(['designAssistants', 'homeOwners', 'homeRoomOwners', 'roomOwners']);
+  const ownedRoots = new Set(['rooms', 'homeRooms', 'roomReviewOutbox']);
+  const selected = new Map<string, Document>();
+  const decoded = new Map(snapshot.documents.map(document => [document.path, selectionFields(document)]));
+  const containsUid = (value: any, ids: Set<string>): boolean => typeof value === 'string' ? ids.has(value)
+    : Array.isArray(value) ? value.some(item => containsUid(item, ids))
+      : plain(value) ? Object.entries(value).some(([key, item]) => ids.has(key) || containsUid(item, ids)) : false;
+  for (const document of snapshot.documents) {
+    const parts = document.path.split('/');
+    const fields = decoded.get(document.path)!;
+    const scoped = (parts[0] === 'users' || uidRoots.has(parts[0])) && selectedUids.has(parts[1]);
+    const owned = ownedRoots.has(parts[0]) && selectedUids.has(fields.ownerId);
+    if (!scoped && !owned) {
+      // A Google participant in somebody else's room cannot be migrated by
+      // silently importing that anonymous owner's private workspace.
+      if (containsUid(fields, selectedUids)) fail('GOOGLE_SELECTION_FOREIGN_DEPENDENCY');
+      continue;
+    }
+    if (parts[0] !== 'users' && parts.length !== 2) fail('GOOGLE_SELECTION_PATH_UNSUPPORTED');
+    if (fields.ownerId !== undefined && (!selectedUids.has(fields.ownerId) || scoped && fields.ownerId !== parts[1])) fail('GOOGLE_SELECTION_OWNERSHIP_MISMATCH');
+    if (fields.clientId !== undefined && fields.clientId !== null && !selectedUids.has(fields.clientId)) fail('GOOGLE_SELECTION_SHARED_ACCOUNT');
+    if (containsUid(fields, excludedUids)) fail('GOOGLE_SELECTION_FOREIGN_DEPENDENCY');
+    selected.set(document.path, document);
+  }
+  const selectedAncestors = new Set<string>();
+  for (const name of selected.keys()) {
+    const parts = name.split('/');
+    for (let count = 2; count < parts.length; count += 2) selectedAncestors.add(parts.slice(0, count).join('/'));
+  }
+  const requireDocument = (name: string): JsonObject => {
+    if (!validDocPath(name) || !selected.has(name)) fail('GOOGLE_SELECTION_DANGLING_REFERENCE');
+    return decoded.get(name)!;
+  };
+  const identifier = (value: unknown): string => {
+    if (!validSegment(value)) fail('GOOGLE_SELECTION_REFERENCE_INVALID');
+    return value as string;
+  };
+  const values = (value: unknown): any[] => {
+    if (!plain(value)) fail('GOOGLE_SELECTION_REFERENCE_INVALID');
+    return Object.values(value);
+  };
+  const array = (value: unknown): any[] => {
+    if (!Array.isArray(value)) fail('GOOGLE_SELECTION_REFERENCE_INVALID');
+    return value;
+  };
+  const sourcePrefix = docsName(settings.sourceProjectId, settings.sourceDatabaseId) + '/';
+  const checkReferences = (value: JsonObject): void => {
+    if (value.referenceValue !== undefined) {
+      if (!value.referenceValue.startsWith(sourcePrefix)) fail('GOOGLE_SELECTION_EXTERNAL_REFERENCE');
+      const name = value.referenceValue.slice(sourcePrefix.length);
+      if (!selected.has(name) && !selectedAncestors.has(name)) fail('GOOGLE_SELECTION_DANGLING_REFERENCE');
+    }
+    if (value.mapValue) for (const child of Object.values(value.mapValue.fields ?? {})) checkReferences(child as JsonObject);
+    if (value.arrayValue) for (const child of value.arrayValue.values ?? []) checkReferences(child);
+  };
+  for (const [name, document] of selected) {
+    const parts = name.split('/');
+    const fields = decoded.get(name)!;
+    for (const value of Object.values(document.fields)) checkReferences(value);
+    if (parts[0] === 'homeOwners') {
+      for (const id of [...array(fields.homeIds), ...values(fields.creations)]) requireDocument(`users/${parts[1]}/homes/${identifier(id)}`);
+      if (fields.active) requireDocument(`users/${parts[1]}/homes/${identifier(fields.active.homeId)}`);
+    } else if (parts[0] === 'roomOwners') {
+      if (!plain(fields.projects)) fail('GOOGLE_SELECTION_REFERENCE_INVALID');
+      for (const [projectId, roomId] of Object.entries(fields.projects)) {
+        requireDocument(`users/${parts[1]}/projects/${identifier(projectId)}`);
+        const room = requireDocument(`rooms/${identifier(roomId)}`);
+        if (room.ownerId !== parts[1] || room.projectId !== projectId) fail('GOOGLE_SELECTION_OWNERSHIP_MISMATCH');
+      }
+      if (fields.active) requireDocument(`rooms/${identifier(fields.active.roomId)}`);
+    } else if (parts[0] === 'homeRoomOwners') {
+      if (!plain(fields.homes)) fail('GOOGLE_SELECTION_REFERENCE_INVALID');
+      for (const [homeId, roomId] of Object.entries(fields.homes)) {
+        requireDocument(`users/${parts[1]}/homes/${identifier(homeId)}`);
+        const link = requireDocument(`homeRooms/${identifier(roomId)}`);
+        if (link.ownerId !== parts[1] || link.homeId !== homeId) fail('GOOGLE_SELECTION_OWNERSHIP_MISMATCH');
+      }
+    } else if (parts[0] === 'rooms') {
+      if (fields.id !== parts[1]) fail('GOOGLE_SELECTION_OWNERSHIP_MISMATCH');
+      requireDocument(`users/${fields.ownerId}/projects/${identifier(fields.projectId)}`);
+      const index = requireDocument(`roomOwners/${fields.ownerId}`);
+      if (index.projects?.[fields.projectId] !== parts[1]) fail('GOOGLE_SELECTION_DANGLING_REFERENCE');
+      if (fields.homeId) requireDocument(`users/${fields.ownerId}/homes/${identifier(fields.homeId)}`);
+      if (fields.draftProjectId) requireDocument(`users/${fields.ownerId}/projects/${identifier(fields.draftProjectId)}`);
+      for (const item of [...array(fields.snapshots ?? []), ...array(fields.sharedDrafts ?? [])]) requireDocument(`users/${fields.ownerId}/projects/${identifier(item.projectId)}`);
+      if (fields.delivery?.id) requireDocument(`roomReviewOutbox/${identifier(fields.delivery.id)}`);
+    } else if (parts[0] === 'homeRooms') {
+      if (fields.roomId !== parts[1]) fail('GOOGLE_SELECTION_OWNERSHIP_MISMATCH');
+      const room = requireDocument(`rooms/${parts[1]}`);
+      const home = requireDocument(`users/${fields.ownerId}/homes/${identifier(fields.homeId)}`);
+      if (room.ownerId !== fields.ownerId || home.roomId !== parts[1]) fail('GOOGLE_SELECTION_OWNERSHIP_MISMATCH');
+    } else if (parts[0] === 'roomReviewOutbox') {
+      const room = requireDocument(`rooms/${identifier(fields.roomId)}`);
+      if (fields.id !== parts[1] || room.ownerId !== fields.ownerId) fail('GOOGLE_SELECTION_OWNERSHIP_MISMATCH');
+    } else if (parts[0] === 'users') {
+      if (parts.length >= 4) {
+        if (!['homes', 'projects'].includes(parts[2])) fail('GOOGLE_SELECTION_PATH_UNSUPPORTED');
+        const parent = requireDocument(parts.slice(0, 4).join('/'));
+        if (parent.ownerId !== parts[1] || parent.id !== parts[3]) fail('GOOGLE_SELECTION_OWNERSHIP_MISMATCH');
+      }
+      if (parts.length === 4 && parts[2] === 'projects' && fields.roomId) requireDocument(`rooms/${identifier(fields.roomId)}`);
+      if (parts.length === 4 && parts[2] === 'homes') {
+        const owner = requireDocument(`homeOwners/${parts[1]}`);
+        if (!array(owner.homeIds).includes(parts[3])) fail('GOOGLE_SELECTION_DANGLING_REFERENCE');
+        const revision = (id: unknown) => requireDocument(`${name}/revisions/${identifier(id)}`);
+        if (fields.headRevisionId) revision(fields.headRevisionId);
+        for (const item of array(fields.revisions)) { revision(item.id); if (item.parentRevisionId) revision(item.parentRevisionId); }
+        if (fields.proposalProjectId) requireDocument(`users/${parts[1]}/projects/${identifier(fields.proposalProjectId)}`);
+        if (fields.roomId) requireDocument(`homeRooms/${identifier(fields.roomId)}`);
+        for (const receipt of values(fields.receipts)) {
+          if (receipt.revisionId) revision(receipt.revisionId);
+          if (receipt.projectId) requireDocument(`users/${parts[1]}/projects/${identifier(receipt.projectId)}`);
+        }
+        for (const job of values(fields.jobs)) {
+          if (job.baseRevisionId) revision(job.baseRevisionId);
+          if (job.resultRevisionId) revision(job.resultRevisionId);
+          if (job.stagedRevisionId) revision(job.stagedRevisionId);
+          if (job.resultSummaryId) requireDocument(`${name}/${job.kind === 'agreement' ? 'agreementProse' : 'summaries'}/${identifier(job.resultSummaryId)}`);
+        }
+      }
+    }
+  }
+  const result: Snapshot = { ...snapshot, users, documents: [...selected.values()].sort((a, b) => a.path.localeCompare(b.path)) };
+  const source = snapshotSummary(snapshot);
+  const summary = snapshotSummary(result);
+  const collectionCounts: Record<string, number> = {};
+  for (const document of result.documents) {
+    const pattern = document.path.split('/').map((part, index) => index % 2 ? '{id}' : part).join('/');
+    collectionCounts[pattern] = (collectionCounts[pattern] ?? 0) + 1;
+  }
+  const report = {
+    selection: 'google-only' as const, selectionVersion: 1, sourceManifestSha256: manifestHash,
+    sourceFirestoreCount: source.firestoreCount, sourceAuthCount: source.authCount,
+    sourceFirestoreSha256: source.firestoreSha256, sourceAuthSha256: source.authSha256,
+    selectedFirestoreCount: summary.firestoreCount, selectedAuthCount: summary.authCount,
+    excludedFirestoreCount: source.firestoreCount - summary.firestoreCount, excludedAuthCount: source.authCount - summary.authCount,
+    selectedFirestoreSha256: summary.firestoreSha256, selectedAuthSha256: summary.authSha256,
+    allowlistCount: 0, collectionCounts,
+  };
+  return { snapshot: result, report: { ...report, selectionSha256: sha256(canonicalJson(report)) } };
+}
+
+function selectedData(snapshot: Snapshot, settings: MigrationSettings, manifestHash: string, options: MigrationCopyOptions, requireBinding = false) {
+  if (!options.googleOnly) {
+    if (options.expectedSelectionSha256 !== undefined) fail('SELECTION_OPTIONS_INVALID');
+    return { snapshot, report: undefined };
+  }
+  const selection = googleOnlySelection(snapshot, settings, manifestHash);
+  if ((requireBinding || options.expectedSelectionSha256 !== undefined) && options.expectedSelectionSha256 !== selection.report.selectionSha256) fail('SELECTION_HASH_MISMATCH');
+  return selection;
+}
 export function migrationAllowlist(snapshot: Snapshot, settings: MigrationSettings, manifestHash: string): Document[] {
   if (!/^[a-f0-9]{64}$/.test(manifestHash)) fail('MANIFEST_HASH_INVALID');
   return snapshot.users.map(user => ({ path: `firebaseMigrationUsers/${user.localId}`, fields: {
@@ -286,29 +456,33 @@ function compareUsers(expected: JsonObject[], actual: JsonObject[], complete: bo
   if (complete && missing.length) fail('DESTINATION_USERS_MISSING');
   return missing.map(importableUser);
 }
-export function planDataCopy(snapshot: Snapshot, targetDocuments: Document[], targetUsers: JsonObject[], settings: MigrationSettings, manifestHash: string) {
+export function planDataCopy(snapshot: Snapshot, targetDocuments: Document[], targetUsers: JsonObject[], settings: MigrationSettings, manifestHash: string, options: MigrationCopyOptions = {}) {
   validateSnapshot(snapshot, settings);
+  snapshot = selectedData(snapshot, settings, manifestHash, options).snapshot;
   const documents = mappedDocuments(snapshot, settings);
-  const allowlist = migrationAllowlist(snapshot, settings, manifestHash);
+  const allowlist = options.googleOnly ? [] : migrationAllowlist(snapshot, settings, manifestHash);
   const pending = compareDocuments([...documents, ...allowlist], targetDocuments, false);
   return { documents: pending.filter(doc => !doc.path.startsWith('firebaseMigrationUsers/')), allowlist: pending.filter(doc => doc.path.startsWith('firebaseMigrationUsers/')), users: compareUsers(snapshot.users, targetUsers, false) };
 }
-export async function verifyData(store: MigrationStore, snapshot: Snapshot, settings: MigrationSettings, manifestHash: string, includeAllowlist = true) {
+export async function verifyData(store: MigrationStore, snapshot: Snapshot, settings: MigrationSettings, manifestHash: string, includeAllowlist = true, options: MigrationCopyOptions = {}) {
   validateSnapshot(snapshot, settings);
+  const selection = selectedData(snapshot, settings, manifestHash, options, true);
+  snapshot = selection.snapshot;
   const documents = await scanFirestore(store, settings.targetProjectId, settings.targetDatabaseId);
   const users = await scanAuth(store, settings.targetProjectId);
   const wanted = mappedDocuments(snapshot, settings);
-  const expectedAllowlist = migrationAllowlist(snapshot, settings, manifestHash);
+  const expectedAllowlist = options.googleOnly ? [] : migrationAllowlist(snapshot, settings, manifestHash);
   // Existing exact allowlist documents are permitted while resuming a partial
   // allowlist stage, but all business records must already be present.
   compareDocuments(wanted, documents.filter(doc => !doc.path.startsWith('firebaseMigrationUsers/')), true);
   compareDocuments(expectedAllowlist, documents.filter(doc => doc.path.startsWith('firebaseMigrationUsers/')), includeAllowlist);
   compareUsers(snapshot.users, users, true);
   return { firestoreCount: wanted.length, authCount: users.length, allowlistCount: documents.length - wanted.length,
-    firestoreSha256: firestoreDigest(wanted), authSha256: authDigest(users), verified: true };
+    firestoreSha256: firestoreDigest(wanted), authSha256: authDigest(users), verified: true, ...(selection.report ? { selection: selection.report } : {}) };
 }
-export async function copyData(store: MigrationStore, snapshot: Snapshot, settings: MigrationSettings, manifestHash: string) {
+export async function copyData(store: MigrationStore, snapshot: Snapshot, settings: MigrationSettings, manifestHash: string, options: MigrationCopyOptions = {}) {
   validateSnapshot(snapshot, settings);
+  selectedData(snapshot, settings, manifestHash, options, true);
   await store.destinationReady();
   // Reject a stale reviewed snapshot before any destination mutations. This
   // catches API writes, newly created users and changed identity data after freeze.
@@ -319,16 +493,16 @@ export async function copyData(store: MigrationStore, snapshot: Snapshot, settin
   if (canonicalJson(await currentSourceSummary()) !== canonicalJson(snapshotSummary(snapshot))) fail('SOURCE_CHANGED_SINCE_SNAPSHOT');
   const targetDocuments = await scanFirestore(store, settings.targetProjectId, settings.targetDatabaseId);
   const targetUsers = await scanAuth(store, settings.targetProjectId);
-  const plan = planDataCopy(snapshot, targetDocuments, targetUsers, settings, manifestHash);
+  const plan = planDataCopy(snapshot, targetDocuments, targetUsers, settings, manifestHash, options);
   // Both destinations were checked before the first write. Server preconditions
   // also reject races: Auth allowOverwrite:false, Firestore exists:false.
   for (let start = 0; start < plan.users.length; start += 100) await store.createUsers(plan.users.slice(start, start + 100));
   for (const document of plan.documents) await store.createDocument(document);
-  await verifyData(store, snapshot, settings, manifestHash, false);
+  await verifyData(store, snapshot, settings, manifestHash, false, options);
   // A source edit during copy must be resolved before granting bridge access.
   if (canonicalJson(await currentSourceSummary()) !== canonicalJson(snapshotSummary(snapshot))) fail('SOURCE_CHANGED_DURING_COPY');
   for (const document of plan.allowlist) await store.createDocument(document);
-  return verifyData(store, snapshot, settings, manifestHash);
+  return verifyData(store, snapshot, settings, manifestHash, true, options);
 }
 
 // REST listDocuments showMissing/readTime and Auth batchCreate documented at:
@@ -462,16 +636,21 @@ export function loadSnapshot(manifestFile: string, expectedHash: string, setting
 
 async function main() {
   const [action, ...arguments_] = process.argv.slice(2);
-  if (!['inventory', 'backup', 'copy', 'verify'].includes(action)) fail('USAGE_INVALID');
+  if (!['inventory', 'backup', 'preview', 'copy', 'verify'].includes(action)) fail('USAGE_INVALID');
   const flags: Record<string, string> = {};
-  for (let index = 0; index < arguments_.length; index += 2) {
+  for (let index = 0; index < arguments_.length; index++) {
     const key = arguments_[index];
-    const value = arguments_[index + 1];
-    if (!['--config', '--manifest', '--expect-sha256'].includes(key) || !value || value.startsWith('--') || flags[key]) fail('USAGE_INVALID');
+    if (flags[key]) fail('USAGE_INVALID');
+    if (key === '--google-only') { flags[key] = 'true'; continue; }
+    const value = arguments_[++index];
+    if (!['--config', '--manifest', '--expect-sha256', '--expect-selection-sha256'].includes(key) || !value || value.startsWith('--')) fail('USAGE_INVALID');
     flags[key] = value;
   }
-  const needsSnapshot = ['copy', 'verify'].includes(action);
+  const needsSnapshot = ['preview', 'copy', 'verify'].includes(action);
   if (!flags['--config'] || needsSnapshot !== !!flags['--manifest'] || needsSnapshot !== !!flags['--expect-sha256']) fail('USAGE_INVALID');
+  const googleOnly = flags['--google-only'] === 'true';
+  if (googleOnly && !needsSnapshot || action === 'preview' && !googleOnly
+    || !!flags['--expect-selection-sha256'] !== (googleOnly && ['copy', 'verify'].includes(action))) fail('USAGE_INVALID');
   const root = fs.realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
   if (fs.realpathSync(process.cwd()) !== root) fail('REPOSITORY_ROOT_REQUIRED');
   const privateRoot = externalPath(path.resolve(root, '../docs/private'), root);
@@ -481,6 +660,14 @@ async function main() {
   externalPath(settings.gcloudConfigDir, root);
   externalPath(settings.snapshotDirectory, root);
   const snapshot = needsSnapshot ? loadSnapshot(flags['--manifest'], flags['--expect-sha256'], settings, root) : undefined;
+  // Preview reads only the immutable private snapshot and operator binding. It
+  // never obtains an access token or contacts Firebase/Google APIs.
+  if (action === 'preview') {
+    console.log(JSON.stringify({ action, ok: true, ...googleOnlySelection(snapshot!, settings, flags['--expect-sha256']).report }));
+    return;
+  }
+  const options: MigrationCopyOptions = { googleOnly, ...(flags['--expect-selection-sha256'] ? { expectedSelectionSha256: flags['--expect-selection-sha256'] } : {}) };
+  if (snapshot) selectedData(snapshot, settings, flags['--expect-sha256'], options, true);
   const adcFile = path.join(settings.gcloudConfigDir, 'application_default_credentials.json');
   const adcHash = () => fs.existsSync(adcFile) ? sha256(fs.readFileSync(adcFile)) : 'absent';
   const before = adcHash();
@@ -498,7 +685,7 @@ async function main() {
         console.log(JSON.stringify({ action, ok: true, snapshotRun: path.basename(path.dirname(saved.manifestFile)), manifestSha256: saved.manifestSha256, ...snapshotSummary(captured) }));
       } else console.log(JSON.stringify({ action, ok: true, ...snapshotSummary(captured), anonymousCount: captured.users.filter(user => !(user.providerUserInfo?.length)).length }));
     } else {
-      const result = action === 'copy' ? await copyData(store, snapshot!, settings, flags['--expect-sha256']) : await verifyData(store, snapshot!, settings, flags['--expect-sha256']);
+      const result = action === 'copy' ? await copyData(store, snapshot!, settings, flags['--expect-sha256'], options) : await verifyData(store, snapshot!, settings, flags['--expect-sha256'], true, options);
       console.log(JSON.stringify({ action, ok: true, manifestSha256: flags['--expect-sha256'], ...result }));
     }
   } finally {

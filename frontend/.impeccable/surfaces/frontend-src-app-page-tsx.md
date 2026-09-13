@@ -11,7 +11,7 @@ Mode: Operate. The confirmed v1 front door creates a private project without an 
 
 Keep the pinned navy/red identity, self-hosted Poppins headings and DM Sans controls. A compact brand row contains room joining and optional account access; the main row pairs Your homes with New project. First use earns its space with a wide actual home preview and direct explanation. Saved projects carry real titles, revision counts and dates. No deprecated workflow stack, agent-feed simulation, fake progress or nonfunctional controls belongs on this route.
 
-An anonymous Firebase identity enables private persistence. Google linking preserves that UID. Switching to returning Google access rechecks both the home and legacy project lists; read failure or any saved guest work prevents switching. Authentication changes hide previous-owner content immediately. Errors retain work and provide reconnection.
+Production requires Google sign-in before private work opens or a project is created. The first-use primary action is Continue with Google; local emulator fixtures may explicitly retain anonymous sessions. An existing unlinked account is preserved while connecting Google with the same UID, and a conflicting Google account never replaces its work automatically. The target Firebase app namespace stays stable after consolidation. Authentication changes hide previous-owner content immediately. Errors retain work and provide reconnection.
 
 Scope & proposals is a quiet secondary route at /proposals. Old root project query links resolve there. New projects enter /projects/:id; /studio redirects to /. The isolated PoC and developer JSON workbench are not customer navigation.
 

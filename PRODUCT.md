@@ -18,7 +18,7 @@ Confirmed on September 6: this complete journey replaces the sources-first homep
 
 ## Operating Context
 
-Designers work at a desk; homeowners may join from a phone. A project can start without a login wall through Firebase anonymous ownership. Google linking may retain access across devices without replacing guest work. Examples are synthetic and use the same real application endpoints. The product must never present fixture inference as live Gemini.
+Designers work at a desk; homeowners may join from a phone. The operator confirmed Google-only production access on September 13 and excluded anonymous accounts from the Firebase migration. Production sessions require Google sign-in. Migrate Google identities and their saved work, retain excluded guest records in the private backup, and never silently reassign their ownership. Explicit local fixtures continue to support anonymous ownership for isolated tests. Examples are synthetic and use the same real application endpoints. The product must never present fixture inference as live Gemini.
 
 The first release starts with three complete, measured single-floor templates, actual local furniture assets and Plan/Overview/Inside views. A template represents an authored starting point, not a survey of a person's property. Ceiling heights, finishes and illustrative lighting remain disclosed assumptions.
 

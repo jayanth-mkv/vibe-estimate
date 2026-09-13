@@ -12,7 +12,7 @@ import { api } from "@/lib/api";
 import { roomApi } from "@/lib/room-api";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { clientAuth, ensureSessionReady, isGuestUser, googleAuthEnabled, openGoogleWorkspace, saveAccessWithGoogle, signOutSession, startSession, usesEmulators, usesGuestAccess, usesAnonymousAuth } from "@/lib/firebase";
+import { allowsAnonymousSessions, canUseSession, clientAuth, ensureSessionReady, isGuestUser, isGoogleAuthEnabled, requiresGoogleAccount, sessionAccessMessage, openGoogleWorkspace, saveAccessWithGoogle, signOutSession, startSession, usesEmulators } from "@/lib/firebase";
 import { workspaceStatus } from "@/lib/workspace-status";
 import { ServiceError } from "@/lib/service-request";
 import { forgetReview, readReviewRequest, rememberReview, restoreReview, resumeReviewInput, retryReview, reviewInput, startReview, withReviewMetadata, type PendingReview } from "@/lib/review-request";
@@ -22,7 +22,7 @@ const emptySource = (): SourceInput => ({ name: "", scope: "", messages: "" });
 const describeError = (error: unknown) => {
   if (error && typeof error === "object" && "code" in error && String(error.code).startsWith("auth/")) {
     if (error.code === "auth/popup-closed-by-user") return "Sign-in was closed. Your text is still here. Try again when you’re ready.";
-    return usesEmulators ? "Your local workspace could not connect. Check the connection and try again." : usesGuestAccess ? "Your guest workspace could not connect. Your text is still here; please try again." : "Sign-in could not be completed. Please try again.";
+    return usesEmulators ? "Your local workspace could not connect. Check the connection and try again." : allowsAnonymousSessions() ? "Your guest workspace could not connect. Your text is still here; please try again." : "Google sign-in could not be completed. Your text is still here; please try again.";
   }
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
 };
@@ -33,6 +33,10 @@ function Brand() {
 
 export default function Workspace() {
   const router = useRouter();
+  const [needsGoogle, setNeedsGoogle] = useState(false);
+  const [accessMessage, setAccessMessage] = useState("");
+  const googleAuthEnabled = isGoogleAuthEnabled();
+  const usesAnonymousAuth = allowsAnonymousSessions();
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [authRetry, setAuthRetry] = useState(0);
@@ -112,11 +116,14 @@ export default function Workspace() {
       if (!active) return;
       const auth = await ensureSessionReady();
       if (!active) return;
-      if (usesGuestAccess && !auth.currentUser) await startSession();
+      if (allowsAnonymousSessions() && !auth.currentUser) await startSession();
       if (!active) return;
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         const previousUid = sessionUidRef.current;
-        const nextUid = currentUser?.uid ?? null;
+        const allowedUser = canUseSession(currentUser) ? currentUser : null;
+        const nextUid = allowedUser?.uid ?? null;
+        setNeedsGoogle(requiresGoogleAccount() && !allowedUser);
+        setAccessMessage(sessionAccessMessage(currentUser));
         sessionUidRef.current = nextUid;
         if (previousUid && previousUid !== nextUid) {
           // Another identity must never inherit this owner's visible work or
@@ -127,12 +134,12 @@ export default function Workspace() {
           setSourceRoomId(null); setError(""); setNotice(""); requestRef.current = null;
           window.history.replaceState(null, "", "/proposals");
         }
-        setUser(currentUser);
+        setUser(allowedUser);
         setAccessSaved(Boolean(currentUser && !isGuestUser(currentUser)));
         setProjectsKnown(false);
         setAuthReady(true);
-        setLoadingProjects(Boolean(currentUser));
-        if (!currentUser) { setProjects([]); setSelected(null); pendingReviewRef.current = null; setPendingReview(null); }
+        setLoadingProjects(Boolean(allowedUser));
+        if (!allowedUser) { setProjects([]); setSelected(null); pendingReviewRef.current = null; setPendingReview(null); }
       });
     }).catch((cause) => {
       if (active) { setError(describeError(cause)); setAuthReady(true); }
@@ -189,7 +196,7 @@ export default function Workspace() {
   const create = (body: SourceInput) => action("create", async () => {
     startingProjectRef.current = true;
     try {
-      if (!clientAuth().currentUser) { await startSession(); setAuthRetry(value => value + 1); }
+      if (!canUseSession(clientAuth().currentUser)) { await startSession(); setAuthRetry(value => value + 1); }
       const result = await api.create(body);
       setProjects((existing) => [result.project, ...existing.filter((project) => project.id !== result.project.id)]);
       choose(result.project);
@@ -210,7 +217,7 @@ export default function Workspace() {
   const startRoomDemo = () => action("room-demo", async () => {
     startingProjectRef.current = true;
     try {
-      if (!clientAuth().currentUser) { await startSession(); setAuthRetry(value => value + 1); }
+      if (!canUseSession(clientAuth().currentUser)) { await startSession(); setAuthRetry(value => value + 1); }
       const result = await api.create({ ...examples[0].source });
       const shared = await roomApi.create(result.project.id);
       router.push(`/rooms/${shared.room.id}`);
@@ -367,8 +374,8 @@ export default function Workspace() {
     <main id="main" className="shell">
       {error && <div className="alert" role="alert"><span>{error}</span><Button variant="ghost" className="button text-button" aria-label="Dismiss error" onClick={() => setError("")}>Dismiss</Button></div>}
       <div className={notice ? "notice visible" : "notice"} role="status" aria-live="polite">{notice && <><Check size={17} aria-hidden="true" />{notice}</>}</div>
-      {isLoading ? <div className="loading-state" aria-label={authReady ? "Loading projects" : "Opening workspace"}><div className="skeleton" /><div className="skeleton short" /><p>Opening your workspace…</p></div> : <>
-        {!selected && !creating && <Home guest={usesAnonymousAuth && !accessSaved} cloud={health?.storageConnection === "cloud"} googleContinue={canOpenGoogle} onGoogleContinue={continueGoogle} onRoomDemo={() => void startRoomDemo()} projects={projects} signedIn={!!user} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} onNew={startNew} onExample={(source) => void create(source)} onOpen={choose} onRefresh={() => { setLoadingProjects(true); setReloadProjects((value) => value + 1); }} onSignIn={() => void action("signin", async () => { if (!clientAuth().currentUser) { await startSession(); setAuthRetry(value => value + 1); } else { setAuthRetry(value => value + 1); setLoadingProjects(true); setReloadProjects((value) => value + 1); } })} />}
+      {needsGoogle ? <section className="loading-state"><h1>Open your private workspace.</h1><p>{accessMessage}</p><Button disabled={!!busy} onClick={() => void action("signin", async () => { await startSession(); setAuthRetry(value => value + 1); })}>{busy === "signin" ? "Connecting…" : "Continue with Google"}</Button></section> : isLoading ? <div className="loading-state" aria-label={authReady ? "Loading projects" : "Opening workspace"}><div className="skeleton" /><div className="skeleton short" /><p>Opening your workspace…</p></div> : <>
+        {!selected && !creating && <Home guest={usesAnonymousAuth && !accessSaved} cloud={health?.storageConnection === "cloud"} googleContinue={canOpenGoogle} onGoogleContinue={continueGoogle} onRoomDemo={() => void startRoomDemo()} projects={projects} signedIn={!!user} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} onNew={startNew} onExample={(source) => void create(source)} onOpen={choose} onRefresh={() => { setLoadingProjects(true); setReloadProjects((value) => value + 1); }} onSignIn={() => void action("signin", async () => { if (!canUseSession(clientAuth().currentUser)) { await startSession(); setAuthRetry(value => value + 1); } else { setAuthRetry(value => value + 1); setLoadingProjects(true); setReloadProjects((value) => value + 1); } })} />}
         {creating && <><Button variant="ghost" className="button back-button" disabled={!!busy} onClick={() => requestLeave("projects")}><ArrowLeft size={17} />All projects</Button><SourceWizard value={newProject} onChange={setNewProject} onSave={() => void create(newProject)} onCancel={() => requestLeave("projects")} busy={!!busy} available={!!health} fixture={health?.aiProvider === "fixture"} /></>}
         {selected && <ProjectView roomId={sourceRoomId} onRoom={() => requestLeave("room")} key={selected.id} project={selected} health={health} busy={busy} hasUnsavedChanges={hasUnsavedChanges} draftChanged={draftChanged} pendingReview={pendingReview} reviewStorageUnavailable={reviewStorageUnavailable} onCheckReview={() => void runReview("check")} onRetryReview={() => void runReview("retry")} fields={{ quantity, unitPrice, description, clarification }} setters={{ quantity: setQuantity, unitPrice: setUnitPrice, description: setDescription, clarification: setClarification }} onLeave={() => requestLeave("projects")} onAnalyze={(event) => void analyze(event)} onSave={(event) => void save(event)} onDownload={() => void download()} />}
       </>}

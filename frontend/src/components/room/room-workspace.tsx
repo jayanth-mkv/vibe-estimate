@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCheck } from "lucide-react";
-import { ensureSessionReady, isGuestUser, googleAuthEnabled, openGoogleClientRoom, saveAccessWithGoogle, startSession, usesAnonymousAuth, usesEmulators, type SessionIdentity } from "@/lib/firebase";
+import { allowsAnonymousSessions, canUseSession, ensureSessionReady, isGuestUser, isGoogleAuthEnabled, sessionAccessMessage, openGoogleClientRoom, saveAccessWithGoogle, startSession, usesEmulators, type SessionIdentity } from "@/lib/firebase";
 import { recoverClientRoom, selectedClientIdentity, verifiedClientRoom } from "@/lib/client-room-access";
 import { api as projectApi } from "@/lib/api";
 import { workspaceStatus } from "@/lib/workspace-status";
@@ -26,6 +26,8 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
   const api = useMemo(() => makeRoomApi(activeIdentity), [activeIdentity]);
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
+  const googleAuthEnabled = !loading && isGoogleAuthEnabled();
+  const usesAnonymousAuth = !loading && allowsAnonymousSessions();
   const [needsSignIn, setNeedsSignIn] = useState(false);
   const [bootVersion, setBootVersion] = useState(0);
   const [initialError, setInitialError] = useState("");
@@ -74,11 +76,13 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
         if (identity === "client" && inviteToken.current === null) {
           inviteToken.current = new URLSearchParams(window.location.hash.slice(1)).get("invite") || "";
         }
-        if (!auth.currentUser && usesAnonymousAuth && (activeIdentity === "designer" || activeIdentity === "client")) {
+        if (!auth.currentUser && allowsAnonymousSessions() && (activeIdentity === "designer" || activeIdentity === "client")) {
           await startSession(activeIdentity);
         }
         if (cancelled) return;
-        if (!auth.currentUser) {
+        if (!canUseSession(auth.currentUser)) {
+          setAnonymous(isGuestUser(auth.currentUser));
+          setInitialError(sessionAccessMessage(auth.currentUser));
           setNeedsSignIn(true);
           return;
         }
@@ -143,7 +147,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
   async function signIn() {
     setBusy("signin");
     setInitialError("");
-    try { await startSession(activeIdentity); setBootVersion((value) => value + 1); }
+    try { if (activeIdentity !== "designer" && activeIdentity !== "client") await openGoogleClientRoom(activeIdentity); else await startSession(activeIdentity); setBootVersion((value) => value + 1); }
     catch (error) { setInitialError(errorText(error)); }
     finally { setBusy(""); }
   }
@@ -166,9 +170,9 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
       setAnonymous(false);
       setConnectionError("");
       acceptRoom(result.room);
-      setNotice(result.remembered ? "Your room is open with Google. Your guest workspace stays available." : "Your room is open with Google. This browser could not remember the choice; use Google again when you return.");
+      setNotice(result.remembered ? "Your room is open with Google. Your other saved work is unchanged." : "Your room is open with Google. This browser could not remember the choice; use Google again when you return.");
     } catch (cause) {
-      setInitialError(`${errorText(cause)} Your guest workspace has not changed.`);
+      setInitialError(`${errorText(cause)} Your saved access has not changed.`);
     } finally { setBusy(""); setLoading(false); }
   }
 
@@ -238,7 +242,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
     try {
       await saveAccessWithGoogle(activeIdentity);
       setAnonymous(false);
-      setNotice("Access saved with Google. Your room and guest work stay with you.");
+      setNotice("Access saved with Google. Your room and saved work stay with you.");
     } catch (cause) { setActionError(errorText(cause)); }
     finally { setBusy(""); }
   }
@@ -279,9 +283,9 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
         <h1>{needsSignIn ? identity === "client" ? "A shared space for your project." : "Return to your project room." : "We couldn’t open this room."}</h1>
         <p>{needsSignIn ? "Discuss the details with your designer, see what belongs in the scope, and keep every draft in one place." : usesAnonymousAuth ? "Use your invitation or the browser where you joined to reopen the conversation." : "Use your invitation and the same signed-in account to reopen the conversation."}</p>
         {initialError && <p role="alert" className={styles.error}>{initialError}</p>}
-        {needsSignIn && (activeIdentity === "client" || activeIdentity === "designer") ? <Button className="button primary" disabled={!!busy} onClick={() => void signIn()}>{busy ? "Connecting…" : usesAnonymousAuth ? "Reconnect to room" : identity === "client" ? "Sign in to join" : "Sign in to continue"}</Button> : <Button className="button primary" disabled={!!busy} onClick={() => setBootVersion((value) => value + 1)}>Try again</Button>}
+        {needsSignIn ? <Button className="button primary" disabled={!!busy} onClick={() => void signIn()}>{busy ? "Connecting…" : usesAnonymousAuth ? "Reconnect to room" : "Continue with Google"}</Button> : <Button className="button primary" disabled={!!busy} onClick={() => setBootVersion((value) => value + 1)}>Try again</Button>}
         {identity === "client" && <Link className={styles.joinRecovery} href="/join">Join with a room code</Link>}
-        {identity === "client" && googleAuthEnabled && <section className={styles.googleRecovery} aria-labelledby="google-recovery-title"><h2 id="google-recovery-title">Saved access with Google?</h2><p>Open this room with the Google account you linked. Your guest workspace stays available in this browser.</p><Button className="button secondary" disabled={!!busy} onClick={() => void recoverGoogleAccess()}>{busy === "recover-google" ? "Opening your room…" : "Continue with Google"}</Button></section>}
+        {identity === "client" && googleAuthEnabled && !needsSignIn && <section className={styles.googleRecovery} aria-labelledby="google-recovery-title"><h2 id="google-recovery-title">Saved access with Google?</h2><p>Open this room with the Google account you used. Your other saved work stays private.</p><Button className="button secondary" disabled={!!busy} onClick={() => void recoverGoogleAccess()}>{busy === "recover-google" ? "Opening your room…" : "Continue with Google"}</Button></section>}
         {identity === "client" && <p className={styles.small}>The scope agent sees the conversation. It helps review changes; it does not approve work or prices.</p>}
       </>}
     </main>

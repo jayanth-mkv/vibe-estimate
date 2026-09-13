@@ -10,6 +10,13 @@ it("rejects incomplete runtime configuration without disclosing its contents", (
   expect(() => firebaseConfigScript('{"apiKey":"secret"}')).toThrow("Public sign-in configuration is invalid");
 });
 
+it("exposes only the supported Google policy without leaking private configuration", () => {
+  const script = firebaseConfigScript(JSON.stringify({ projectId: "test-project", apiKey: "browser-key", authDomain: "test.example", appId: "test-app", authMode: "google", clientSecret: "private-secret" }));
+  expect(script).toContain('"authMode":"google"');
+  expect(script).not.toContain("private-secret");
+  expect(() => firebaseConfigScript(JSON.stringify({ projectId: "test-project", apiKey: "browser-key", authDomain: "test.example", appId: "test-app", authMode: "guest" }))).toThrow("Public sign-in configuration is invalid");
+});
+
 const target = { projectId: "target-project", apiKey: "target-browser-key", authDomain: "target.example", appId: "target-app", appNamespace: "migrated" };
 const legacy = { projectId: "source-project", apiKey: "source-browser-key", authDomain: "source.example", appId: "source-app" };
 

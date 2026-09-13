@@ -1,16 +1,17 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCheck, MessageCircle } from "lucide-react";
-import { ensureSessionReady, startSession, usesAnonymousAuth } from "@/lib/firebase";
+import { allowsAnonymousSessions, canUseSession, ensureSessionReady, startSession } from "@/lib/firebase";
 import { makeRoomApi } from "@/lib/room-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import styles from "./room.module.css";
 
 const clientRooms = makeRoomApi("client");
+const subscribeToRuntimeConfig = () => () => {};
 
 export function JoinRoom() {
   const router = useRouter();
@@ -20,6 +21,7 @@ export function JoinRoom() {
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const joining = useRef(false);
+  const guestAllowed = useSyncExternalStore(subscribeToRuntimeConfig, allowsAnonymousSessions, () => false);
 
   async function join(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,13 +39,13 @@ export function JoinRoom() {
     setFieldError(false);
     try {
       const auth = await ensureSessionReady("client");
-      if (!auth.currentUser) await startSession("client");
+      if (!canUseSession(auth.currentUser)) await startSession("client");
       const result = await clientRooms.joinCode(normalized);
       setCode("");
       router.replace(`/client/rooms/${encodeURIComponent(result.room.id)}`);
     } catch (cause) {
       const authFailure = cause && typeof cause === "object" && "code" in cause && String(cause.code).startsWith("auth/");
-      setError(authFailure ? "We couldn’t connect your guest workspace. Your room code is still here; try again." : cause instanceof Error ? cause.message : "The room could not be opened. Check the code with your designer and try again.");
+      setError(authFailure ? "Sign-in could not finish. Your room code is still here; try again." : cause instanceof Error ? cause.message : "The room could not be opened. Check the code with your designer and try again.");
     } finally { joining.current = false; setBusy(false); }
   }
 
@@ -57,8 +59,8 @@ export function JoinRoom() {
         <label htmlFor="join-code">Room code</label><p id="join-help" className={styles.joinHelp}>Enter the code your designer shared with you.</p>
         <Input id="join-code" name="room-code" ref={input} value={code} onChange={(event) => { setCode(event.target.value.toUpperCase()); setError(""); setFieldError(false); }} placeholder="ABCD-EFGH-JKMP" maxLength={32} autoCapitalize="characters" autoCorrect="off" autoComplete="off" spellCheck={false} aria-describedby={`join-help${error ? " join-error" : ""}`} aria-invalid={fieldError} disabled={busy} className={styles.joinCodeInput} />
         {error && <p id="join-error" className={styles.joinError} role="alert">{error}</p>}
-        <Button type="submit" className="button primary" disabled={busy}>{busy ? "Joining room…" : usesAnonymousAuth ? "Join room" : "Sign in and join"}<ArrowRight size={17} aria-hidden="true" /></Button>
-        <p className={styles.joinPrivacy}>{usesAnonymousAuth ? "No account setup needed. This browser keeps your access to the room." : "Sign in to connect with your designer securely."}</p>
+        <Button type="submit" className="button primary" disabled={busy}>{busy ? "Joining room…" : guestAllowed ? "Join room" : "Continue with Google and join"}<ArrowRight size={17} aria-hidden="true" /></Button>
+        <p className={styles.joinPrivacy}>{guestAllowed ? "No account setup needed. This browser keeps your access to the room." : "Use Google to keep your room access when you return."}</p>
       </form>
       <div className={styles.joinExplanation}><h2>A clear conversation from here.</h2><p>Your designer and the room’s assistant can read messages you send. Discuss open questions, explore any shared home, and review project documents together.</p><span>Rooms with a shared home record decisions on saved designs. Proposal drafts remain for review. No legal signature is collected.</span></div>
     </main>

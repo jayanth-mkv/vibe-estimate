@@ -276,3 +276,67 @@ describe("explicit sign-out during migration", () => {
     expect(clientAuth().currentUser).toBeNull(); expect(sdk.signOut).toHaveBeenCalledTimes(1); expect(sdk.fetch).not.toHaveBeenCalled();
   });
 });
+
+describe("Google-only session policy", () => {
+  beforeEach(() => { window.__VIBEESTIMATE_FIREBASE__ = { ...core, authMode: "google" }; });
+
+  it("overrides the previous guest build mode and opens Google for a fresh session", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GOOGLE_AUTH_ENABLED", "false");
+    sdk.popup.mockImplementationOnce(async (auth: AuthDouble) => { auth.currentUser = user("google-owner", false, [{ providerId: "google.com" }]); return { user: auth.currentUser }; });
+    const { startSession, allowsAnonymousSessions, isGoogleAuthEnabled, canUseSession } = await import("../src/lib/firebase");
+    expect(allowsAnonymousSessions()).toBe(false); expect(isGoogleAuthEnabled()).toBe(true);
+    const credential = await startSession();
+    expect(canUseSession(credential.user)).toBe(true);
+    expect(sdk.popup).toHaveBeenCalledTimes(1); expect(sdk.anonymous).not.toHaveBeenCalled();
+  });
+
+  it("restores a guest first, blocks app access, then links Google with the same UID on explicit continue", async () => {
+    const source = persistSource();
+    const { ensureSessionReady, startSession, canUseSession, clientAuth } = await import("../src/lib/firebase");
+    await ensureSessionReady();
+    expect(clientAuth().currentUser?.uid).toBe(source.uid); expect(canUseSession(clientAuth().currentUser)).toBe(false);
+    expect(sdk.link).not.toHaveBeenCalled(); expect(sdk.popup).not.toHaveBeenCalled();
+    const [first, duplicate] = await Promise.all([startSession(), startSession()]);
+    expect(first).toBe(duplicate); expect(first.user.uid).toBe(source.uid); expect(canUseSession(first.user)).toBe(true);
+    expect(sdk.link).toHaveBeenCalledTimes(1); expect(first.user.getIdToken).toHaveBeenCalledWith(true);
+    expect(sdk.auths.get("[DEFAULT]")?.currentUser).toBe(source); expect(sdk.signOut).not.toHaveBeenCalled(); expect(sdk.anonymous).not.toHaveBeenCalled();
+  });
+
+  it.each(["auth/credential-already-in-use", "auth/popup-closed-by-user", "auth/network-request-failed"])("preserves both sessions and keeps access gated after %s", async code => {
+    const source = persistSource(); sdk.link.mockRejectedValueOnce({ code });
+    const { startSession, clientAuth, canUseSession } = await import("../src/lib/firebase");
+    await expect(startSession()).rejects.toThrow(/still here/);
+    expect(clientAuth().currentUser?.uid).toBe(source.uid); expect(canUseSession(clientAuth().currentUser)).toBe(false);
+    expect(sdk.auths.get("[DEFAULT]")?.currentUser).toBe(source);
+    expect(sdk.popup).not.toHaveBeenCalled(); expect(sdk.signOut).not.toHaveBeenCalled(); expect(sdk.anonymous).not.toHaveBeenCalled();
+  });
+
+  it("never replaces a restored guest through the returning Google workspace action", async () => {
+    persistSource();
+    const { openGoogleWorkspace, clientAuth } = await import("../src/lib/firebase");
+    await openGoogleWorkspace();
+    expect(clientAuth().currentUser?.uid).toBe("original-owner"); expect(sdk.link).toHaveBeenCalledTimes(1); expect(sdk.popup).not.toHaveBeenCalled();
+  });
+
+  it("requires Google even for a provider-linked password account", async () => {
+    sdk.persisted.set(`${core.projectId}:vibeestimate-migrated-designer`, user("password-owner", false, [{ providerId: "password" }]));
+    const { ensureSessionReady, canUseSession, startSession } = await import("../src/lib/firebase");
+    const auth = await ensureSessionReady(); expect(canUseSession(auth.currentUser)).toBe(false);
+    const result = await startSession(); expect(result.user.uid).toBe("password-owner"); expect(canUseSession(result.user)).toBe(true);
+    expect(sdk.link).toHaveBeenCalledTimes(1); expect(sdk.popup).not.toHaveBeenCalled();
+  });
+
+  it("does not open another popup for an existing Google-linked target", async () => {
+    sdk.persisted.set(`${core.projectId}:vibeestimate-migrated-designer`, user("google-owner", false, [{ providerId: "google.com" }]));
+    const { startSession, canUseSession } = await import("../src/lib/firebase");
+    expect(canUseSession((await startSession()).user)).toBe(true);
+    expect(sdk.popup).not.toHaveBeenCalled(); expect(sdk.link).not.toHaveBeenCalled(); expect(sdk.fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not offer guest access after a Google-only workspace sign-in failure", async () => {
+    sdk.popup.mockRejectedValueOnce({ code: "auth/network-request-failed" });
+    const { openGoogleWorkspace } = await import("../src/lib/firebase");
+    await expect(openGoogleWorkspace()).rejects.toThrow("Your saved work is unchanged. Try Google sign-in again");
+    expect(sdk.anonymous).not.toHaveBeenCalled(); expect(sdk.signOut).not.toHaveBeenCalled();
+  });
+});

@@ -27,9 +27,14 @@ Apply reviewed saved plans in stages:
    secret version separately after validating the destination and permanent
    `appNamespace: "migrated"`. A temporary session bridge additionally requires
    the source SDK fields and the final verified migration snapshot fingerprint.
-5. Google sign-in requires an operator-created OAuth web client validated against
-   the destination project and its Firebase Auth origin and redirect. Its client
-   secret is sensitive and retained only in protected remote Terraform state.
+5. Import an existing Google provider configured through Firebase Authentication,
+   or supply an operator-created OAuth web client validated against the destination
+   project and its Firebase Auth origin and redirect. Discover existing credentials
+   privately; do not rotate or print them during adoption. Its client secret is
+   sensitive and retained only in protected remote Terraform state. After adoption,
+   `google_only_auth = true` disables anonymous/password account creation while
+   retaining existing account records and keeping automatic deletion off. The
+   matching runtime SDK payload selects `authMode: "google"`.
 6. Enable direct Eventarc delivery only after the API accepts authenticated
    Firestore CloudEvents. Only created `roomReviewOutbox/{jobId}` documents in the
    default database reach the existing Cloud Run service's `/internal/firestore`

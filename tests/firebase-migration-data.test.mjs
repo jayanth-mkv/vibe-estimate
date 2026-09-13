@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  canonicalJson, copyData, createRestStore, externalPath, importableUser,
+  canonicalJson, copyData, createRestStore, externalPath, googleOnlySelection, importableUser,
   loadSnapshot, mappedDocuments, migrationAllowlist, planDataCopy,
   remapFirestoreValue, saveSnapshot, scanAuth, scanFirestore, sha256,
   snapshotSummary, stableUser, validateMigrationSettings, validateSnapshot, verifyData,
@@ -261,4 +261,137 @@ test('private configuration verifies the named personal profile and explicit tar
   assert.deepEqual(validateMigrationSettings(config, { ...operator, firebaseProjectId: config.targetProjectId, firebaseMigrationSourceProjectId: config.sourceProjectId }, vertex), config);
   assert.throws(() => validateMigrationSettings({ ...config, sourceProjectId: config.targetProjectId }, operator, vertex), /CONFIG_INVALID/);
   assert.equal(canonicalJson({ b: 1, a: { d: 3, c: 2 } }), '{"a":{"c":2,"d":3},"b":1}');
+});
+
+const typed = value => value === null ? { nullValue: null } : Array.isArray(value) ? { arrayValue: { values: value.map(typed) } }
+  : typeof value === 'object' ? { mapValue: { fields: Object.fromEntries(Object.entries(value).map(([key, item]) => [key, typed(item)])) } }
+    : typeof value === 'boolean' ? { booleanValue: value } : { stringValue: value };
+const fields = value => typed(value).mapValue.fields;
+function googleSnapshot() {
+  const source = snapshot();
+  source.documents.push(
+    doc('homeOwners/google-1', fields({ homeIds: ['google-home'], creations: { 'request-1': 'google-home' } })),
+    doc('roomOwners/google-1', fields({ projects: { 'google-project': 'google-room' } })),
+    doc('rooms/google-room', fields({ id: 'google-room', ownerId: 'google-1', projectId: 'google-project', snapshots: [], sharedDrafts: [] })),
+    doc('users/google-1/projects/google-project', fields({ id: 'google-project', ownerId: 'google-1', roomId: 'google-room', scope: 'Google-owned evidence' })),
+    doc('users/google-1/homes/google-home', fields({ id: 'google-home', ownerId: 'google-1', headRevisionId: 'revision-2',
+      revisions: [{ id: 'revision-1', parentRevisionId: null }, { id: 'revision-2', parentRevisionId: 'revision-1' }],
+      receipts: { 'request-1': { revisionId: 'revision-1' } }, jobs: {} })),
+    doc('users/google-1/homes/google-home/revisions/revision-1', { unchanged: { integerValue: '9223372036854775807' } }),
+    doc('users/google-1/homes/google-home/revisions/revision-2', { createdAt: { timestampValue: time }, parent: { referenceValue: `${sourcePrefix}/users/google-1/homes/google-home/revisions/revision-1` } }),
+  );
+  return source;
+}
+const googleOptions = source => ({ googleOnly: true, expectedSelectionSha256: googleOnlySelection(source, config, manifestHash).report.selectionSha256 });
+
+test('Google-only preview retains exact owned history while leaving the complete source backup unchanged', () => {
+  const source = googleSnapshot();
+  const before = canonicalJson(source);
+  const selected = googleOnlySelection(source, config, manifestHash);
+  assert.equal(canonicalJson(source), before);
+  assert.deepEqual(selected.snapshot.users, [google]);
+  assert.equal(selected.snapshot.documents.length, 7);
+  assert.ok(selected.snapshot.documents.every(item => !item.path.includes('guest-1')));
+  assert.ok(selected.snapshot.documents.every(item => source.documents.includes(item)));
+  assert.deepEqual({
+    selectedAuth: selected.report.selectedAuthCount, excludedAuth: selected.report.excludedAuthCount,
+    selectedDocs: selected.report.selectedFirestoreCount, excludedDocs: selected.report.excludedFirestoreCount,
+    mappings: selected.report.allowlistCount, manifest: selected.report.sourceManifestSha256,
+  }, { selectedAuth: 1, excludedAuth: 1, selectedDocs: 7, excludedDocs: 4, mappings: 0, manifest: manifestHash });
+  assert.equal(selected.report.sourceFirestoreSha256, snapshotSummary(source).firestoreSha256);
+  assert.notEqual(googleOnlySelection(source, config, 'b'.repeat(64)).report.selectionSha256, selected.report.selectionSha256);
+  assert.throws(() => googleOnlySelection({ ...source, users: [anonymous] }, config, manifestHash), /GOOGLE_SELECTION_EMPTY/);
+});
+
+test('Google-only copying imports one existing Google UID and its complete graph without any guest account or bridge mapping', async () => {
+  const source = googleSnapshot();
+  const { store, state } = fakeStore(source);
+  const options = googleOptions(source);
+  const result = await copyData(store, source, config, manifestHash, options);
+  assert.equal(result.verified, true);
+  assert.equal(result.authCount, 1);
+  assert.equal(result.firestoreCount, 7);
+  assert.equal(result.allowlistCount, 0);
+  assert.equal(result.selection.selectionSha256, options.expectedSelectionSha256);
+  assert.deepEqual(state.users.map(user => user.localId), ['google-1']);
+  assert.ok(state.docs.every(item => !item.path.includes('guest-1') && !item.path.startsWith('firebaseMigrationUsers/')));
+  assert.equal(state.docs.find(item => item.path.endsWith('revision-2')).fields.parent.referenceValue, `${targetPrefix}/users/google-1/homes/google-home/revisions/revision-1`);
+  assert.equal((await verifyData(store, source, config, manifestHash, true, options)).verified, true);
+  const writes = state.writes.length;
+  await copyData(store, source, config, manifestHash, options);
+  assert.equal(state.writes.length, writes);
+});
+
+test('Google-only copy and verification require the exact reviewed selection hash before any network reads or writes', async () => {
+  const source = googleSnapshot();
+  for (const options of [{ googleOnly: true }, { googleOnly: true, expectedSelectionSha256: 'b'.repeat(64) }, { expectedSelectionSha256: 'b'.repeat(64) }]) {
+    const { store, state } = fakeStore(source);
+    await assert.rejects(copyData(store, source, config, manifestHash, options), /SELECTION_/);
+    await assert.rejects(verifyData(store, source, config, manifestHash, true, options), /SELECTION_/);
+    assert.deepEqual(state.reads, []);
+    assert.deepEqual(state.writes, []);
+  }
+});
+
+test('Google-only selection refuses guest-owned shared rooms and guest participant dependencies without rewriting history', () => {
+  const source = googleSnapshot();
+  for (const mutation of [
+    value => { value.documents.find(item => item.path === 'rooms/google-room').fields.clientId = typed('guest-1'); },
+    value => { value.documents.push(doc('rooms/shared-guest-room', fields({ ownerId: 'guest-1', clientId: 'google-1' }))); },
+    value => { value.documents.find(item => item.path === 'rooms/google-room').fields.messages = typed([{ senderId: 'guest-1', text: 'Preserved historical evidence' }]); },
+    value => { value.documents.find(item => item.path.includes('homes/google-home') && item.path.split('/').length === 4).fields.ownerId = typed('guest-1'); },
+    value => { value.documents.push(doc('unreviewed/google-owned', fields({ ownerId: 'google-1' }))); },
+  ]) {
+    const value = structuredClone(source); mutation(value);
+    const before = canonicalJson(value);
+    assert.throws(() => googleOnlySelection(value, config, manifestHash), /GOOGLE_SELECTION_(SHARED_ACCOUNT|FOREIGN_DEPENDENCY|OWNERSHIP_MISMATCH)/);
+    assert.equal(canonicalJson(value), before);
+  }
+});
+
+test('Google-only selection rejects missing revisions, broken owner indexes and references outside the selected graph', () => {
+  const source = googleSnapshot();
+  for (const mutation of [
+    value => { value.documents = value.documents.filter(item => !item.path.endsWith('google-home/revisions/revision-1')); },
+    value => { value.documents.find(item => item.path === 'roomOwners/google-1').fields.projects = typed({ 'google-project': 'missing-room' }); },
+    value => { value.documents.find(item => item.path === 'homeOwners/google-1').fields.homeIds = typed([]); },
+    value => { value.documents.find(item => item.path.endsWith('google-home/revisions/revision-2')).fields.parent = { referenceValue: `${sourcePrefix}/users/guest-1` }; },
+    value => { value.documents.find(item => item.path.endsWith('google-home/revisions/revision-2')).fields.parent = { referenceValue: 'projects/unrelated/databases/(default)/documents/a/b' }; },
+  ]) {
+    const value = structuredClone(source); mutation(value);
+    assert.throws(() => googleOnlySelection(value, config, manifestHash), /GOOGLE_SELECTION_(DANGLING_REFERENCE|EXTERNAL_REFERENCE)/);
+  }
+  const valid = structuredClone(source);
+  valid.documents.find(item => item.path.endsWith('google-home/revisions/revision-2')).fields.parent = { referenceValue: `${sourcePrefix}/users/google-1` };
+  assert.equal(googleOnlySelection(valid, config, manifestHash).report.selectedFirestoreCount, 7);
+});
+
+test('excluded guest edits still invalidate the complete frozen source before or during Google-only copy', async () => {
+  const source = googleSnapshot();
+  const options = googleOptions(source);
+  const before = fakeStore(source);
+  before.state.source.documents[0].fields.amount.integerValue = '3';
+  await assert.rejects(copyData(before.store, source, config, manifestHash, options), /SOURCE_CHANGED_SINCE_SNAPSHOT/);
+  assert.equal(before.state.writes.length, 0);
+  const during = fakeStore(source);
+  during.state.onDocument = () => { during.state.source.users[0].lastLoginAt = '1900000000000'; };
+  await assert.rejects(copyData(during.store, source, config, manifestHash, options), /SOURCE_CHANGED_DURING_COPY/);
+  assert.equal(during.state.writes.some(item => item.type === 'allowlist'), false);
+});
+
+test('Google-only verification refuses accidental guest accounts, guest data and any migration bridge mappings', async () => {
+  const source = googleSnapshot();
+  const selected = googleOnlySelection(source, config, manifestHash).snapshot;
+  const expected = mappedDocuments(selected, config);
+  const options = googleOptions(source);
+  for (const existing of [
+    { docs: expected, users: source.users },
+    { docs: [...expected, mappedDocuments(snapshot(), config)[0]], users: [google] },
+    { docs: [...expected, ...migrationAllowlist(selected, config, manifestHash)], users: [google] },
+  ]) {
+    const { store, state } = fakeStore(source, existing.docs, existing.users);
+    await assert.rejects(copyData(store, source, config, manifestHash, options), /DESTINATION_/);
+    await assert.rejects(verifyData(store, source, config, manifestHash, true, options), /DESTINATION_/);
+    assert.equal(state.writes.length, 0);
+  }
 });

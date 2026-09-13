@@ -111,6 +111,15 @@ variable "enable_google_auth" {
     error_message = "Google sign-in requires the destination foundation."
   }
 }
+variable "google_only_auth" {
+  description = "Allow Google sign-in while disabling new anonymous and email/password accounts; existing imported identities are retained."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.google_only_auth || var.enable_google_auth
+    error_message = "Google-only access requires the adopted and enabled Google provider."
+  }
+}
 variable "google_oauth_client_id" {
   type      = string
   sensitive = true

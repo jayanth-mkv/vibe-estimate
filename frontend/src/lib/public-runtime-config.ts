@@ -1,13 +1,14 @@
-export type PublicFirebaseConfig = { projectId: string; apiKey: string; authDomain: string; appId: string; appNamespace?: "migrated" };
-declare global { interface Window { __VIBEESTIMATE_FIREBASE__?: PublicFirebaseConfig; __VIBEESTIMATE_LEGACY_FIREBASE__?: Omit<PublicFirebaseConfig, "appNamespace"> } }
+type FirebaseSdkFields = { projectId: string; apiKey: string; authDomain: string; appId: string };
+export type PublicFirebaseConfig = FirebaseSdkFields & { appNamespace?: "migrated"; authMode?: "google" };
+declare global { interface Window { __VIBEESTIMATE_FIREBASE__?: PublicFirebaseConfig; __VIBEESTIMATE_LEGACY_FIREBASE__?: FirebaseSdkFields } }
 
-function publicFields(value: unknown): Omit<PublicFirebaseConfig, "appNamespace"> {
+function publicFields(value: unknown): FirebaseSdkFields {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Public sign-in configuration is invalid.");
   const data = value as Record<string, unknown>;
   return Object.fromEntries(["projectId", "apiKey", "authDomain", "appId"].map(key => {
     if (typeof data[key] !== "string" || !data[key] || data[key].length > 300) throw new Error("Public sign-in configuration is invalid.");
     return [key, data[key]];
-  })) as Omit<PublicFirebaseConfig, "appNamespace">;
+  })) as FirebaseSdkFields;
 }
 
 const safeJson = (value: unknown) => JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, character => `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`);
@@ -22,7 +23,11 @@ export function firebaseConfigScript(raw: string | undefined): string {
     if (data.appNamespace !== "migrated") throw new Error("Public sign-in configuration is invalid.");
     config.appNamespace = "migrated";
   }
-  let legacy: Omit<PublicFirebaseConfig, "appNamespace"> | undefined;
+  if (data.authMode !== undefined) {
+    if (data.authMode !== "google") throw new Error("Public sign-in configuration is invalid.");
+    config.authMode = "google";
+  }
+  let legacy: FirebaseSdkFields | undefined;
   if (data.legacy !== undefined) {
     legacy = publicFields(data.legacy);
     if (config.appNamespace !== "migrated" || legacy.projectId === config.projectId || legacy.apiKey === config.apiKey) throw new Error("Public sign-in configuration is invalid.");
