@@ -2,6 +2,25 @@
 
 The original local setup created no cloud resources. Live Gemini setup and the later authorized production deployment took place on 5 September 2026. The sections below retain those separate historical stages. Public documentation omits personal account names, real project IDs, connection paths, and credentials; exact operational records and Terraform state remain in the outer private workspace.
 
+## Firebase consolidation preparation — 13 September 2026
+
+The operator selected migration into the existing application project and retirement of the old Firebase project after verification. This supersedes the unapplied source-billing proposal below. Exact identifiers and private backups remain outside the checkout.
+
+| Classification | Resource or operation | Executed status |
+| --- | --- | --- |
+| Existing, imported | Destination Firebase membership, Firebaserules API and IAM Credentials API | Adopted in the private `firebase-migration` state; preserved |
+| Created | Destination Firestore API activation | Reviewed bootstrap applied; subsequent database inventory was empty |
+| Created | Native default Firestore database, web app, Auth, deny-all ruleset/release, two narrow custom roles, scoped runtime bindings, separate SDK secret metadata/accessor and self-only signing binding | Foundation apply added 13 resources, changed/deleted none; readback passed |
+| Verified empty | Destination Auth, Firestore and SDK secret | Zero users, root collections and secret versions after foundation apply |
+| Private backup | Source Auth and recursive Firestore export | 87 accounts and 131 documents captured with content hashes; source unchanged |
+| Prepared locally | Destination browser SDK configuration | Four public SDK fields plus permanent migrated app namespace; no secret version published |
+| Planned | Destination Google provider, final data copy, direct Eventarc trigger and runtime cutover | Google OAuth setup and production gates remain pending |
+| Planned removal | Source Firebase project and obsolete recovery schedule | Only after production verification and returning-guest access decision; neither removed nor paused |
+
+The new database is protected against deletion, Auth anonymous auto-deletion is disabled, rules deny direct client access, and custom roles contain only Auth user-read or service-account signBlob respectively. No source billing account was attached. Shared ADC fingerprints matched across authenticated operations. See [consolidation controls and retirement gates](firebase-consolidation.md).
+
+The saved direct-event plan proposes **6 creates, 0 updates and 0 deletes**: two Eventarc APIs, a dedicated event identity, event-receive permission, invocation permission on the one existing service, and the document-created trigger. The existing destination Pub/Sub API was imported without change. This plan is not applied. Event delivery awaits the route-capable release and final-copy sequencing; the managed subscription's actual OIDC audience still needs readback.
+
 ## Event-driven review delivery — 12 September 2026
 
 The operator requested replacing the once-per-minute room-recovery calls with delivery triggered by saved work. The existing Firebase and application project assignments remain intact. See the [delivery contract and threat controls](event-delivery.md).
