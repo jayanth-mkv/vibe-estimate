@@ -1,6 +1,6 @@
 # Firebase consolidation
 
-The operator selected migration into the existing application project, followed by full verification and retirement of the old Firebase project. The September 13 scope update selects Google-only sign-in and excludes anonymous accounts from migration. The selected Google identity and its saved work have been copied and verified, and native delivery of `e3ee954` completed the application cutover. Source retirement remains gated on the final production and returning-account checks. The complete source snapshot remains private; guest-owned records were not assigned to another identity.
+The operator selected migration into the existing application project, followed by full verification and retirement of the old Firebase project. Production uses Google-only sign-in. Native delivery of `e3ee954` completed the initial Google account and saved-work cutover. A subsequent explicit request expands data migration to formerly guest-owned work, assigning ownership to the existing Google workspace without importing anonymous Auth accounts. Source retirement remains gated on verification of this expanded data set and the operator's actual Google sign-in and saved-work check.
 
 ## Verified destination and source
 
@@ -29,6 +29,18 @@ After cutover, production verification authenticated that imported UID and read 
 
 ## Optional transfer capability and retirement contract
 
+### Explicit consolidation of guest-owned work
+
+`scripts/firebase-workspace-consolidation.mts` builds an offline, bounded plan against an immutable source manifest and a fresh destination backup. It rewrites owner paths and ownership fields, merges the four owner indexes, preserves current destination data and adds historical usage to current counters. A private mapping receipt records original ownership without exposing migration metadata in ordinary home/project responses. No anonymous identities, guest login bridge, delivery outbox records or model calls are created.
+
+Original client IDs, message senders and decision actors remain unchanged. Historical acceptance must not become acceptance by the new owner. Shared draft and agreement history is retained; imported rooms are paused. Reserved review-snapshot project IDs may remain unmaterialized until the ordinary prepare-draft action. Imported room IDs receive a server-only allowance that preserves the destination's remaining room-creation slots; malformed metadata grants no extra capacity and spent model limits remain enforced.
+
+The private executor backs up the current target, rechecks the frozen source, binds the exact plan hash and commits the complete change atomically. Creates require absence; merged indexes require their original update times. A concurrent change stops the import. Reads at the returned commit time compare the entire destination against the reviewed plan, including every untouched pre-existing record. The source is rechecked afterward and no Auth writes occur. A deterministic receipt prevents replay from overwriting later user edits. See [Firestore atomic commits](https://docs.cloud.google.com/firestore/docs/reference/rest/v1/projects.databases.documents/commit) and [write preconditions](https://docs.cloud.google.com/firestore/docs/reference/rest/v1/Precondition).
+
+The earlier one-account/fifteen-document copy below remains historical evidence only. Retirement must additionally bind successful expanded-data verification, the matching application release and the operator's Google sign-in/reopen confirmation.
+
+### Earlier optional session bridge
+
 `scripts/firebase-migration-data.mts` binds the source, destination and named account to private operator configuration. It exports typed Firestore values and supported Auth records, rejects identity/document collisions, uses create-only destination writes, compares complete fingerprints, and rechecks source stability before granting bridge access. Unsupported password, tenant or MFA accounts stop the migration before writes. Infrastructure remains Terraform-managed.
 
 The bridge accepts only a verified, non-revoked root-project source identity whose imported UID appears in `firebaseMigrationUsers`. It checks the destination account and mints a custom token for that same UID using self-scoped IAM signing. A verified-UID limit bounds exchanges without grouping every Next gateway request under loopback IP. Source tokens never authorize ordinary destination API operations.
@@ -37,6 +49,6 @@ The private SDK configuration's `migrationSnapshotSha256` and each mapping's `sn
 
 Browsers restore original Firebase app names for designer, client and recovered-room sessions, transfer access, and verify the returned UID before continuing. A failed transfer preserves the source session and exposes retry. The destination's `appNamespace: "migrated"` remains after the temporary legacy configuration is retired so stored destination sessions stay discoverable. Explicit sign-out clears both projects for only the selected identity.
 
-Importing UIDs does not move project-bound refresh tokens. The implementation can support a temporary guest transfer bridge, but the operator has explicitly excluded anonymous migration. The selected destination configuration omits the legacy bridge and requires a fresh Google sign-in. Source deletion must use Terraform after the selected data and production checks pass; excluded guest records remain in the private source backup.
+Importing UIDs does not move project-bound refresh tokens. The implementation can support a temporary guest transfer bridge, but anonymous Auth migration remains excluded. The selected destination configuration omits the legacy bridge and requires a fresh Google sign-in. Source deletion must use Terraform after the expanded data and production checks pass; original guest records remain in the immutable private source backup after their work is consolidated.
 
 References: [Firebase on an existing Cloud project](https://firebase.google.com/docs/projects/use-firebase-with-existing-cloud-project), [Terraform authentication setup](https://firebase.google.com/codelabs/firebase-terraform), [Auth imports](https://firebase.google.com/docs/auth/admin/import-users), [custom tokens](https://firebase.google.com/docs/auth/admin/create-custom-tokens), [Firestore migration](https://firebase.google.com/docs/firestore/manage-data/move-data).

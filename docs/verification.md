@@ -2,13 +2,19 @@
 
 This file records **executed** results only. The checks each future release must pass before it can be called done are specified separately, as gates in the [release plan](plan/README.md) — [v1](plan/v1.md#verification-videos-and-release), [v2](plan/v2.backup.md#v2-gate) and [v3](plan/v3.md). A planned gate is not evidence; copy a result here only once it has actually run.
 
+## Guest-workspace consolidation preparation — 13 September 2026
+
+The operator explicitly expanded the data scope to move formerly guest-owned work into the existing Google workspace while continuing to exclude anonymous Auth accounts. The fresh target backup and full frozen-source comparison passed. The reviewed atomic plan covers 116 source records from 32 guest owners: 87 creates, two index updates and one private receipt. It preserves existing Google documents, original participant attribution and immutable history, adds historical usage to current counters, and pauses imported rooms.
+
+All **344 backend tests** passed, including **13 imported-room capacity cases**. The backend build passed. The pure consolidation planner passed **14 offline tests**, covering owner/provider binding, typed-value preservation, concurrent-write preconditions, collisions, receipt replay, history integrity, assistant links and unfinished-work denial. Public-source scanning and whitespace checks passed. These preparation results do not by themselves establish the live data write or the new release.
+
 ## Production consolidation — 13 September 2026
 
 Native build `8e102334-0f93-4f83-9df0-64b041dabc43` successfully released `e3ee954` with destination Firebase, Google-only access, maintenance off and direct Firestore event delivery. Production verification read the imported Google account's saved home, project and all ten revisions. Two real Gemini reviews completed through Eventarc and Cloud Tasks; replay added no job or model call, and ownership/authentication denial checks passed. Exact synthetic cleanup preserved all fifteen original document fingerprints.
 
 The subsequent five-minute Cloud Run idle window had **zero HTTP requests, internal calls or errors**. The scheduler was paused and the task queue empty. The temporary operator signing grant was revoked through Terraform, with effective permission confirmed absent. Shared ADC was unchanged. Detailed evidence and the distinction between programmatic identity verification and actual Google browser sign-in are in [event delivery verification](event-delivery-verification.md).
 
-The user's Google browser sign-in and saved-home confirmation remains pending. The old source project is still preserved until that retirement gate passes; anonymous accounts and their data were excluded from migration.
+The user's Google browser sign-in and saved-home confirmation remains pending. The old source project is still preserved until that retirement gate passes. Anonymous accounts and their data were excluded from this initial checkpoint; the later explicit data-consolidation request is recorded above.
 
 ## Google-only consolidation checks — 13 September 2026
 

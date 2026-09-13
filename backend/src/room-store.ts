@@ -58,6 +58,18 @@ export class FirestoreRoomDatabase implements RoomDatabase {
 }
 
 export type ClaimedReview = { room: StoredRoom; run: ObserverRun };
+
+function newRoomProjectCount(owner: RoomOwner): number {
+  const total = Object.keys(owner.projects).length;
+  const imported = owner.migratedProjectIds;
+  // This field is written only by a reviewed operator migration. Invalid or
+  // partial metadata never grants an allowance, including unknown project IDs.
+  if (!Array.isArray(imported) || imported.length > 100 || new Set(imported).size !== imported.length
+    || imported.some(id => typeof id !== "string" || id.length !== 36 || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+      || !Object.hasOwn(owner.projects, id))) return total;
+  return total - imported.length;
+}
+
 export class RoomStore {
   constructor(private database: RoomDatabase, readonly provider: Analysis["provider"], private clock: () => number = Date.now, private eventDelivery = false) {}
 
@@ -113,7 +125,7 @@ export class RoomStore {
         transaction.putRoom(existing);
         return existing;
       }
-      if (Object.keys(owner.projects).length >= ROOM_OWNER_LIMIT) throw new AppError(422, "ROOM_LIMIT", "This workspace has reached its 10-room limit. Continue in an existing room.");
+      if (newRoomProjectCount(owner) >= ROOM_OWNER_LIMIT) throw new AppError(422, "ROOM_LIMIT", "This workspace has reached its 10-room limit. Continue in an existing room.");
       const created = newRoom(project, this.provider, invitation.stored, now);
       owner.projects[projectId] = created.id;
       transaction.putRoom(created);
