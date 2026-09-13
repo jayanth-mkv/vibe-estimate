@@ -33,10 +33,10 @@ variable "runtime_variables" {
     event_delivery_audience    = optional(string, "")
   })
   validation {
-    condition = var.runtime_variables.event_delivery_audience == "" || (var.runtime_variables.event_delivery_enabled == "true" && length(var.runtime_variables.event_delivery_audience) <= 261 && can(regex(
-      "^https://[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app$", var.runtime_variables.event_delivery_audience
+    condition = var.runtime_variables.event_delivery_audience == "" || (var.runtime_variables.event_delivery_enabled == "true" && length(trimsuffix(var.runtime_variables.event_delivery_audience, "/internal/firestore")) <= 261 && can(regex(
+      "^https://[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app(/internal/firestore)?$", var.runtime_variables.event_delivery_audience
     )))
-    error_message = "An explicit event audience requires enabled event delivery and an exact HTTPS native Cloud Run origin."
+    error_message = "An explicit event audience requires enabled event delivery and an exact HTTPS native Cloud Run origin or its /internal/firestore route."
   }
 }
 variable "access_token" {

@@ -133,3 +133,28 @@ run "service_updates_are_scoped_and_project_permissions_are_read_only" {
     error_message = "Act-as access must target only the explicit runtime identity, without token-creator or project-wide service-account grants."
   }
 }
+
+run "eventarc_route_audience_is_preserved_in_native_trigger_metadata" {
+  command = plan
+  variables {
+    runtime_variables = merge(var.runtime_variables, {
+      event_delivery_enabled  = "true"
+      event_delivery_audience = "https://vibeestimate-example-as.a.run.app/internal/firestore"
+    })
+  }
+  assert {
+    condition     = jsondecode(base64decode(google_cloudbuild_trigger.main.substitutions["_RUNTIME_VARS_B64"])).event_delivery_audience == var.runtime_variables.event_delivery_audience
+    error_message = "Native release metadata must retain Eventarc's exact authenticated route audience."
+  }
+}
+
+run "reject_eventarc_route_with_query_parameters" {
+  command = plan
+  variables {
+    runtime_variables = merge(var.runtime_variables, {
+      event_delivery_enabled  = "true"
+      event_delivery_audience = "https://vibeestimate-example-as.a.run.app/internal/firestore?extra=value"
+    })
+  }
+  expect_failures = [var.runtime_variables]
+}

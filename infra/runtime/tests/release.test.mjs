@@ -46,9 +46,9 @@ test('migration flags default disabled and accept only explicit boolean strings'
   }
 });
 
-test('event audience metadata defaults empty and preserves an exact separately configured native service origin', () => {
+test('event audience metadata defaults empty and preserves the exact native origin or Firestore route', () => {
   assert.equal(variables.event_delivery_audience, '');
-  for (const audience of ['', 'https://vibeestimate-example-as.a.run.app', 'https://vibeestimate-123456789012.asia-south1.run.app']) {
+  for (const audience of ['', 'https://vibeestimate-example-as.a.run.app', 'https://vibeestimate-123456789012.asia-south1.run.app', 'https://vibeestimate-example-as.a.run.app/internal/firestore']) {
     const prepared = releaseInputs({ ...environment, RELEASE_RUNTIME_VARS_B64: encode({ ...metadata, event_delivery_enabled: 'true', event_delivery_audience: audience }) });
     const output = runtimeVariables(prepared, digest);
     assert.equal(output.event_delivery_audience, audience);
@@ -59,10 +59,12 @@ test('event audience metadata defaults empty and preserves an exact separately c
   assert.equal(runtimeVariables(disabled, digest).event_delivery_audience, '');
 });
 
-test('rejects event audience credentials, paths, nonnative origins and use without event delivery', () => {
+test('rejects event audience credentials, unrelated paths, query/fragment, nonnative origins and disabled delivery', () => {
   for (const audience of [
     'http://service.run.app', 'https://example.test', 'https://run.app', 'https://service.run.app/',
-    'https://service.run.app/internal/firestore', 'https://service.run.app?x=1', 'https://service.run.app#fragment',
+    'https://service.run.app/internal/observer', 'https://service.run.app?x=1', 'https://service.run.app#fragment',
+    'https://service.run.app/internal/firestore/', 'https://service.run.app/internal/firestore?x=1', 'https://service.run.app/internal/firestore#fragment',
+    'https://service.run.app/internal/%66irestore', 'https://service.run.app//internal/firestore',
     'https://user@service.run.app', 'https://user:password@service.run.app', 'https://service.run.app:443',
     'https://service.run.app.evil.example', ' https://service.run.app', 'https://SERVICE.run.app',
     'https://-service.run.app', 'https://service..run.app', `https://${'a'.repeat(64)}.run.app`, true, 1, null,

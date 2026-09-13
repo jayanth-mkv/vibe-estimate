@@ -23,7 +23,7 @@ Verify Google sign-in, anonymous-creation denial, independent designer/client id
 
 The operator enabled Google sign-in in the destination Firebase console. A read through the explicitly authorized cloud account verified the enabled provider and matching web app. Terraform adopts that existing provider using credentials read directly into private configuration; a separate downloaded OAuth client is unnecessary. Complete the real Google sign-in check against the deployed destination before retirement.
 
-The initial read-only backup captured **87 accounts and 131 documents**, including nested documents beneath absent parents. The Google-only preview selects **one account and 15 documents**, with **86 accounts and 116 documents excluded**. The selected graph has no guest identity dependency. Its immutable full snapshot and manifest are outside the checkout; shared ADC was unchanged. No production records have been copied into the destination yet.
+The final frozen backup captured **87 accounts and 131 documents**, including nested documents beneath absent parents, with unchanged fingerprints from the initial backup. The Google-only copy verified **one account and 15 documents** in the destination, with **86 accounts and 116 documents excluded** and no transfer mappings. The selected graph has no guest identity dependency. The full snapshot and manifest remain private; the copier rechecked the complete source before and after writing and verified every selected destination record. Shared ADC was unchanged.
 
 ## Optional transfer capability and retirement contract
 

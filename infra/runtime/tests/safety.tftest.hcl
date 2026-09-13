@@ -128,11 +128,11 @@ run "event_delivery_uses_the_dedicated_firebase_project_identity" {
   }
 }
 
-run "direct_eventarc_can_use_its_exact_canonical_service_audience" {
+run "direct_eventarc_can_use_its_exact_canonical_route_audience" {
   command = plan
   variables {
     event_delivery_enabled  = true
-    event_delivery_audience = "https://vibeestimate-example-as.a.run.app"
+    event_delivery_audience = "https://vibeestimate-example-as.a.run.app/internal/firestore"
   }
   assert {
     condition = (
@@ -150,11 +150,11 @@ run "reject_event_audience_without_event_delivery" {
   expect_failures = [var.event_delivery_audience]
 }
 
-run "reject_event_audience_with_a_path" {
+run "reject_event_audience_with_an_unrelated_path" {
   command = plan
   variables {
     event_delivery_enabled  = true
-    event_delivery_audience = "https://service.run.app/internal/firestore"
+    event_delivery_audience = "https://service.run.app/internal/observer"
   }
   expect_failures = [var.event_delivery_audience]
 }

@@ -16,14 +16,14 @@ variable "event_delivery_enabled" {
   default     = false
 }
 variable "event_delivery_audience" {
-  description = "Exact native Cloud Run origin used by Eventarc; empty retains the existing workflow audience."
+  description = "Exact native Cloud Run origin or /internal/firestore route used by Eventarc; empty retains the existing workflow audience."
   type        = string
   default     = ""
   validation {
-    condition = var.event_delivery_audience == "" || (var.event_delivery_enabled && length(var.event_delivery_audience) <= 261 && can(regex(
-      "^https://[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app$", var.event_delivery_audience
+    condition = var.event_delivery_audience == "" || (var.event_delivery_enabled && length(trimsuffix(var.event_delivery_audience, "/internal/firestore")) <= 261 && can(regex(
+      "^https://[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app(/internal/firestore)?$", var.event_delivery_audience
     )))
-    error_message = "An explicit event audience requires enabled event delivery and an exact HTTPS native Cloud Run origin."
+    error_message = "An explicit event audience requires enabled event delivery and an exact HTTPS native Cloud Run origin or its /internal/firestore route."
   }
 }
 variable "firebase_project_id" {

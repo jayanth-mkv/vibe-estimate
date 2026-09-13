@@ -24,8 +24,8 @@ export function releaseInputs(env) {
   requireValue(Object.entries(metadata).every(([key, value]) => typeof value === 'string' && (value.length > 0 || optionalStrings.includes(key)) && value === value.trim() && !/[\r\n\0]/.test(value)));
   requireValue(optionalFlags.every(key => metadata[key] === undefined || ['true', 'false'].includes(metadata[key])));
   const eventAudience = metadata.event_delivery_audience ?? '';
-  requireValue(eventAudience === '' || (metadata.event_delivery_enabled === 'true' && eventAudience.length <= 261
-    && /^https:\/\/[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app$/.test(eventAudience)));
+  requireValue(eventAudience === '' || (metadata.event_delivery_enabled === 'true' && eventAudience.replace(/\/internal\/firestore$/, '').length <= 261
+    && /^https:\/\/[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app(\/internal\/firestore)?$/.test(eventAudience)));
   requireValue([metadata.backend_project_id, metadata.firebase_project_id].every(value => projectId.test(value) && !value.startsWith('demo-')));
   requireValue(/^[1-9][0-9]{5,19}$/.test(metadata.project_number) && /^[a-z]+-[a-z]+[0-9]$/.test(metadata.region));
   requireValue(metadata.firestore_database_id === '(default)' || /^[a-z][a-z0-9-]{2,61}[a-z0-9]$/.test(metadata.firestore_database_id));

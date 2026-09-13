@@ -13,13 +13,18 @@ The operator selected migration into the existing application project and retire
 | Created | Native default Firestore database, web app, Auth, deny-all ruleset/release, two narrow custom roles, scoped runtime bindings, separate SDK secret metadata/accessor and self-only signing binding | Foundation apply added 13 resources, changed/deleted none; readback passed |
 | Verified empty | Destination Auth, Firestore and SDK secret | Zero users, root collections and secret versions after foundation apply |
 | Private backup | Source Auth and recursive Firestore export | 87 accounts and 131 documents captured with content hashes; source unchanged |
-| Prepared locally | Destination browser SDK configuration | Four public SDK fields plus permanent migrated app namespace; no secret version published |
-| Planned | Destination Google provider, final data copy, direct Eventarc trigger and runtime cutover | Google OAuth setup and production gates remain pending |
-| Planned removal | Source Firebase project and obsolete recovery schedule | Only after production verification and returning-guest access decision; neither removed nor paused |
+| Existing, imported | Operator-enabled destination Google provider | Adopted without rotating credentials; authorized domains corrected through Terraform |
+| Updated | Destination Auth provider policy | Google enabled; anonymous, email/password and phone disabled; no account auto-deletion |
+| Created | Pinned destination SDK secret version | Four public SDK fields, permanent migrated namespace and Google-only policy; no legacy bridge configuration |
+| Imported, updated | Source signup/deletion permissions and recovery scheduler | Source account creation/deletion frozen; scheduler paused through owning Terraform roots after native maintenance release and request drain |
+| Copied, verified | Selected Google identity and owned document graph | One account and 15 documents match the frozen manifest; 86 guest accounts and 116 records excluded, zero transfer mappings |
+| Created | Destination direct Eventarc delivery | Six planned resources applied; managed subscription identity and exact route audience verified |
+| Planned | Destination runtime cutover | Native delivery and production verification still in progress |
+| Planned removal | Source Firebase project | Guest migration explicitly excluded by operator; final production checks still required |
 
 The new database is protected against deletion, Auth anonymous auto-deletion is disabled, rules deny direct client access, and custom roles contain only Auth user-read or service-account signBlob respectively. No source billing account was attached. Shared ADC fingerprints matched across authenticated operations. See [consolidation controls and retirement gates](firebase-consolidation.md).
 
-The saved direct-event plan proposes **6 creates, 0 updates and 0 deletes**: two Eventarc APIs, a dedicated event identity, event-receive permission, invocation permission on the one existing service, and the document-created trigger. The existing destination Pub/Sub API was imported without change. This plan is not applied. Event delivery awaits the route-capable release and final-copy sequencing; the managed subscription's actual OIDC audience still needs readback.
+The saved direct-event plan proposed **6 creates, 0 updates and 0 deletes**: two Eventarc APIs, a dedicated event identity, event-receive permission, invocation permission on the one existing service, and the document-created trigger. The first apply created five resources; Google deferred the trigger while provisioning its Eventarc service agent. A refreshed one-create plan completed that remaining trigger. The existing destination Pub/Sub API was imported without change. The managed subscription uses the dedicated event identity and an audience ending in `/internal/firestore`; its separate push-endpoint query is not part of that audience.
 
 ## Event-driven review delivery — 12 September 2026
 

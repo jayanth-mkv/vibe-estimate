@@ -83,9 +83,9 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
     throw new Error("Event delivery requires the dedicated event identity in the configured Firebase project.");
   }
   const explicitEventAudience = env.ROOM_EVENT_AUDIENCE;
-  if (explicitEventAudience !== undefined && (!eventServiceAccount || explicitEventAudience.length > 261
-    || !/^https:\/\/[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app$/.test(explicitEventAudience))) {
-    throw new Error("Event audience requires an enabled event identity and an exact HTTPS Cloud Run service origin.");
+  if (explicitEventAudience !== undefined && (!eventServiceAccount || explicitEventAudience.length > 280
+    || !/^https:\/\/[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app(?:\/internal\/firestore)?$/.test(explicitEventAudience))) {
+    throw new Error("Event audience requires an enabled event identity and an exact HTTPS Cloud Run service origin or /internal/firestore endpoint.");
   }
   const eventAudience = eventServiceAccount ? explicitEventAudience ?? frontendOrigin : undefined;
   if (runtimeVertex && (env.VERTEX_AUTH_MODE !== "runtime" || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(env.VERTEX_PROJECT_ID ?? "") || !/^(global|[a-z]+-[a-z]+[0-9])$/.test(env.VERTEX_LOCATION ?? "")

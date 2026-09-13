@@ -71,8 +71,7 @@ describe("managed room task transport", () => {
 });
 
 describe("separate task and event OIDC identities", () => {
-  it("uses an explicitly different Eventarc audience without changing task verification or delivery", async () => {
-    const eventAudience = "https://vibeestimate-example-as.a.run.app";
+  it.each(["https://vibeestimate-example-as.a.run.app", "https://vibeestimate-example-as.a.run.app/internal/firestore"])("verifies the exact configured Eventarc audience %s without changing task verification or delivery", async eventAudience => {
     const configured = readConfig({ ...settings, ROOM_EVENT_AUDIENCE: eventAudience });
     const tasks = createRoomTasks(configured);
     mocks.verifyIdToken.mockImplementation(async ({ idToken, audience }) => {
@@ -123,14 +122,17 @@ describe("Eventarc audience configuration", () => {
   it("retains the workflow audience when the explicit event audience is absent", () => {
     expect(config().eventAudience).toBe(settings.FRONTEND_ORIGIN);
     expect(readConfig({ ...settings, ROOM_EVENT_SERVICE_ACCOUNT: undefined }).eventAudience).toBeUndefined();
-    for (const audience of ["https://service-example-as.a.run.app", "https://vibeestimate-123456789012.asia-southeast1.run.app"]) {
+    for (const audience of ["https://service-example-as.a.run.app", "https://vibeestimate-123456789012.asia-southeast1.run.app",
+      "https://service-example-as.a.run.app/internal/firestore", "https://vibeestimate-123456789012.asia-southeast1.run.app/internal/firestore"]) {
       expect(readConfig({ ...settings, ROOM_EVENT_AUDIENCE: audience }).eventAudience).toBe(audience);
     }
   });
 
   it.each([
     "", "http://service.run.app", "https://service.example", "https://run.app", "https://service.run.app/",
-    "https://service.run.app/internal/firestore", "https://service.run.app?audience=another", "https://service.run.app#fragment",
+    "https://service.run.app/internal/observer", "https://service.run.app/internal/firestore/", "https://service.run.app/internal/firestore?audience=another",
+    "https://service.run.app/internal/firestore#fragment", "https://service.run.app//internal/firestore", "https://service.run.app/internal%2Ffirestore",
+    "https://service.run.app?audience=another", "https://service.run.app#fragment",
     "https://user@service.run.app", "https://user:password@service.run.app", "https://service.run.app:443",
     "https://service.run.app.evil.example", " https://service.run.app", "https://SERVICE.run.app",
     "https://-service.run.app", "https://service..run.app", `https://${"a".repeat(64)}.run.app`,
