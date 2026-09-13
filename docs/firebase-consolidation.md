@@ -1,10 +1,10 @@
 # Firebase consolidation
 
-The operator selected migration into the existing application project, followed by full verification and retirement of the old Firebase project. The September 13 scope update selects Google-only sign-in and excludes anonymous accounts from migration. Copy Google identities and their saved work; retain the complete source snapshot privately rather than assigning guest-owned records to a different identity. Production cutover and source retirement are not yet complete.
+The operator selected migration into the existing application project, followed by full verification and retirement of the old Firebase project. The September 13 scope update selects Google-only sign-in and excludes anonymous accounts from migration. The selected Google identity and its saved work have been copied and verified, and native delivery of `e3ee954` completed the application cutover. Source retirement remains gated on the final production and returning-account checks. The complete source snapshot remains private; guest-owned records were not assigned to another identity.
 
 ## Verified destination and source
 
-The application project already has Firebase enabled; it was imported rather than recreated. Terraform enabled its Firestore API, and a fresh database inventory confirmed that the destination was empty. The foundation plan adds a protected native database in the existing application region, Auth, a web app, deny-all rules and scoped runtime permissions. This uses the application's existing billing arrangement.
+The application project already had Firebase enabled; it was imported rather than recreated. An initial database inventory confirmed that the destination was empty. Terraform applied a protected native database in the application region, Auth, a web app, deny-all rules and scoped runtime permissions. The operator's existing Google provider was adopted. This uses the application's existing billing arrangement.
 
 The source has saved homes, projects, shared rooms, immutable revisions and Auth users. Most accounts are anonymous. Some documents exist in subcollections beneath missing `users` parent documents. A root-document-only copy would omit these records. No source Cloud Storage bucket was found.
 
@@ -24,6 +24,8 @@ Verify Google sign-in, anonymous-creation denial, independent designer/client id
 The operator enabled Google sign-in in the destination Firebase console. A read through the explicitly authorized cloud account verified the enabled provider and matching web app. Terraform adopts that existing provider using credentials read directly into private configuration; a separate downloaded OAuth client is unnecessary. Complete the real Google sign-in check against the deployed destination before retirement.
 
 The final frozen backup captured **87 accounts and 131 documents**, including nested documents beneath absent parents, with unchanged fingerprints from the initial backup. The Google-only copy verified **one account and 15 documents** in the destination, with **86 accounts and 116 documents excluded** and no transfer mappings. The selected graph has no guest identity dependency. The full snapshot and manifest remain private; the copier rechecked the complete source before and after writing and verified every selected destination record. Shared ADC was unchanged.
+
+After cutover, production verification authenticated that imported UID and read the saved home, project and all ten revisions through the API. Two synthetic messages completed real Eventarc/Cloud Tasks/Gemini processing, and replay did not add work. Access-denial checks passed. Conditional test cleanup restored the exact owner index and verified all fifteen original records unchanged. This used a programmatic Firebase token; the operator's Google browser sign-in remains a separate retirement gate. See the [event verification record](event-delivery-verification.md).
 
 ## Optional transfer capability and retirement contract
 

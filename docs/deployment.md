@@ -8,12 +8,14 @@ This document defines the workflow, not proof of a successful native release. Re
 
 | Terraform root | Responsibility | State |
 | --- | --- | --- |
-| `infra/production` | Foundation APIs, identities/IAM, registry, queue/scheduler, secret metadata/version, Firebase domains and public service access | Private versioned GCS bucket, prefix `production` |
+| `infra/production` | Foundation APIs, backend identities/IAM, registry, queue/scheduler, original secret metadata/version and public service access | Private versioned GCS bucket, prefix `production` |
 | `infra/delivery` | Existing-connection repository child, native main trigger, dedicated runtime state bucket and release IAM | Private versioned GCS bucket, prefix `delivery` |
 | `infra/runtime` | The single adopted Cloud Run service and its complete template | Private versioned GCS bucket, prefix `runtime` |
-| `infra/firebase-migration` | Imported destination Firebase membership, protected new Firebase foundation, migration signing and direct event delivery | Private versioned GCS bucket, prefix `firebase-migration` |
+| `infra/firebase-migration` | Imported destination Firebase membership, protected Firebase foundation, Auth providers/domains, runtime access and direct event delivery | Private versioned GCS bucket, prefix `firebase-migration` |
+| `infra/firebase-source-retirement` | Separately imported old project, protected until verified retirement | Private versioned GCS bucket, prefix `firebase-source-retirement` |
+| `infra/firebase-migration-verification` | Temporary operator verification grant, revoked after executed checks | Private versioned GCS bucket, prefix `firebase-migration-verification` |
 
-The Gemini-local and Firebase-adoption roots retain separate ownership. A release must not recreate the existing database, change Firebase providers, replace the GitHub connection, or copy the entire foundation state into the runtime root.
+The Gemini-local root retains separate ownership. Source event, billing and Auth-freeze roots are archived with `removed` blocks using `destroy=false`; production likewise forgets its former source Firebase bindings and domain configuration. No live database or rules state was found for the earlier Firebase-adoption proposal. An ordinary application release must not recreate the database, change Firebase providers, replace the GitHub connection, or copy foundation state into the runtime root.
 
 All resource configuration and IAM changes use Terraform. Cloud Build builds/pushes images and applies the checked runtime plan. Application source comes from GitHub; ordinary releases do not upload a local source archive or call `gcloud run deploy`.
 
@@ -22,7 +24,7 @@ All resource configuration and IAM changes use Terraform. Cloud Build builds/pus
 1. **Verify existing targets.** Read the outer private authorization and discover the selected account, backend and Firebase projects, Cloud Run service, registry, runtime/task identities, queue, secret version and GitHub connection. Confirm the connection location separately from the Cloud Run region. Import matching resources before management; preserve unrelated resources.
 2. **Prepare native delivery through Terraform.** Adopt or create the repository child under the existing connection, the dedicated private versioned GCS bucket, and the build identity's release permissions. Configure the trigger for `^main$`, `cloudbuild.yaml`, and the verified build identity. Complete runtime adoption before publishing a release to main; hold main pushes if the trigger is already enabled during bootstrap.
 3. **Transfer service ownership.** Back up foundation state privately. Initialize the runtime GCS backend and import the existing service into `google_cloud_run_v2_service.application`, using its current digest and exact template. Then apply the foundation's `removed` block with `destroy=false` to forget the former `[0]` entry. Verify both states and plans; the live service, public invocation and scheduler must remain intact. See the [foundation handoff](../infra/production/README.md#adopt-the-running-service) and [runtime adoption contract](../infra/runtime/README.md#adopt-before-enabling).
-4. **Confirm the Firebase authorized domains.** The Cloud Run hostname is the application origin, and `infra/production` keeps it in the Terraform-managed `authorizedDomains` list alongside every previously discovered domain. A custom domain, if one is added later, goes through the same input.
+4. **Confirm the Firebase authorized domains.** After consolidation, `infra/firebase-migration` owns the destination `authorized_domains` input. Preserve the discovered Firebase, Cloud Run and custom application domains in that list; ordinary runtime releases do not own it.
 5. **Verify the initial native release.** Push the reviewed pipeline/application commit to main. Confirm the triggering Git SHA, successful checks/build, resolved immutable image, accepted service-only plan, and resulting Cloud Run revision. Verify the production URL and real user journeys. Only executed checks establish release evidence.
 
 The runtime state bucket must be separate from the original source bucket, whose seven-day deletion rule is unsuitable for Terraform state. Keep versioning, public-access prevention, locking and deletion guards enabled. One-time operator authentication uses the explicitly verified profile and short-lived credentials; shared ADC is preserved. Native builds use their attached identity and receive no user ADC or credential files.
@@ -61,15 +63,15 @@ The public browser settings are baked into the image at build time and the runti
 | `FIREBASE_WEB_CONFIG` | Public Firebase SDK configuration for the authorized real project, injected from Secret Manager by numeric version |
 | `NEXT_PUBLIC_API_URL` | Empty, keeping browser API calls on the application origin |
 | `NEXT_PUBLIC_USE_FIREBASE_EMULATORS` | `false` |
-| `NEXT_PUBLIC_AUTH_MODE` | `guest` |
-| `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | `true`, providing optional Google account recovery |
+| `NEXT_PUBLIC_AUTH_MODE` | Legacy build default; production policy is `authMode: "google"` in the pinned `FIREBASE_WEB_CONFIG` |
+| `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | `true`; production requires Google sign-in |
 | `NEXT_TELEMETRY_DISABLED` | `1` |
 
 Firebase SDK fields are browser-visible configuration, even though their platform storage is marked sensitive. A Gemini key or service-account credential is never one of these values: the runtime calls Vertex with its own Cloud Run identity.
 
-The optional private `frontend-hosting.json` supplies `firebaseProjectId` and `extraFirebaseAuthDomains` to the foundation launcher, for a custom domain added later. Only explicit hostnames are admitted, the Firebase project must match, and previously discovered domains remain in the Terraform-managed list. See [Firebase authorized domains](../infra/production/README.md#firebase-authorized-domains).
+The former source-domain configuration and original SDK inputs are retained privately for historical foundation-state verification. Active connected development uses the destination SDK, Google-only policy and stable destination namespace. Future destination domain changes belong to `infra/firebase-migration`, using reviewed private inputs.
 
-During [Firebase consolidation](firebase-consolidation.md), optional native-release metadata explicitly selects migration maintenance and event delivery. Both default off, preserving ordinary releases. Maintenance keeps process health available while returning retryable responses from all API/internal routes. Enabling event delivery supplies its dedicated identity and exact discovered Cloud Run audience. The target SDK secret is a separate pinned version; the old source secret is retained until rollback and session-transfer requirements end. The destination app namespace remains stable when the temporary legacy bridge is removed.
+During [Firebase consolidation](firebase-consolidation.md), optional native-release metadata explicitly selects migration maintenance and event delivery. Both default off. Maintenance keeps process health available while returning retryable responses from all API/internal routes. Enabling event delivery supplies its dedicated identity and exact discovered Cloud Run audience, including `/internal/firestore` when present in the managed subscription. The September 13 cutover enables events, disables maintenance, and selects a separate pinned destination SDK secret with Google-only access. Anonymous accounts and guest session transfer are excluded from this rollout. The destination app namespace remains stable for subsequent releases.
 
 ## Local verification remains available
 
