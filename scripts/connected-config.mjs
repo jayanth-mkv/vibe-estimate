@@ -5,7 +5,7 @@ import { localEnv } from "./local-env.mjs";
 
 const frontendOrigin = "http://localhost:3000";
 const settingsKeys = new Set(["firebaseProjectId", "firestoreDatabaseId", "webConfigPath", "gcloudConfiguration", "account", "gcloudConfigDir", "authProjectId", "geminiConfigPath", "frontendOrigin"]);
-const sdkKeys = new Set(["apiKey", "authDomain", "projectId", "appId", "storageBucket", "messagingSenderId", "measurementId", "databaseURL"]);
+const sdkKeys = new Set(["apiKey", "authDomain", "projectId", "appId", "storageBucket", "messagingSenderId", "measurementId", "databaseURL", "authMode", "appNamespace"]);
 const systemKeys = new Map([
   "PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "HOME",
   "NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE", "PROCESSOR_IDENTIFIER", "OS", "TERM", "COLORTERM", "NO_COLOR", "FORCE_COLOR"
@@ -48,6 +48,7 @@ function webSettings(settings) {
     || typeof web.apiKey !== "string" || !/^[A-Za-z0-9_-]{20,200}$/.test(web.apiKey)
     || web.authDomain !== settings.firebaseProjectId + ".firebaseapp.com"
     || typeof web.appId !== "string" || !/^1:\d+:web:[A-Za-z0-9]+$/.test(web.appId)) throw invalid();
+  if (web.authMode !== undefined && web.authMode !== "google" || web.appNamespace !== undefined && web.appNamespace !== "migrated") throw invalid();
   if (web.storageBucket !== undefined && ![settings.firebaseProjectId + ".appspot.com", settings.firebaseProjectId + ".firebasestorage.app"].includes(web.storageBucket)) throw invalid();
   if (web.messagingSenderId !== undefined && (typeof web.messagingSenderId !== "string" || !/^\d+$/.test(web.messagingSenderId) || web.appId.split(":")[1] !== web.messagingSenderId)) throw invalid();
   if (web.measurementId !== undefined && (typeof web.measurementId !== "string" || !/^G-[A-Z0-9]+$/.test(web.measurementId))) throw invalid();
@@ -81,8 +82,13 @@ export function connectedEnvironments(configPath, inheritedEnv = process.env) {
   const base = runtimeBase(inheritedEnv);
   const settings = settingsFrom(configPath);
   const web = webSettings(settings);
+  // Share only the verified browser fields and policy. Profile credentials and
+  // source-project migration settings never enter the frontend environment.
+  const webConfig = JSON.stringify(Object.fromEntries(["projectId", "apiKey", "authDomain", "appId", "authMode", "appNamespace"]
+    .filter(key => web[key] !== undefined).map(key => [key, web[key]])));
   const backendBase = {
     ...base, APP_ENV: "connected", AI_PROVIDER: "gemini", FIREBASE_PROJECT_ID: settings.firebaseProjectId,
+    FIREBASE_WEB_CONFIG: webConfig,
     FIRESTORE_DATABASE_ID: settings.firestoreDatabaseId, FRONTEND_ORIGIN: frontendOrigin, PORT: "8080",
     CONNECTED_AUTH_PROJECT_ID: settings.authProjectId, CONNECTED_AUTH_GCLOUD_CONFIGURATION: settings.gcloudConfiguration,
     CONNECTED_AUTH_GCLOUD_ACCOUNT: settings.account, CONNECTED_AUTH_GCLOUD_CONFIG_DIR: settings.gcloudConfigDir
@@ -92,7 +98,8 @@ export function connectedEnvironments(configPath, inheritedEnv = process.env) {
     || backendEnv.VERTEX_GCLOUD_CONFIGURATION !== settings.gcloudConfiguration || backendEnv.VERTEX_GCLOUD_ACCOUNT !== settings.account
     || backendEnv.VERTEX_GCLOUD_CONFIG_DIR !== settings.gcloudConfigDir) throw invalid();
   const frontendEnv = {
-    ...base, NEXT_PUBLIC_USE_FIREBASE_EMULATORS: "false", NEXT_PUBLIC_AUTH_MODE: "guest", NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "true",
+    ...base, NEXT_PUBLIC_USE_FIREBASE_EMULATORS: "false", NEXT_PUBLIC_AUTH_MODE: web.authMode ?? "guest", NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "true",
+    FIREBASE_WEB_CONFIG: webConfig,
     NEXT_PUBLIC_FIREBASE_PROJECT_ID: web.projectId, NEXT_PUBLIC_FIREBASE_API_KEY: web.apiKey,
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: web.authDomain, NEXT_PUBLIC_FIREBASE_APP_ID: web.appId,
     NEXT_PUBLIC_API_URL: "", BACKEND_ORIGIN: "http://127.0.0.1:8080"

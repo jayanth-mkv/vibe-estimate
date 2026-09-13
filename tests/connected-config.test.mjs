@@ -79,7 +79,10 @@ test("separates connected backend credentials from guest frontend public Firebas
   assert.equal(frontendEnv.BACKEND_ORIGIN, "http://127.0.0.1:8080");
   assert.equal(frontendEnv.NEXT_PUBLIC_FIREBASE_API_KEY, publicWebKey);
   assert.equal(frontendEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID, files.settings.firebaseProjectId);
-  for (const key of Object.keys(frontendEnv)) assert.ok(!/^(?:CONNECTED_AUTH_|VERTEX_|GEMINI_|FIREBASE_|FIRESTORE_|CLOUDSDK_|GOOGLE_)/i.test(key), key);
+  for (const key of Object.keys(frontendEnv)) assert.ok(key === "FIREBASE_WEB_CONFIG" || !/^(?:CONNECTED_AUTH_|VERTEX_|GEMINI_|FIREBASE_|FIRESTORE_|CLOUDSDK_|GOOGLE_)/i.test(key), key);
+  const expectedWeb = { projectId: files.web.projectId, apiKey: files.web.apiKey, authDomain: files.web.authDomain, appId: files.web.appId };
+  assert.deepEqual(JSON.parse(frontendEnv.FIREBASE_WEB_CONFIG), expectedWeb);
+  assert.equal(backendEnv.FIREBASE_WEB_CONFIG, frontendEnv.FIREBASE_WEB_CONFIG);
   assert.ok(!Object.keys(backendEnv).some(key => key.startsWith("NEXT_PUBLIC_")));
   assert.ok(!Object.values(frontendEnv).includes(files.settings.account));
   assert.ok(!Object.values(frontendEnv).includes(files.directory));
@@ -88,6 +91,48 @@ test("separates connected backend credentials from guest frontend public Firebas
   assert.equal(backendEnv.NODE_ENV, "development");
   assert.equal(frontendEnv.NODE_ENV, "development");
   assert.equal(input.PATH, "synthetic-system-path");
+});
+
+test("keeps Google-only policy and stable target namespace consistent between connected children", t => {
+  const files = fixture(t);
+  for (const optional of [{ authMode: "google" }, { appNamespace: "migrated" }, { authMode: "google", appNamespace: "migrated" }]) {
+    files.write({ web: { ...files.web, ...optional } });
+    const { backendEnv, frontendEnv } = connectedEnvironments(files.filename, {
+      NEXT_PUBLIC_AUTH_MODE: "guest", NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "false",
+      FIREBASE_WEB_CONFIG: JSON.stringify({ projectId: "wrong-project", authMode: "guest", legacy: { private_key: syntheticSecret } }),
+      Firebase_Web_Config: syntheticSecret, Next_Public_Firebase_Project_Id: "wrong-project"
+    });
+    assert.equal(frontendEnv.NEXT_PUBLIC_AUTH_MODE, optional.authMode ?? "guest");
+    assert.equal(frontendEnv.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED, "true");
+    assert.equal(backendEnv.FIREBASE_WEB_CONFIG, frontendEnv.FIREBASE_WEB_CONFIG);
+    const runtime = JSON.parse(frontendEnv.FIREBASE_WEB_CONFIG);
+    assert.deepEqual(runtime, { projectId: files.web.projectId, apiKey: files.web.apiKey, authDomain: files.web.authDomain, appId: files.web.appId, ...optional });
+    assert.equal(runtime.projectId, backendEnv.FIREBASE_PROJECT_ID);
+    assert.equal(runtime.projectId, frontendEnv.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+    assert.equal(runtime.legacy, undefined);
+    for (const env of [backendEnv, frontendEnv]) {
+      assert.ok(!JSON.stringify(env).includes(syntheticSecret));
+      assert.ok(!JSON.stringify(env).includes("wrong-project"));
+      assert.equal(env.Firebase_Web_Config, undefined);
+      assert.equal(env.FIREBASE_AUTH_EMULATOR_HOST, undefined);
+      assert.equal(env.FIRESTORE_EMULATOR_HOST, undefined);
+    }
+    assert.ok(!JSON.stringify(frontendEnv).includes(files.settings.account));
+    assert.ok(!JSON.stringify(frontendEnv).includes(files.directory.replaceAll("\\", "\\\\")));
+  }
+});
+
+test("rejects malformed connected policies, namespaces and source-session migration fields", t => {
+  const files = fixture(t);
+  for (const optional of [
+    ...["guest", "GOOGLE", "", null, false, [], { secret: syntheticSecret }].map(authMode => ({ authMode })),
+    ...["default", "MIGRATED", "", null, false, [], { secret: syntheticSecret }].map(appNamespace => ({ appNamespace })),
+    { legacy: { projectId: "source-project", private_key: syntheticSecret } },
+    { migrationSnapshotSha256: "a".repeat(64) }
+  ]) {
+    files.write({ web: { ...files.web, ...optional } });
+    safeFailure(() => connectedEnvironments(files.filename, {}));
+  }
 });
 
 test("strips inherited secrets and all mixed-case endpoint or public-variable aliases before either child starts", t => {

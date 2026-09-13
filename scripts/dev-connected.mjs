@@ -39,7 +39,8 @@ try {
     if (!page.ok) throw new Error("The frontend route manifest is not ready.");
     await page.body?.cancel();
   }
-  console.log("Ready: " + frontendOrigin + " | API http://127.0.0.1:8080/health | Cloud Firebase with guest access");
+  const access = frontendEnv.NEXT_PUBLIC_AUTH_MODE === "google" ? "Google sign-in required" : "guest access";
+  console.log("Ready: " + frontendOrigin + " | API http://127.0.0.1:8080/health | Cloud Firebase with " + access);
 } catch {
   console.error("The connected workspace could not start. Check the external configuration and local application ports. Private values were not displayed.");
   stop(1);
