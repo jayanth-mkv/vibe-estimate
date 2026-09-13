@@ -1,4 +1,5 @@
 import { expect, type Locator } from "@playwright/test";
+import { Buffer } from "node:buffer";
 import jsQR from "jsqr";
 
 /** Decode the rendered SVG as pixels, independently of the QR encoder. */
@@ -22,10 +23,17 @@ export async function decodedQr(locator: Locator): Promise<string> {
         image.src = url;
       });
       context.drawImage(image, 0, 0, width, height);
-      return { width, height, values: Array.from(context.getImageData(0, 0, width, height).data) };
+      const bytes = context.getImageData(0, 0, width, height).data;
+      // Keep one compact string across the browser protocol instead of hundreds
+      // of thousands of individually serialized/traced numeric values.
+      let binary = "";
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+      }
+      return { width, height, base64: btoa(binary) };
     } finally { URL.revokeObjectURL(url); }
   });
-  const decoded = jsQR(Uint8ClampedArray.from(pixels.values), pixels.width, pixels.height);
+  const decoded = jsQR(Uint8ClampedArray.from(Buffer.from(pixels.base64, "base64")), pixels.width, pixels.height);
   expect(Boolean(decoded), "The displayed QR code must decode from its rendered pixels.").toBe(true);
   return decoded!.data;
 }

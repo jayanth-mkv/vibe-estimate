@@ -51,7 +51,7 @@ async function account(request: APIRequestContext): Promise<Headers> {
 }
 
 async function getRoom(request: APIRequestContext, id: string, headers: Headers): Promise<Room> {
-  const response = await request.get(api + "/api/rooms/" + id, { headers });
+  const response = await request.get(api + "/api/rooms/" + id, { headers, maxRetries: 1 });
   expect(response.ok()).toBe(true);
   return (await response.json()).room;
 }

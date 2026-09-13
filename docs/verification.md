@@ -2,6 +2,24 @@
 
 This file records **executed** results only. The checks each future release must pass before it can be called done are specified separately, as gates in the [release plan](plan/README.md) — [v1](plan/v1.md#verification-videos-and-release), [v2](plan/v2.backup.md#v2-gate) and [v3](plan/v3.md). A planned gate is not evidence; copy a result here only once it has actually run.
 
+## Firebase consolidation preparation — 13 September 2026
+
+The initial read-only production backup captured **87 Auth accounts and 131 Firestore documents**, including descendants beneath missing parent documents. Snapshot and manifest files remain private; fingerprints bind the complete inventory. Shared ADC was unchanged. This is backup evidence, not destination-copy or production-cutover evidence.
+
+The reviewed destination foundation apply added **13 resources with no updates or deletions**. Independent readback verified one protected native default database, an empty Auth and Firestore inventory, enabled anonymous/email sign-in with anonymous auto-delete off, an exact deny-all rules release, one web app and zero SDK secret versions. The existing application release and source Firebase data remain in use.
+
+Executed source checks: **313 backend tests** and backend build passed, including per-allowlisted-UID limiting, same-UID tenant rejection and independent event/task audiences. Unimported source accounts cannot exhaust the imported-user limit map. **103 frontend tests**, frontend production build, TypeScript and ESLint passed, covering stable Firebase app names, same-UID transfer, preserved source sessions on failure, retry, providerless guest linking, selected-identity sign-out and the binary event gateway. The migration data runner passed **12 tests** covering recursive copying, typed values, collisions, partial import, stale snapshots and exact verification.
+
+Five real SDK checks passed on two isolated Auth emulators and one Firestore emulator. They verified preserved UID/claims/metadata, target custom-token sign-in, providerless guest detection, wrong-project and revoked-token rejection, disabled-account/hash denial and production rejection of demo configuration. All owned emulator processes stopped and their ports closed. Initial runs exposed slow CLI startup and an unsupported synthetic Firestore credential; the corrected harness passed on fresh instances. Run `rtk npm run test:firebase-migration`; evidence is retained under the ignored Firebase migration cache.
+
+All nine Terraform roots passed schema validation and their mock suites. After adding explicit event-audience cases, runtime passed **17** mocks and delivery **3**; other roots account for **50** passing mocks. Recursive formatting passed after correcting the initially unformatted test file. Native release metadata tests passed **11/11**. Seven real Firestore rule/transaction checks passed in the isolated fixture run.
+
+The initial full desktop/mobile fixture browser run passed **26/28**. The desktop invitation test exhausted its overall timeout after two QR pixel-array transfers consumed 64.77 seconds; joining and reloading had succeeded. The mobile unsupported-message test completed its retry and reload assertions, then its final direct GET hit a connection reset on an idle socket while browser polling continued returning 200. The QR helper now transfers identical rendered pixels as compact base64; the idempotent room-read helper allows one transport-reset retry. Decoding, exact invitation URLs, assertions, write behavior and timeouts are unchanged.
+
+The fresh isolated recheck passed **4/4** affected desktop/mobile cases in 3.2 minutes, along with all seven rule/transaction checks. Invitation checks finished in 47.5 seconds on desktop and 60 seconds on mobile within their original 90-second limits. **All 28 browser checks have a passing result across the initial run and focused recheck; this was not a single all-green full run.** Evidence is under `.cache/fixture-verification/2026-09-13T08-42-39-785Z-8ZYD3r` and `2026-09-13T09-07-30-272Z-niHzpA`. An attempted concurrent recheck was interrupted by the original runner's service cleanup and is not counted as a successful result. Owned verification services stopped after each isolated run.
+
+The destination Google OAuth client, verified final copy, deployed direct-event journey, production account transfer and source retirement remain pending. Local or mocked test success does not establish those gates.
+
 ## Home-to-agreement overhaul — 6 September 2026
 
 The current [V1 verification record](v1-verification.md) separates executed source, asset, browser and live-release evidence for the three-home studio and shared design agreements. Historical production and proposal checks below remain preserved. The current release is not complete until its final record identifies the matching deployed commit and successful user journeys.
