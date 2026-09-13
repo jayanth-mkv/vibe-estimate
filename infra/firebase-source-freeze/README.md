@@ -1,3 +1,5 @@
+> Archived after same-project Firebase consolidation. The current root contains only `removed` blocks with `destroy = false`; it cannot restore the historical resources/settings described below. Review/apply its exact state-forgetting plan through the private ownership-retirement launcher. Previous implementation and tests remain in Git history.
+
 # Temporary source Auth freeze
 
 This root adopts four existing Identity Platform configuration leaves through masked reads and PATCH requests. Its separate private GCS state does not overlap the production root's `authorizedDomains` ownership. It never creates an Auth project, reads password hashes, deletes users, or revokes stored sessions.

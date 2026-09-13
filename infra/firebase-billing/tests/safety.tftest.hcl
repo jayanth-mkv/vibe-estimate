@@ -8,17 +8,8 @@ variables {
   access_token        = "unused-offline-test-token"
 }
 
-run "only_the_existing_firebase_billing_link_is_managed" {
-  command = plan
-  assert {
-    condition = (
-      google_billing_project_info.firebase.project == var.firebase_project_id &&
-      google_billing_project_info.firebase.billing_account == var.billing_account &&
-      google_billing_project_info.firebase.deletion_policy == "ABANDON"
-    )
-    error_message = "The imported Firebase billing link must use the verified existing account and abandon management without disabling billing."
-  }
-}
+# The applied retirement plan separately verifies exact forget actions.
+run "archived_configuration_remains_valid" { command = plan }
 
 run "reject_backend_as_the_source_firebase_project" {
   command = plan

@@ -40,36 +40,9 @@ provider "restful" {
   header   = { "X-Goog-User-Project" = var.quota_project_id }
 }
 
-# Own only these four leaves. The production state continues to own authorized
-# domains. No password hash, provider credential, account or token is retrieved.
-locals {
-  fields = "client(permissions),signIn(anonymous,email(enabled))"
-  mask   = "client.permissions.disabledUserSignup,client.permissions.disabledUserDeletion,signIn.anonymous.enabled,signIn.email.enabled"
-}
-resource "restful_resource" "source_permissions" {
-  path                 = "/projects/${var.source_project_id}/config"
-  read_query           = { fields = [local.fields] }
-  query                = { fields = [local.fields] }
-  update_method        = "PATCH"
-  merge_patch_disabled = true
-  update_query         = { updateMask = [local.mask], fields = [local.fields] }
-  body = {
-    client = { permissions = {
-      disabledUserSignup   = var.freeze || var.original_permissions.disabled_user_signup
-      disabledUserDeletion = var.freeze || var.original_permissions.disabled_user_deletion
-    } }
-    signIn = {
-      anonymous = { enabled = var.freeze ? false : var.original_anonymous_enabled }
-      email     = { enabled = var.freeze ? false : var.original_email_enabled }
-    }
-  }
-  output_attrs = ["client", "signIn"]
-  lifecycle { prevent_destroy = true }
-}
-import {
-  to = restful_resource.source_permissions
-  id = jsonencode({
-    id    = "/projects/${var.source_project_id}/config", path = "/projects/${var.source_project_id}/config",
-    query = { fields = [local.fields] }, body = { client = null, signIn = null }
-  })
+# Keep the applied freeze in force through project shutdown. Retiring this state
+# must not restore providers or allow new source accounts after final copy.
+removed {
+  from = restful_resource.source_permissions
+  lifecycle { destroy = false }
 }

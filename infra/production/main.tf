@@ -103,17 +103,16 @@ resource "google_service_account" "delivery" {
   display_name = "VibeEstimate authenticated review task delivery"
 }
 
-resource "google_project_iam_custom_role" "firebase_auth" {
-  project     = var.firebase_project_id
-  role_id     = "vibeestimateAuthVerifier"
-  title       = "VibeEstimate token revocation checks"
-  permissions = ["firebaseauth.users.get"]
+# Destination Firebase IAM is independently owned by infra/firebase-migration.
+# Retire the old source bindings without changing access before its separately
+# verified project shutdown. They cannot be recreated by future foundation plans.
+removed {
+  from = google_project_iam_custom_role.firebase_auth
+  lifecycle { destroy = false }
 }
-resource "google_project_iam_member" "firebase" {
-  for_each = { firestore = "roles/datastore.user", quota = "roles/serviceusage.serviceUsageConsumer", auth = google_project_iam_custom_role.firebase_auth.name }
-  project  = var.firebase_project_id
-  role     = each.value
-  member   = "serviceAccount:${google_service_account.runtime.email}"
+removed {
+  from = google_project_iam_member.firebase
+  lifecycle { destroy = false }
 }
 resource "google_project_iam_custom_role" "gemini" {
   project     = var.backend_project_id
@@ -200,25 +199,10 @@ resource "google_secret_manager_secret_iam_member" "web_config" {
   member    = "serviceAccount:${google_service_account.runtime.email}"
 }
 
-# Import only authorizedDomains, with a partial GET and PATCH. Never retrieve
-# password hashing configuration or adopt/change the existing sign-in providers.
-resource "restful_resource" "auth_domains" {
-  path                 = "/projects/${var.firebase_project_id}/config"
-  read_query           = { fields = ["authorizedDomains"] }
-  query                = { fields = ["authorizedDomains"] }
-  update_method        = "PATCH"
-  merge_patch_disabled = true
-  update_query         = { updateMask = ["authorizedDomains"], fields = ["authorizedDomains"] }
-  body                 = { authorizedDomains = distinct(concat(var.existing_auth_domains, [local.host], var.extra_auth_domains)) }
-  output_attrs         = ["authorizedDomains"]
-  lifecycle { prevent_destroy = true }
-}
-import {
-  to = restful_resource.auth_domains
-  id = jsonencode({
-    id    = "/projects/${var.firebase_project_id}/config", path = "/projects/${var.firebase_project_id}/config",
-    query = { fields = ["authorizedDomains"] }, body = { authorizedDomains = null }
-  })
+# The source domain leaf belongs to the old project's retirement boundary.
+removed {
+  from = restful_resource.auth_domains
+  lifecycle { destroy = false }
 }
 
 resource "google_cloud_tasks_queue" "reviews" {

@@ -55,6 +55,18 @@ export function privateRoomRecoveryPaused(privateRoot: string, backendProjectId:
   return roomRecoveryPaused(JSON.parse(fs.readFileSync(canonical,'utf8')),backendProjectId);
 }
 
+/** The retired SDK secret stays pinned while current Firebase ownership lives in
+ * the migration root. Repointing active client config must not rotate this copy. */
+export function foundationFirebaseConfig(operator: Record<string,unknown>, activeWeb: Record<string,unknown>, retiredWeb?: Record<string,unknown>) {
+  const source=operator.firebaseMigrationSourceProjectId;
+  if(activeWeb.projectId!==operator.firebaseProjectId)throw new Error('Firebase public config target mismatch');
+  if(source!==undefined&&(typeof source!=='string'||!source||source===operator.firebaseProjectId))throw new Error('Invalid retired Firebase source');
+  const web=source===undefined?activeWeb:retiredWeb;
+  const projectId=source??operator.firebaseProjectId;
+  if(!web||web.projectId!==projectId||!['projectId','apiKey','authDomain','appId'].every(key=>typeof web[key]==='string'&&web[key]))throw new Error('Frozen Firebase public config is unavailable');
+  return {projectId,publicConfig:Object.fromEntries(['projectId','apiKey','authDomain','appId'].map(key=>[key,web[key]]))};
+}
+
 async function main() {
   const action=process.argv[2];
   if(!['init','validate','plan','apply','outputs','fmt'].includes(action))throw new Error('Unsupported action');
@@ -66,7 +78,8 @@ async function main() {
   const discovery=JSON.parse(fs.readFileSync(path.join(privateRoot,'production-discovery.json'),'utf8'));
   const connected=JSON.parse(fs.readFileSync(path.join(privateRoot,'firebase-connected.json'),'utf8'));
   if(operator.backendProjectId!==vertex.projectId||operator.account!==vertex.account||operator.gcloudConfiguration!==vertex.gcloudConfiguration||operator.firebaseProjectId!==connected.firebaseProjectId||operator.backendRegion!==discovery.region||operator.backendProjectId!==discovery.backendProjectId)throw new Error('Authorized target mismatch');
-  const additionalDomains=privateExtraAuthDomains(privateRoot,operator.firebaseProjectId);
+  // Authorized domains are owned by firebase-migration after consolidation.
+  const additionalDomains=operator.firebaseMigrationSourceProjectId?[]:privateExtraAuthDomains(privateRoot,operator.firebaseProjectId);
   const pauseRecovery=privateRoomRecoveryPaused(privateRoot,operator.backendProjectId);
   const adc=path.join(vertex.gcloudConfigDir,'application_default_credentials.json');
   const digest=(data: string|Buffer)=>createHash('sha256').update(data).digest('hex');
@@ -84,9 +97,9 @@ async function main() {
   const imageFile=path.join(privateRoot,'production-image.json');
   const image=fs.existsSync(imageFile)?JSON.parse(fs.readFileSync(imageFile,'utf8')).image:'';
   const web=JSON.parse(fs.readFileSync(path.resolve(privateRoot,connected.webConfigPath),'utf8'));
-  if(web.projectId!==operator.firebaseProjectId)throw new Error('Firebase public config target mismatch');
-  const publicConfig=Object.fromEntries(['projectId','apiKey','authDomain','appId'].map(k=>[k,web[k]]));
-  const vars={backend_project_id:operator.backendProjectId,firebase_project_id:operator.firebaseProjectId,project_number:discovery.projectNumber,region:operator.backendRegion,
+  const retiredWeb=operator.firebaseMigrationSourceProjectId?JSON.parse(fs.readFileSync(path.join(privateRoot,'firebase-ownership-retirement/legacy-web-config.json'),'utf8')):undefined;
+  const {projectId:foundationFirebaseProject,publicConfig}=foundationFirebaseConfig(operator,web,retiredWeb);
+  const vars={backend_project_id:operator.backendProjectId,firebase_project_id:foundationFirebaseProject,project_number:discovery.projectNumber,region:operator.backendRegion,
     existing_auth_domains:discovery.results.find((r:any)=>r.name==='firebaseAuth').data.authorizedDomains,extra_auth_domains:additionalDomains,pause_room_recovery:pauseRecovery,firestore_database_id:connected.firestoreDatabaseId,gemini_model:vertex.model,image};
   const varsFile=path.join(stateDir,'production.tfvars.json');fs.writeFileSync(varsFile,JSON.stringify(vars));
   const env={...process.env};

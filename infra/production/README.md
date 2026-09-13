@@ -1,12 +1,12 @@
 # Production foundation
 
-This Terraform root manages the production APIs, runtime/build/delivery identities and their IAM, image repository, original build-source bucket, review queue, recovery scheduler, browser SDK configuration secret, Firebase authorized domains, and public Cloud Run invocation binding. The existing Cloud Run service is owned separately by [infra/runtime](../runtime/README.md), whose state and permissions are limited to that service.
+This Terraform root manages the production APIs, runtime/build/delivery identities and their backend IAM, image repository, original build-source bucket, review queue, paused recovery scheduler, original browser SDK configuration secret, and public Cloud Run invocation binding. The existing Cloud Run service is owned separately by [infra/runtime](../runtime/README.md), whose state and permissions are limited to that service. Destination Firebase Auth, domains, data, runtime Firebase grants and the active SDK secret belong to [infra/firebase-migration](../firebase-migration/README.md).
 
 Ordinary application releases follow a reviewed push to GitHub `main`. The native Cloud Build trigger runs [cloudbuild.yaml](../../cloudbuild.yaml), builds the committed source, and applies the runtime Terraform plan. This foundation root is used for infrastructure changes and ownership adoption, not for each image release. See [deployment.md](../../docs/deployment.md) for the complete workflow.
 
 The existing Cloud Run image contains the Next.js gateway and Express backend as separate processes on one origin: the API listens on an internal port and Next serves the public port, forwarding through its own same-origin gateway. There is no separate frontend host. Firebase ID tokens continue to be verified by the backend; Firebase identity/storage and the backend project remain independently configured. The runtime identity calls Vertex without a user credential or service-account key.
 
-Room writes persist queued work before requesting a Cloud Task. Verified Google OIDC delivery invokes the observer, and the scheduler recovers saved queue entries. Room leases and direct-review request records prevent ordinary retries from dispatching duplicate model calls. Interrupted attempts require explicit owner recovery. The queue, identities and scheduler stay in this foundation while the service template belongs to the runtime root.
+Room writes save an outbox record in the same transaction. The destination Firestore event invokes the API, which creates a named Cloud Task; verified Google OIDC delivery invokes the observer. The recurring recovery scheduler is retained paused. Room leases and direct-review request records prevent ordinary retries from dispatching duplicate model calls. Interrupted attempts require explicit owner recovery. The queue, identities and scheduler stay in this foundation while the service template belongs to the runtime root.
 
 ## Private configuration and state
 
@@ -35,7 +35,7 @@ rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\terrafor
 Remove-Item Env:\GOOGLE_OAUTH_ACCESS_TOKEN
 ```
 
-Confirm afterwards that `terraform state list` matches the backup and that a fresh plan reports no changes. Compare resource *instances*, not configuration blocks: `production`'s 22 blocks list as 26 addresses because two `for_each` blocks expand to three each. `delivery` lists 9.
+Confirm afterwards that `terraform state list` matches the current remote state and that a fresh plan reports no changes. The historical local copies are backups, not migration inputs: importing one would restore retired source ownership. After Firebase consolidation the production remote state has 21 addresses; `delivery` lists 9.
 
 ## Adopt the running service
 
@@ -58,19 +58,10 @@ After verifying the deployed event-delivery journey, the optional external `../d
 
 The backend must match the authorized private configuration, and `paused` must be a boolean. An absent file or `false` keeps the every-minute schedule active. Run the launcher `plan`, review the scheduler pause, then `apply`; the setting is included in the saved plan's input hash. Terraform retains the job, cron and authenticated target for rollback. Set `paused` to `false` and review/apply a new plan to resume recovery. This configuration support does not itself pause the live job; complete [event delivery verification](../../docs/event-delivery.md) first.
 
-## Firebase authorized domains
+## Retired source Firebase ownership
 
-The Cloud Run hostname is added automatically. For a custom domain added later, the optional private `frontend-hosting.json` supplies additional domains:
+The source custom Auth role, its three runtime memberships and authorized-domain wrapper were forgotten through reviewed `removed` blocks with `destroy = false`. This changes Terraform ownership only: it does not delete IAM, change Auth or affect the destination. Keep these removed blocks; the foundation cannot recreate the source configuration.
 
-```json
-{
-  "firebaseProjectId": "firebase-project-id",
-  "extraFirebaseAuthDomains": ["app.example.com"]
-}
-```
-
-Its Firebase project must match the authorized configuration. An absent file means no additional domains. Additional values are bounded lowercase DNS hostnames without schemes, paths, ports, wildcards or IP addresses; committed examples remain placeholders.
-
-Terraform combines the extra domains with every previously discovered domain and the existing Cloud Run hostname. The imported REST resource reads and patches only `authorizedDomains` with an explicit field mask. It does not adopt sign-in providers or retrieve password-hashing configuration. Preserve its import identity and `prevent_destroy`; changing output sensitivity would cause the pinned REST provider to propose replacement.
+The private active Firebase configuration now targets the destination and preserves `firebaseMigrationSourceProjectId`. The foundation launcher uses the privately frozen original SDK snapshot for its original, unused secret; repointing active client configuration cannot rotate that version. Missing or mismatched snapshots stop planning. The destination root owns the separate active SDK secret and authorized domains. Its selected domains include the custom app origin and both native Cloud Run origins.
 
 Executed changes and deployment evidence belong in the [inventory](../../docs/infrastructure-inventory.md) and [verification record](../../docs/verification.md).

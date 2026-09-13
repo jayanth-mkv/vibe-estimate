@@ -3,11 +3,23 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { extraAuthDomains, privateRoomRecoveryPaused, roomRecoveryPaused } from '../../../scripts/terraform-production.mts';
+import { extraAuthDomains, foundationFirebaseConfig, privateRoomRecoveryPaused, roomRecoveryPaused } from '../../../scripts/terraform-production.mts';
 
 const backendProjectId = 'example-backend';
 const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const cache = path.join(repository, '.cache', 'production-launcher-tests');
+
+test('Firebase cutover keeps the original foundation SDK secret pinned and fails closed without its snapshot', () => {
+  const oldWeb={projectId:'example-source',apiKey:'old-key',authDomain:'example-source.firebaseapp.com',appId:'old-app'};
+  const activeWeb={projectId:'example-target',apiKey:'new-key',authDomain:'example-target.firebaseapp.com',appId:'new-app',authMode:'google'};
+  const operator={firebaseProjectId:'example-target',firebaseMigrationSourceProjectId:'example-source'};
+  assert.deepEqual(foundationFirebaseConfig(operator,activeWeb,oldWeb),{projectId:'example-source',publicConfig:oldWeb});
+  assert.throws(()=>foundationFirebaseConfig(operator,activeWeb));
+  assert.throws(()=>foundationFirebaseConfig(operator,activeWeb,activeWeb));
+  assert.throws(()=>foundationFirebaseConfig({...operator,firebaseProjectId:'wrong-target'},activeWeb,oldWeb));
+  assert.throws(()=>foundationFirebaseConfig({...operator,firebaseMigrationSourceProjectId:'example-target'},activeWeb,oldWeb));
+  assert.deepEqual(foundationFirebaseConfig({firebaseProjectId:'example-source'},oldWeb),{projectId:'example-source',publicConfig:oldWeb});
+});
 
 function fixture(t) {
   fs.mkdirSync(cache, { recursive: true });

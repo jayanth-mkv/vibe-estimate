@@ -2,15 +2,6 @@
 mock_provider "google" {}
 mock_provider "restful" {}
 
-# The Firebase config resource is adopted by an `import` block, which a mock
-# provider cannot service. Override it so the tests still check the configured
-# request shape and the merged domain list.
-override_resource {
-  override_during = plan
-  target          = restful_resource.auth_domains
-  values          = { id = "/projects/example-firebase/config" }
-}
-
 # Identities and custom roles are referenced by the bindings under test, so they
 # need values a mock provider would otherwise only produce at apply time.
 override_resource {
@@ -29,12 +20,6 @@ override_resource {
   override_during = plan
   target          = google_service_account.delivery
   values          = { email = "example-delivery@example-backend.iam.gserviceaccount.com", name = "projects/example-backend/serviceAccounts/example-delivery@example-backend.iam.gserviceaccount.com" }
-}
-
-override_resource {
-  override_during = plan
-  target          = google_project_iam_custom_role.firebase_auth
-  values          = { name = "projects/example-firebase/roles/vibeestimateAuthVerifier" }
 }
 
 override_resource {
@@ -74,17 +59,9 @@ run "the_runtime_identity_gets_scoped_roles_and_no_project_administration" {
 
   assert {
     condition = (
-      toset(google_project_iam_custom_role.firebase_auth.permissions) == toset(["firebaseauth.users.get"]) &&
       toset(google_project_iam_custom_role.gemini.permissions) == toset(["aiplatform.endpoints.predict", "serviceusage.services.use"])
     )
-    error_message = "Custom roles must stay limited to revocation checks and publisher-model inference."
-  }
-  assert {
-    condition = alltrue([
-      for binding in values(google_project_iam_member.firebase) :
-      binding.project == var.firebase_project_id && binding.member == "serviceAccount:${google_service_account.runtime.email}"
-    ])
-    error_message = "Firebase-side bindings must grant only the runtime identity in the Firebase project."
+    error_message = "The backend custom role must stay limited to publisher-model inference; Firebase IAM belongs to its separate destination state."
   }
   assert {
     condition = (
@@ -208,32 +185,6 @@ run "reject_a_mutable_image_reference" {
     image = "asia-southeast1-docker.pkg.dev/example-backend/example/application:latest"
   }
   expect_failures = [var.image]
-}
-
-run "authorized_domains_add_this_service_and_keep_every_existing_one" {
-  command = plan
-  variables {
-    extra_auth_domains = ["app.example.com"]
-  }
-
-  assert {
-    condition = (
-      alltrue([for domain in var.existing_auth_domains : contains(restful_resource.auth_domains.body.authorizedDomains, domain)]) &&
-      contains(restful_resource.auth_domains.body.authorizedDomains, "vibeestimate-${var.project_number}.${var.region}.run.app") &&
-      contains(restful_resource.auth_domains.body.authorizedDomains, "app.example.com") &&
-      length(distinct(restful_resource.auth_domains.body.authorizedDomains)) == length(restful_resource.auth_domains.body.authorizedDomains)
-    )
-    error_message = "Every discovered domain must survive, this service's hostname must be present, and the list must not contain duplicates."
-  }
-  assert {
-    condition = (
-      restful_resource.auth_domains.update_method == "PATCH" &&
-      restful_resource.auth_domains.merge_patch_disabled &&
-      contains(restful_resource.auth_domains.update_query.updateMask, "authorizedDomains") &&
-      toset(restful_resource.auth_domains.output_attrs) == toset(["authorizedDomains"])
-    )
-    error_message = "Only authorizedDomains may be read and patched; sign-in providers and hashing configuration must stay untouched."
-  }
 }
 
 run "reject_a_domain_that_is_a_url_rather_than_a_hostname" {

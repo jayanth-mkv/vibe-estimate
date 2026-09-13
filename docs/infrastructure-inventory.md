@@ -19,12 +19,30 @@ The operator selected migration into the existing application project and retire
 | Imported, updated | Source signup/deletion permissions and recovery scheduler | Source account creation/deletion frozen; scheduler paused through owning Terraform roots after native maintenance release and request drain |
 | Copied, verified | Selected Google identity and owned document graph | One account and 15 documents match the frozen manifest; 86 guest accounts and 116 records excluded, zero transfer mappings |
 | Created | Destination direct Eventarc delivery | Six planned resources applied; managed subscription identity and exact route audience verified |
-| Planned | Destination runtime cutover | Native delivery and production verification still in progress |
-| Planned removal | Source Firebase project | Guest migration explicitly excluded by operator; final production checks still required |
+| Deployed, verified | Destination runtime cutover | Native release succeeded; direct events and the imported Google account's saved workspace passed live checks with two bounded real reviews |
+| Retired state ownership | Five source IAM/domain addresses, three source event APIs, one billing wrapper and one source Auth freeze wrapper | Four reviewed Terraform applies forgot ten addresses with `destroy=false`; zero cloud resource changes, all four refreshed plans have no changes |
+| Planned removal | Source Firebase project | Isolated project state imported with deletion policy `PREVENT`; actual operator Google sign-in/reopen confirmation remains pending |
 
 The new database is protected against deletion, Auth anonymous auto-deletion is disabled, rules deny direct client access, and custom roles contain only Auth user-read or service-account signBlob respectively. No source billing account was attached. Shared ADC fingerprints matched across authenticated operations. See [consolidation controls and retirement gates](firebase-consolidation.md).
 
 The saved direct-event plan proposed **6 creates, 0 updates and 0 deletes**: two Eventarc APIs, a dedicated event identity, event-receive permission, invocation permission on the one existing service, and the document-created trigger. The first apply created five resources; Google deferred the trigger while provisioning its Eventarc service agent. A refreshed one-create plan completed that remaining trigger. The existing destination Pub/Sub API was imported without change. The managed subscription uses the dedicated event identity and an audience ending in `/internal/firestore`; its separate push-endpoint query is not part of that audience.
+
+### Source ownership retirement
+
+Private remote-state backups preserve every prior lineage, serial and content hash. Source ownership was removed only at these addresses:
+
+| State/root | Forgotten source addresses | Remaining managed resources |
+| --- | --- | --- |
+| `production` | `google_project_iam_custom_role.firebase_auth`, `google_project_iam_member.firebase["auth"]`, `["firestore"]`, `["quota"]`, `restful_resource.auth_domains` | 21 backend resources; queue, paused scheduler, identities, image repository, buckets and original SDK secret preserved |
+| `events` | `google_project_service.required["eventarc.googleapis.com"]`, `["eventarcpublishing.googleapis.com"]`, `["pubsub.googleapis.com"]` | 0; APIs left enabled |
+| `firebase-billing` | `google_billing_project_info.firebase` | 0; source remains unbilled |
+| `firebase-source-freeze` | `restful_resource.source_permissions` | 0; source signup/deletion freeze retained |
+
+The source roots now contain explicit `removed` declarations with `destroy=false`; the abandoned cross-project workflow and billing proposal cannot be recreated by their current configuration. Production planning after active Firebase configuration was repointed retains the frozen old SDK secret and does not manage source Auth or IAM. The target `firebase-migration` state remains separate and unchanged by this handoff. Offline mock checks passed for production (10), archived events (4), billing (7) and source freeze (2); all four post-apply remote plans reported no changes.
+
+No remote Firebase-adoption state exists. A private local-state inventory found no adopted source database or rules; the old production local state is the already-backed-up serial from before GCS migration, not an active owner. Project retirement preserves these backups. Read-only source inventory found the expected default Firestore database, web app and an undeployed Hosting site with zero releases; buckets, Pub/Sub topics/subscriptions, Eventarc triggers, BigQuery datasets and Runtime Config resources were empty. Cloud Asset inventory was unavailable because its API is disabled, so no comprehensive asset-inventory claim is made.
+
+The separate source-project state is protected with `PREVENT`. A preview contains exactly one source-project deletion, but is not an executable retirement approval. The private launcher requires verified selected data, current destination health, event identity, paused recovery, empty legacy ownership states, revoked temporary verification IAM and the user's actual Google sign-in/reopened-workspace confirmation. Only then may a separate policy update and refreshed deletion plan be applied. Source project deletion has not been executed.
 
 ## Event-driven review delivery — 12 September 2026
 
