@@ -2,11 +2,19 @@
 
 This file records **executed** results only. The checks each future release must pass before it can be called done are specified separately, as gates in the [release plan](plan/README.md) — [v1](plan/v1.md#verification-videos-and-release), [v2](plan/v2.backup.md#v2-gate) and [v3](plan/v3.md). A planned gate is not evidence; copy a result here only once it has actually run.
 
-## Guest-workspace consolidation preparation — 13 September 2026
+## Guest-workspace consolidation — 13 September 2026
 
 The operator explicitly expanded the data scope to move formerly guest-owned work into the existing Google workspace while continuing to exclude anonymous Auth accounts. The fresh target backup and full frozen-source comparison passed. The reviewed atomic plan covers 116 source records from 32 guest owners: 87 creates, two index updates and one private receipt. It preserves existing Google documents, original participant attribution and immutable history, adds historical usage to current counters, and pauses imported rooms.
 
-All **344 backend tests** passed, including **13 imported-room capacity cases**. The backend build passed. The pure consolidation planner passed **14 offline tests**, covering owner/provider binding, typed-value preservation, concurrent-write preconditions, collisions, receipt replay, history integrity, assistant links and unfinished-work denial. Public-source scanning and whitespace checks passed. These preparation results do not by themselves establish the live data write or the new release.
+All **344 backend tests** passed, including **13 imported-room capacity cases**. The backend build passed. The pure consolidation planner passed **14 offline tests**, covering owner/provider binding, typed-value preservation, concurrent-write preconditions, collisions, receipt replay, history integrity, assistant links and unfinished-work denial. Public-source scanning and whitespace checks passed.
+
+The **90-write atomic import completed**. Every destination record matched the reviewed plan at the returned commit time, including the thirteen untouched pre-existing business records. The complete frozen source fingerprints matched before and after. Destination Auth remains one Google account; no anonymous identities were created and shared ADC was unchanged. The consolidated inventory is **103 documents**: 102 application/index records and one private migration receipt, representing **16 homes, 34 projects, 14 rooms, 28 immutable revisions, four shared homes, four assistants and two saved agreements**.
+
+Independent readback against the live database used the built backend store classes from `0dd0932`: all 103 documents matched twice, every listed home/project/room/revision opened, thirteen proposal versions retained deterministic totals, and both agreement exports matched. **85 foreign-UID reads were denied**. This verifier made no application requests, model calls, Auth-token mints or data writes. Its initial SDK transport check failed because a workspace auth-library version did not match Firestore's GAX transport; the private helper then used the SDK's matching library and passed. No product or dependency change was needed. This verifies backend behavior against live Firestore; it does not establish the operator's Google browser consent.
+
+The **11:38–11:43 UTC** Cloud Run window spanning the import contained zero HTTP/internal requests or errors. Scheduler remained paused, the event trigger enabled and the task queue empty. Imported rooms are paused. Ten retain historical guest clients, so future Google clients must use fresh rooms; no existing acceptance was reassigned to the new owner. The original backup and source project remain protected pending the operator's returning-account check.
+
+Native build `840f3117-7611-4c59-afc7-190a8f7a6e20` completed every check, image-build and Terraform-release step successfully. Cloud Run revision `vibeestimate-00015-66v` serves exact commit `0dd0932` with HTTP 200 health, cloud Firebase storage, Vertex, maintenance off and destination event delivery enabled. The expanded migration evidence is bound to this release and the successful backend readback. Source retirement remains pending actual Google sign-in and opening a migrated home; the user can perform that check without browser automation.
 
 ## Production consolidation — 13 September 2026
 
