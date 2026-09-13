@@ -3,10 +3,11 @@ import { initializeApp as initializeAdminApp, deleteApp as deleteAdminApp, type 
 import { getAuth as getAdminAuth, type Auth as AdminAuth } from "firebase-admin/auth";
 import { Firestore } from "firebase-admin/firestore";
 import { initializeApp, deleteApp, type FirebaseApp } from "firebase/app";
-import { connectAuthEmulator, getAuth, signInAnonymously, signInWithCustomToken, signOut, type Auth } from "firebase/auth";
+import { connectAuthEmulator, getAuth, GoogleAuthProvider, linkWithCredential, signInAnonymously, signInWithCredential, signInWithCustomToken, signOut, type Auth } from "firebase/auth";
 import { afterAll, afterEach, beforeAll, expect, test } from "vitest";
 import { createSessionMigration, readFirebaseMigration } from "../backend/src/firebase-migration.js";
 import { readConfig } from "../backend/src/config.js";
+import { hasGoogleIdentity } from "../backend/src/firebase-auth-policy.js";
 import { isGuestUser } from "../frontend/src/lib/firebase.js";
 
 const sourceProject = "demo-vibeestimate-legacy";
@@ -84,6 +85,12 @@ function bridge() {
   });
 }
 
+function googleCredential(subject = randomUUID()) {
+  // Auth's emulator accepts this documented mock IDP JSON. No Google OAuth
+  // endpoint, personal browser, password or production token participates.
+  return GoogleAuthProvider.credential(JSON.stringify({ sub: subject, email: `${subject}@example.test`, email_verified: true }));
+}
+
 async function importedGuest() {
   const sourceBrowser = client(sourceProject, sourceHost);
   const targetBrowser = client(targetProject, targetHost);
@@ -126,6 +133,7 @@ test("real imported guest exchanges its source token for a target session with t
   expect(verified.uid).toBe(fixture.uid);
   expect(verified.aud).toBe(targetProject);
   expect(verified.fixtureAccess).toBe("retained");
+  expect(hasGoogleIdentity(verified)).toBe(false);
   // Firebase labels a custom-token session non-anonymous, even when its account
   // has no recovery provider. Product guest detection must retain that distinction.
   expect(signedIn.user.isAnonymous).toBe(false);
@@ -133,6 +141,71 @@ test("real imported guest exchanges its source token for a target session with t
   expect(isGuestUser(signedIn.user)).toBe(true);
   expect(fixture.sourceBrowser.currentUser?.uid).toBe(fixture.uid);
   await expect(sourceAdmin.verifyIdToken(targetToken, true)).rejects.toMatchObject({ code: "auth/argument-error" });
+});
+
+test("an imported Google account retains its Google identity in a real custom-token session", async () => {
+  const sourceBrowser = client(sourceProject, sourceHost);
+  const targetBrowser = client(targetProject, targetHost);
+  const originalSession = await signInWithCredential(sourceBrowser, googleCredential());
+  ownedUsers.push({ auth: sourceAdmin, uid: originalSession.user.uid });
+  const original = await sourceAdmin.getUser(originalSession.user.uid);
+  expect(original.providerData.map(provider => provider.providerId)).toEqual(["google.com"]);
+  const imported = await targetAdmin.importUsers([{
+    uid: original.uid, email: original.email, emailVerified: original.emailVerified, disabled: original.disabled,
+    providerData: original.providerData,
+    metadata: { creationTime: original.metadata.creationTime, lastSignInTime: original.metadata.lastSignInTime },
+  }]);
+  expect(imported.failureCount).toBe(0);
+  ownedUsers.push({ auth: targetAdmin, uid: original.uid });
+  const name = `firebaseMigrationUsers/${original.uid}`;
+  await db.doc(name).create({ sourceProjectId: sourceProject, sourceUid: original.uid, targetUid: original.uid, snapshotSha256 });
+  ownedDocuments.add(name);
+  const exchanged = await bridge().exchange(await originalSession.user.getIdToken(true));
+  const signedIn = await signInWithCustomToken(targetBrowser, exchanged.customToken);
+  const verified = await targetAdmin.verifyIdToken(await signedIn.user.getIdToken(true), true);
+  expect(verified.uid).toBe(original.uid);
+  expect(verified.firebase.sign_in_provider).toBe("custom");
+  expect(verified.firebase.identities["google.com"]).toEqual([original.providerData[0]!.uid]);
+  expect(hasGoogleIdentity(verified)).toBe(true);
+  expect(isGuestUser(signedIn.user)).toBe(false);
+  expect((await targetAdmin.getUser(original.uid)).providerData).toEqual(original.providerData);
+});
+
+test("a transferred guest links Google through the real SDK without changing its UID or replacing its source session", async () => {
+  const fixture = await importedGuest();
+  const exchanged = await bridge().exchange(fixture.token);
+  const signedIn = await signInWithCustomToken(fixture.targetBrowser, exchanged.customToken);
+  expect(hasGoogleIdentity(await targetAdmin.verifyIdToken(await signedIn.user.getIdToken(), true))).toBe(false);
+  const subject = randomUUID();
+  const linked = await linkWithCredential(signedIn.user, googleCredential(subject));
+  expect(linked.user.uid).toBe(fixture.uid);
+  const verified = await targetAdmin.verifyIdToken(await linked.user.getIdToken(true), true);
+  expect(verified.uid).toBe(fixture.uid);
+  expect(verified.fixtureAccess).toBe("retained");
+  expect(verified.firebase.identities["google.com"]).toEqual([subject]);
+  expect(hasGoogleIdentity(verified)).toBe(true);
+  expect(isGuestUser(linked.user)).toBe(false);
+  expect(fixture.sourceBrowser.currentUser?.uid).toBe(fixture.uid);
+  expect((await sourceAdmin.getUser(fixture.uid)).providerData).toEqual([]);
+  expect((await fixture.mapping.get()).data()).toMatchObject({ sourceUid: fixture.uid, targetUid: fixture.uid, snapshotSha256 });
+});
+
+test("a Google credential conflict leaves the transferred guest and both target accounts intact", async () => {
+  const fixture = await importedGuest();
+  const exchanged = await bridge().exchange(fixture.token);
+  const signedIn = await signInWithCustomToken(fixture.targetBrowser, exchanged.customToken);
+  const credential = googleCredential();
+  const existingBrowser = client(targetProject, targetHost);
+  const existing = await signInWithCredential(existingBrowser, credential);
+  ownedUsers.push({ auth: targetAdmin, uid: existing.user.uid });
+  expect(existing.user.uid).not.toBe(fixture.uid);
+  await expect(linkWithCredential(signedIn.user, credential)).rejects.toMatchObject({ code: "auth/credential-already-in-use" });
+  expect(fixture.targetBrowser.currentUser?.uid).toBe(fixture.uid);
+  expect(fixture.sourceBrowser.currentUser?.uid).toBe(fixture.uid);
+  expect((await targetAdmin.getUser(fixture.uid)).providerData).toEqual([]);
+  expect((await targetAdmin.getUser(existing.user.uid)).providerData.map(provider => provider.providerId)).toEqual(["google.com"]);
+  expect(hasGoogleIdentity(await targetAdmin.verifyIdToken(await signedIn.user.getIdToken(true), true))).toBe(false);
+  expect((await fixture.mapping.get()).data()).toMatchObject({ sourceUid: fixture.uid, targetUid: fixture.uid, snapshotSha256 });
 });
 
 test("real SDK project verification denies target tokens on the source-only exchange", async () => {

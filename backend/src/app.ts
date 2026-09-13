@@ -20,12 +20,13 @@ import type { HomeCollaboration } from "./home-collaboration.js";
 import { registerHomeCollaborationRoutes } from "./home-collaboration-routes.js";
 import { outboxEventId } from "./room-outbox.js";
 import type { FirebaseSessionMigration } from "./firebase-migration.js";
+import { hasGoogleIdentity, type VerifiedFirebaseIdentity } from "./firebase-auth-policy.js";
 
 export type AppDependencies = {
   config: AppConfig;
   store: ProjectStore;
   provider: AnalysisProvider;
-  verifyToken: (token: string) => Promise<{ uid: string }>;
+  verifyToken: (token: string) => Promise<VerifiedFirebaseIdentity>;
   sessionMigration?: FirebaseSessionMigration;
   rooms?: RoomStore;
   observer?: RoomObserver;
@@ -109,17 +110,23 @@ export function createApp({ config, store, provider, verifyToken, sessionMigrati
     const header = request.header("authorization");
     const match = /^Bearer ([^\s]+)$/.exec(header ?? "");
     if (!match?.[1]) { next(new AppError(401, "AUTH_REQUIRED", "Sign in to access your projects.")); return; }
+    let identity: VerifiedFirebaseIdentity;
     try {
-      const identity = await verifyToken(match[1]);
-      if (!identity.uid || identity.uid.includes("/")) throw new Error("Invalid identity");
-      response.locals.uid = identity.uid;
-      next();
+      identity = await verifyToken(match[1]);
+      if (!identity.uid || identity.uid.length > 128 || identity.uid.includes("/") || identity.firebase?.tenant !== undefined || identity.tenant_id !== undefined) throw new Error("Invalid identity");
     } catch (error) {
       const code = typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
       if (typeof code === "string" && ["CONNECTED_AUTH_UNAVAILABLE", "auth/internal-error", "auth/insufficient-permission", "auth/invalid-credential", "app/invalid-credential", "app/network-error", "app/network-timeout"].includes(code)) {
         next(new AppError(503, "AUTH_UNAVAILABLE", "Your sign-in could not be checked right now. Keep this session and retry shortly."));
       } else next(new AppError(401, "AUTH_REQUIRED", "Your session could not be verified. Please sign in again."));
+      return;
     }
+    if (config.authMode === "google" && !hasGoogleIdentity(identity)) {
+      next(new AppError(403, "GOOGLE_AUTH_REQUIRED", "Connect Google to this saved session to continue. Your saved work stays with this account."));
+      return;
+    }
+    response.locals.uid = identity.uid;
+    next();
   };
   app.use("/api", authenticate);
   app.use("/api", rateLimit({ windowMs: 60000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false, keyGenerator: (_request, response) => String(response.locals.uid), message: { error: { code: "RATE_LIMIT", message: "Too many requests. Please wait a minute and try again." } } }));
