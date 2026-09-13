@@ -39,9 +39,9 @@ variable "authorized_domains" {
   default     = []
   validation {
     condition = !var.enable_foundation || (length(var.authorized_domains) >= 2 && alltrue([
-      for domain in var.authorized_domains : can(regex("^([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9-]+$", domain))
+      for domain in var.authorized_domains : domain == "localhost" || can(regex("^([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9-]+$", domain))
     ]))
-    error_message = "Foundation requires explicit DNS hostnames for the application and Firebase Auth."
+    error_message = "Foundation requires explicit DNS hostnames for the application and Firebase Auth; localhost is allowed for authorized connected development."
   }
 }
 variable "composite_indexes" {
@@ -118,6 +118,15 @@ variable "google_only_auth" {
   validation {
     condition     = !var.google_only_auth || var.enable_google_auth
     error_message = "Google-only access requires the adopted and enabled Google provider."
+  }
+}
+variable "enable_session_migration" {
+  description = "Opt in to temporary runtime self-signing only when legacy guest session transfer is required."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.enable_session_migration || (var.enable_foundation && !var.google_only_auth)
+    error_message = "Session migration requires the foundation and is incompatible with Google-only access."
   }
 }
 variable "google_oauth_client_id" {

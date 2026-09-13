@@ -22,7 +22,9 @@ Apply reviewed saved plans in stages:
 3. Foundation creates a protected native default database, deny-all client rules,
    anonymous/password Auth with anonymous auto-delete disabled, the web app,
    limited runtime permissions, and a separate empty SDK secret. Runtime signing
-   uses only `iam.serviceAccounts.signBlob`, bound to its own service account.
+   is disabled by default. An explicit `enable_session_migration` opt-in grants
+   only `iam.serviceAccounts.signBlob` on its own service account; Google-only
+   access rejects that legacy-transfer option.
 4. Read the destination web SDK configuration privately. Enable its write-only
    secret version separately after validating the destination and permanent
    `appNamespace: "migrated"`. A temporary session bridge additionally requires
@@ -35,10 +37,17 @@ Apply reviewed saved plans in stages:
    `google_only_auth = true` disables anonymous/password account creation while
    retaining existing account records and keeping automatic deletion off. The
    matching runtime SDK payload selects `authMode: "google"`.
+   Preserve an explicitly authorized `localhost` domain when connected development
+   continues on loopback; new Firebase projects may omit it. Domain-only updates
+   must preserve existing production hosts and provider settings.
 6. Enable direct Eventarc delivery only after the API accepts authenticated
    Firestore CloudEvents. Only created `roomReviewOutbox/{jobId}` documents in the
    default database reach the existing Cloud Run service's `/internal/firestore`
    route, using a dedicated event service identity.
+
+After consolidation, maintenance plans use the verified destination inputs and
+active destination configuration. Source index/domain discovery is archived;
+ordinary destination maintenance does not need the retired source project.
 
 The SDK, Google provider and event flags default off. Database/Auth/web-app/rules
 protection prevents accidental destruction. Source retirement is a separate,

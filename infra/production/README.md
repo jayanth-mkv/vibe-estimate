@@ -14,7 +14,7 @@ Read the outer private authorization before operator cloud operations. Discover 
 
 The retained `scripts/terraform-production.mts` launcher, run as `npm run terraform:production -- <action>`, verifies the named profile and target, uses an ephemeral token, checks shared ADC before/after, and binds apply to the saved plan and configuration hashes. It imports the backend's built module, so build that workspace first. It is a bootstrap and infrastructure-maintenance tool. Routine releases need neither a local image archive nor an operator deployment script.
 
-Every cloud-owning root keeps its state in the dedicated private, versioned GCS bucket provisioned by `infra/delivery`, each under its own prefix: `production`, `delivery` and `runtime`. Versioning, locking and public-access prevention are enabled, so a lost workstation cannot cost the foundation its state. Do not reuse this root's original source bucket for state: it has a seven-day object-deletion lifecycle. Gemini-local and Firebase adoption keep separate local state, and no two roots share a prefix.
+The deployed foundation, delivery, runtime and destination Firebase roots keep state in the dedicated private, versioned GCS bucket provisioned by `infra/delivery`, each under its own prefix. Versioning, locking and public-access prevention are enabled, so a lost workstation cannot cost the foundation its state. Do not reuse this root's original source bucket for state: it has a seven-day object-deletion lifecycle. Gemini-local retains separate private local state. The unused Firebase-adoption proposal has no local or remote state; no two active roots share a prefix.
 
 ### Moving existing local state into the bucket
 

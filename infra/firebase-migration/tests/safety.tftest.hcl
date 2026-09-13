@@ -78,13 +78,12 @@ run "foundation_protects_private_data_and_uses_minimum_runtime_permissions" {
   assert {
     condition = (
       toset(google_project_iam_custom_role.auth_verifier["destination"].permissions) == toset(["firebaseauth.users.get"]) &&
-      toset(google_project_iam_custom_role.self_signer["destination"].permissions) == toset(["iam.serviceAccounts.signBlob"]) &&
-      google_service_account_iam_member.self_signer["destination"].service_account_id == "projects/${var.target_project_id}/serviceAccounts/vibeestimate-runtime@${var.target_project_id}.iam.gserviceaccount.com" &&
-      google_service_account_iam_member.self_signer["destination"].member == "serviceAccount:vibeestimate-runtime@${var.target_project_id}.iam.gserviceaccount.com" &&
+      length(google_project_iam_custom_role.self_signer) == 0 &&
+      length(google_service_account_iam_member.self_signer) == 0 &&
       google_project_iam_member.runtime_firebase["firestore"].role == "roles/datastore.user" &&
       alltrue([for binding in google_project_iam_member.runtime_firebase : binding.project == var.target_project_id])
     )
-    error_message = "Runtime needs only destination Firestore/Auth access and self-scoped signBlob, never broad impersonation permissions."
+    error_message = "Runtime needs destination Firestore/Auth access; ordinary Google-only operation must not grant token signing."
   }
 }
 
@@ -181,4 +180,60 @@ run "google_only_access_requires_google_provider" {
   command = plan
   variables { google_only_auth = true }
   expect_failures = [var.google_only_auth]
+}
+
+run "optional_guest_transfer_grants_only_self_signing" {
+  command = plan
+  variables {
+    enable_foundation       = true
+    enable_session_migration = true
+    firestore_location      = "asia-southeast1"
+    authorized_domains      = ["example-backend.firebaseapp.com", "app.example.com"]
+  }
+  assert {
+    condition = (
+      toset(google_project_iam_custom_role.self_signer["destination"].permissions) == toset(["iam.serviceAccounts.signBlob"]) &&
+      google_service_account_iam_member.self_signer["destination"].service_account_id == "projects/${var.target_project_id}/serviceAccounts/vibeestimate-runtime@${var.target_project_id}.iam.gserviceaccount.com" &&
+      google_service_account_iam_member.self_signer["destination"].member == "serviceAccount:vibeestimate-runtime@${var.target_project_id}.iam.gserviceaccount.com"
+    )
+    error_message = "An explicit legacy session-transfer opt-in may grant signBlob only on the runtime's own identity."
+  }
+}
+
+run "google_only_access_rejects_guest_transfer_signing" {
+  command = plan
+  variables {
+    enable_foundation         = true
+    enable_google_auth        = true
+    google_only_auth          = true
+    enable_session_migration  = true
+    google_oauth_client_id     = "unused.apps.googleusercontent.com"
+    google_oauth_client_secret = "unused-offline-test-secret"
+    firestore_location        = "asia-southeast1"
+    authorized_domains        = ["example-backend.firebaseapp.com", "app.example.com"]
+  }
+  expect_failures = [var.enable_session_migration]
+}
+
+run "connected_development_adds_only_localhost_to_explicit_domains" {
+  command = plan
+  variables {
+    enable_foundation  = true
+    firestore_location = "asia-southeast1"
+    authorized_domains = ["example-backend.firebaseapp.com", "app.example.com", "localhost"]
+  }
+  assert {
+    condition     = toset(google_identity_platform_config.destination["destination"].authorized_domains) == toset(var.authorized_domains)
+    error_message = "The existing connected development origin must be explicitly retained alongside production domains."
+  }
+}
+
+run "connected_domains_reject_schemes_and_ports" {
+  command = plan
+  variables {
+    enable_foundation  = true
+    firestore_location = "asia-southeast1"
+    authorized_domains = ["example-backend.firebaseapp.com", "http://localhost:3000"]
+  }
+  expect_failures = [var.authorized_domains]
 }

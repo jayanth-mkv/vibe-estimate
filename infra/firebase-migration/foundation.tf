@@ -129,7 +129,7 @@ resource "google_project_iam_member" "runtime_firebase" {
 # Custom-token migration needs only self-signing; this role cannot impersonate
 # arbitrary service identities or mint access/identity tokens.
 resource "google_project_iam_custom_role" "self_signer" {
-  for_each    = local.foundation
+  for_each    = var.enable_session_migration ? local.foundation : toset([])
   project     = var.target_project_id
   role_id     = "vibeestimateSessionSigner"
   title       = "VibeEstimate session migration signing"
@@ -137,7 +137,7 @@ resource "google_project_iam_custom_role" "self_signer" {
 }
 
 resource "google_service_account_iam_member" "self_signer" {
-  for_each           = local.foundation
+  for_each           = var.enable_session_migration ? local.foundation : toset([])
   service_account_id = "projects/${var.target_project_id}/serviceAccounts/${local.runtime_email}"
   role               = google_project_iam_custom_role.self_signer[each.key].name
   member             = "serviceAccount:${local.runtime_email}"
