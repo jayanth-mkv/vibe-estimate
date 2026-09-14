@@ -1,80 +1,52 @@
 # Terraform setup
 
-Local testing needs no cloud project, production credential, or Terraform apply. This document covers the operator bootstrap roots. The release path itself is in the [deployment guide](deployment.md); ordinary releases run no Terraform from a workstation.
-
-Resource ownership per root is listed in the [infra README](../infra/README.md).
+Terraform owns the application infrastructure. Local fixtures require no cloud credentials or infrastructure apply. Ordinary production releases use the [native delivery pipeline](deployment.md); infrastructure plans are reviewed separately.
 
 ## Project-local tooling
 
-Terraform **1.13.5** and Google providers **8.1.0** are pinned. Windows x64 installation downloads the official archive and verifies its pinned SHA256. The launcher keeps Terraform CLI configuration, provider cache, working data and temporary downloads inside this project's ignored folders. It changes no global PATH or persistent environment value.
-
-From the repository root:
+Terraform 1.13.5 and Google providers 8.1.0 are pinned. The Windows installer verifies the official archive checksum and keeps binaries, provider cache and working data inside ignored repository folders.
 
 ```powershell
 rtk proxy node infra/scripts/install-terraform.mjs
+rtk npm run check:infra
 ```
 
-There is no Terraform configuration at `infra/` itself, so every command selects a root with `-chdir`. From `infra/`:
+The check runner formats, initializes with `-backend=false`, validates and runs mock-provider tests for all six [current roots](../infra/README.md#terraform-roots). It makes no cloud API calls. Keep provider lock files committed; keep real tfvars, credentials, state, saved plans and backups outside the checkout.
 
-```powershell
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\terraform.ps1 -chdir=delivery init -backend=false -input=false
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\terraform.ps1 fmt -check -recursive
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\terraform.ps1 -chdir=delivery validate -no-color
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\terraform.ps1 -chdir=delivery test -no-color
-```
+## Private targets and authentication
 
-Init downloads signed providers; validate and the mock-provider tests require no cloud credential and make no cloud API call. Keep each root's `.terraform.lock.hcl` in version control. Ignore `.tools`, `.terraform`, state, plan files, real tfvars and credentials. On other operating systems, use the same Terraform version with equivalent project-local CLI config, cache and temp settings.
+Supply one application project for Firebase identity, Firestore, Eventarc and the Cloud Run backend. Verify the account/profile before cloud operations. Discover the existing Cloud Build connection separately; its location can differ from the runtime region. Preserve the discovered Firestore location.
 
-Executed delivery-root checks: schema validation and **3 mock tests passed**, covering the main-push trigger contract, private versioned state without lifecycle expiry, and narrowly scoped release IAM. Executed adoption-root checks: schema validation and **2 mock tests passed** for no implicit Firebase adoption and rejecting an undiscovered database location. Mock tests validate configuration only, never live IAM, billing, a cloud image or Gemini access.
+A selected gcloud profile does not establish the identity used by shared ADC. Use the authorized private authentication workflow and short-lived credentials; do not replace shared ADC or create service-account key files. Native builds use their attached build identity.
 
-## Private configuration and authentication
+Initialize each remote root with the private state bucket and its existing prefix. The bucket must have versioning, locking, public-access prevention and deletion protection. Never point an existing configuration at an empty prefix or restore an old local state over newer remote state. Keep state separate from the build-source bucket and its expiring objects.
 
-Actual account and profile names, backend/Firebase/build project IDs, connection paths and deployment variables belong outside this public repository. Pass the private tfvars file explicitly; checked-in examples contain generic placeholders. Backend and Firebase projects may differ. The Cloud Build connection project and region follow the existing connection and may differ from the Cloud Run region. Firestore location is discovered separately.
+## Existing resources
 
-Activating a gcloud profile does **not** prove Terraform's ADC identity matches it. Before any authenticated plan or apply, verify both identities using the permitted private-profile workflow. Do not create or download service-account keys. Existing user-level ADC from an unrelated account must not be used accidentally. The offline validation above requires no ADC.
+Discover APIs, identities and IAM, registry repositories, secret metadata, Firebase membership/web app/Auth, database/rules, Eventarc trigger, queue, scheduler, Cloud Run and GitHub delivery resources before applying. Import matching resources into the correct root and record imports in the [inventory](infrastructure-inventory.md). Do not give two roots ownership of the same resource.
 
-## Existing resource adoption
+Review a full saved plan, including destructive actions and drift. Bind apply to the reviewed plan and exact private inputs. The [production launcher](../infra/production/README.md) verifies the selected profile, preserves shared ADC and checks plan/input hashes. Runtime releases additionally restrict changes to the existing service and verified immutable image.
 
-Read existing project APIs, service accounts, Artifact Registry repositories, Secret Manager metadata, Cloud Run services, IAM, Firebase project and web apps, sign-in settings, Firestore database/location/rules, and the Cloud Build repository and trigger inventory first. Read secret metadata only; never print a payload. Record discovery privately. Import matching resources rather than create duplicates.
+## Firebase foundation
 
-The one adoption that a release depends on is the Cloud Run service, imported into `infra/runtime`. Its contract and ordering are in the [runtime adoption notes](../infra/runtime/README.md#adopt-before-enabling) and the [foundation handoff](../infra/production/README.md#adopt-the-running-service).
+[`infra/firebase`](../infra/firebase/README.md) manages Firebase membership, the web app, protected default Firestore database, Google Auth, client rules, runtime IAM, the browser SDK secret and direct Eventarc delivery. Required private inputs include the project, exact database location, runtime region, authorized domains, existing OAuth credentials and active SDK secret ID.
 
-### Firebase adoption
+Google sign-in is enabled. Anonymous, email/password and phone sign-up are disabled. Keep production domains and authorized local development hosts in the domain list. Auth settings, database, Firebase membership and web app retain deletion guards. Firestore client rules deny direct reads and writes; every Admin SDK operation must enforce backend ownership or room membership.
 
-`firebase-adoption/` is a **separate Terraform root and state**. It contains declarative imports guarded by explicit flags. Enabling a Firebase or database adoption flag imports that exact remote object, or fails if it does not exist; it never silently creates another Firebase project or database. The existing database location is mandatory and deletion protection is retained. Review any other imported-default drift before applying.
+The Eventarc trigger selects only created `roomReviewOutbox/{jobId}` documents in the default database. Its dedicated identity invokes the existing `/internal/firestore` endpoint, which creates named Cloud Tasks. The production root owns the queue and paused recovery scheduler.
 
-The optional `publish_firestore_rules` flag creates an immutable ruleset from `firestore.rules`, imports the existing `cloud.firestore` release, and points that release at the new ruleset. The checked-in client rules deny client reads and writes because this application sends data requests through the authenticated backend. That backend uses Admin SDK access and must check ownership itself. Firebase Auth sign-in is independent of Firestore rules.
+## Runtime and delivery
 
-```powershell
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\terraform.ps1 -chdir=firebase-adoption init -backend=false -input=false
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\terraform.ps1 -chdir=firebase-adoption validate -no-color
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\terraform.ps1 -chdir=firebase-adoption test -no-color
-```
+[`infra/runtime`](../infra/runtime/README.md) owns the complete Cloud Run service template. Import an existing unmanaged service before enabling the main trigger and verify a clean plan. [`infra/delivery`](../infra/delivery/main.tf) owns the repository child, main trigger, dedicated state bucket and narrowly scoped release IAM.
 
-Authentication settings are deliberately not overwritten by the adoption root. `infra/production` patches only `authorizedDomains`, with an explicit field mask, through an imported REST resource. It does not adopt sign-in providers or read password-hashing configuration. Preserve unrelated providers, MFA, quotas and tier settings; enabling a product tier is not a harmless local change. [Firebase Terraform guidance](https://firebase.google.com/docs/projects/terraform/get-started)
+The release metadata must name the same project for Firebase and the backend. It contains identifiers and settings only; the image digest is resolved during the build. Runtime deployment never changes Firebase providers, rules, queue configuration or foundation IAM.
 
-## Gemini for local development
+## Secrets and local Gemini
 
-Live Gemini against emulator Firebase uses the separate [Gemini Terraform root](../infra/gemini-local/README.md). It manages the Developer API prerequisites, a dedicated identity, a service-account-bound key restricted solely to Gemini, and an optional Vertex API. Its state and plans stay in the operator's outer private directory.
+The production browser SDK configuration is managed by `infra/firebase`, with its secret ID supplied privately. An ephemeral sensitive input writes the payload through the provider's write-only field. Preserve `sdk_config_version` unless the payload intentionally changes. Cloud Run references a numeric version, never `latest`. Keep the optional Firebase app namespace stable to retain browser session identity.
 
-The secure launcher verifies the authorized profile, account and project, uses an ephemeral profile access token, checks that shared ADC remains unchanged, and binds a saved plan to its private state path and target identity:
+OAuth configuration is sensitive and can be present in protected Terraform state. Restrict state access and never print it. Secret payloads, tokens and credentials must not appear in command literals, build substitutions, logs or public examples.
 
-```powershell
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File scripts/terraform-gemini.ps1 init
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File scripts/terraform-gemini.ps1 plan
-# Inspect the concrete plan before applying it.
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File scripts/terraform-gemini.ps1 apply
-rtk proxy powershell -NoProfile -ExecutionPolicy Bypass -File scripts/terraform-gemini.ps1 check
-```
+Production Gemini uses keyless Vertex access through the runtime identity. The separate [Gemini-local root](../infra/gemini-local/README.md) manages local Developer API prerequisites, a restricted credential and optional Vertex activation. The [guardrails root](../infra/guardrails/README.md) owns the project budget. These roots retain private local state and are independent of application releases.
 
-Discovery, provisioning and the final clean plan were executed on 5 September 2026. The private `enableVertexAi: true` setting opts into `aiplatform.googleapis.com` and is bound into the saved plan. The reviewed plan added one API with zero changes or destruction. No additional credential or IAM grant was needed for Vertex.
-
-The Developer API still reports a depleted-prepaid-balance error despite Cloud Billing being enabled. A real structured Gemini request through Vertex succeeded using the named profile and Cloud Billing. See [verification.md](verification.md), [local-setup.md](local-setup.md), and [Google's Gemini billing guidance](https://ai.google.dev/gemini-api/docs/billing). No billing account change or prepaid purchase was made.
-
-Production does not use a Gemini API key at all. The Cloud Run runtime calls Vertex with its own service identity, so no Gemini secret exists in the production roots.
-
-## Secrets
-
-The only production secret Terraform manages is the public Firebase browser SDK configuration, held in `infra/production` as `vibeestimate-web-config`. It is injected into Cloud Run by numeric version, never `latest`, so a reviewed revision stays reproducible.
-
-Its payload is supplied through an `ephemeral`, `sensitive` variable and written with the provider's write-only `secret_data_wo` argument, so no payload enters Terraform state. Never pass it as a command literal, saved tfvars file, build substitution, log, or Terraform output, and keep provider trace logging disabled. Secret versions are abandoned on removal from state rather than destroyed, so review retention explicitly. [HashiCorp ephemeral values](https://developer.hashicorp.com/terraform/language/manage-sensitive-data/ephemeral), [Google write-only secret resource](https://registry.terraform.io/providers/hashicorp/google/8.1.0/docs/resources/secret_manager_secret_version)
+Actual plans, state verification and executed checks are recorded in [verification.md](verification.md); mock tests alone do not establish live permissions or a successful model journey.

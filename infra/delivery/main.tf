@@ -33,6 +33,10 @@ variable "runtime_variables" {
     event_delivery_audience    = optional(string, "")
   })
   validation {
+    condition     = var.runtime_variables.backend_project_id == var.backend_project_id && var.runtime_variables.firebase_project_id == var.backend_project_id
+    error_message = "Release metadata must keep Firebase, runtime and delivery in the same application project."
+  }
+  validation {
     condition = var.runtime_variables.event_delivery_audience == "" || (var.runtime_variables.event_delivery_enabled == "true" && length(trimsuffix(var.runtime_variables.event_delivery_audience, "/internal/firestore")) <= 261 && can(regex(
       "^https://[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app(/internal/firestore)?$", var.runtime_variables.event_delivery_audience
     )))

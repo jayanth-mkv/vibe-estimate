@@ -1,82 +1,73 @@
 # Deployment
 
-After one-time adoption, a reviewed push to GitHub `main` is the ordinary release action. Cloud Build checks and builds that commit, then Terraform updates the existing Cloud Run service. That one service serves both the Next.js frontend and the Express API on a single origin, so a release is one build and one deployment.
-
-This document defines the workflow, not proof of a successful native release. Record executed resource changes in the [infrastructure inventory](infrastructure-inventory.md) and actual builds and user journeys in [verification.md](verification.md).
+A reviewed push to GitHub `main` releases the application. Cloud Build checks that commit, builds an immutable image and applies a restricted Terraform plan to the existing Cloud Run service. The service serves Next.js and Express together on one origin. Firebase Authentication, Firestore, Eventarc and the backend use the same application project.
 
 ## Resource ownership
 
-| Terraform root | Responsibility | State |
-| --- | --- | --- |
-| `infra/production` | Foundation APIs, backend identities/IAM, registry, queue/scheduler, original secret metadata/version and public service access | Private versioned GCS bucket, prefix `production` |
-| `infra/delivery` | Existing-connection repository child, native main trigger, dedicated runtime state bucket and release IAM | Private versioned GCS bucket, prefix `delivery` |
-| `infra/runtime` | The single adopted Cloud Run service and its complete template | Private versioned GCS bucket, prefix `runtime` |
-| `infra/firebase-migration` | Imported destination Firebase membership, protected Firebase foundation, Auth providers/domains, runtime access and direct event delivery | Private versioned GCS bucket, prefix `firebase-migration` |
-| `infra/firebase-source-retirement` | Separately imported old project, protected until verified retirement | Private versioned GCS bucket, prefix `firebase-source-retirement` |
-| `infra/firebase-migration-verification` | Temporary operator verification grant, revoked after executed checks | Private versioned GCS bucket, prefix `firebase-migration-verification` |
+| Terraform root | Responsibility |
+| --- | --- |
+| `infra/production` | Application APIs, runtime/build/task identities, inference and queue IAM, image repository, build-source bucket, review queue, paused recovery scheduler and public invocation |
+| `infra/firebase` | Firebase membership, web app, Google Auth, protected Firestore database, client rules, runtime data access, active SDK secret and direct event delivery |
+| `infra/delivery` | Existing-connection repository child, main-branch trigger, private state bucket and release IAM |
+| `infra/runtime` | The Cloud Run service and its complete container template |
+| `infra/gemini-local` | Local Gemini prerequisites, restricted Developer API credential and Vertex API activation |
+| `infra/guardrails` | Project billing budget and Budget API |
 
-The Gemini-local root retains separate ownership. Source event, billing and Auth-freeze roots are archived with `removed` blocks using `destroy=false`; production likewise forgets its former source Firebase bindings and domain configuration. No live database or rules state was found for the earlier Firebase-adoption proposal. An ordinary application release must not recreate the database, change Firebase providers, replace the GitHub connection, or copy foundation state into the runtime root.
+Each root owns separate resources and state. Ordinary application releases update only the runtime root. See [Terraform setup](terraform-setup.md) for infrastructure changes and the [inventory](infrastructure-inventory.md) for verified ownership.
 
-All resource configuration and IAM changes use Terraform. Cloud Build builds/pushes images and applies the checked runtime plan. Application source comes from GitHub; ordinary releases do not upload a local source archive or call `gcloud run deploy`.
+## Initial setup
 
-## Bootstrap and adoption
+1. Verify the private account/profile and application project. Discover existing Firebase resources, database location, Cloud Run service, identities, queue, secrets, registry and GitHub connection. The connection location can differ from the runtime region.
+2. Import matching resources into their owning Terraform roots before management. Preserve existing IDs, database settings, OAuth credentials and state. Review full plans before applying.
+3. Configure Google sign-in, authorized application domains and deny-all browser Firestore rules through `infra/firebase`. The backend verifies tokens and owns all data authorization.
+4. Configure direct Firestore document-created delivery and the bounded review queue. The event and task identities have separate audiences and permissions. Keep periodic recovery paused.
+5. Initialize the runtime root against its private GCS state and import the existing service if it is unmanaged. Require a clean plan with its current image and complete template before enabling the release trigger.
+6. Configure the discovered repository child, exact `^main$` branch filter, `cloudbuild.yaml` and dedicated build identity through `infra/delivery`.
 
-1. **Verify existing targets.** Read the outer private authorization and discover the selected account, backend and Firebase projects, Cloud Run service, registry, runtime/task identities, queue, secret version and GitHub connection. Confirm the connection location separately from the Cloud Run region. Import matching resources before management; preserve unrelated resources.
-2. **Prepare native delivery through Terraform.** Adopt or create the repository child under the existing connection, the dedicated private versioned GCS bucket, and the build identity's release permissions. Configure the trigger for `^main$`, `cloudbuild.yaml`, and the verified build identity. Complete runtime adoption before publishing a release to main; hold main pushes if the trigger is already enabled during bootstrap.
-3. **Transfer service ownership.** Back up foundation state privately. Initialize the runtime GCS backend and import the existing service into `google_cloud_run_v2_service.application`, using its current digest and exact template. Then apply the foundation's `removed` block with `destroy=false` to forget the former `[0]` entry. Verify both states and plans; the live service, public invocation and scheduler must remain intact. See the [foundation handoff](../infra/production/README.md#adopt-the-running-service) and [runtime adoption contract](../infra/runtime/README.md#adopt-before-enabling).
-4. **Confirm the Firebase authorized domains.** After consolidation, `infra/firebase-migration` owns the destination `authorized_domains` input. Preserve the discovered Firebase, Cloud Run and custom application domains in that list; ordinary runtime releases do not own it.
-5. **Verify the initial native release.** Push the reviewed pipeline/application commit to main. Confirm the triggering Git SHA, successful checks/build, resolved immutable image, accepted service-only plan, and resulting Cloud Run revision. Verify the production URL and real user journeys. Only executed checks establish release evidence.
+The state bucket is private, versioned, protected and separate from the build-source bucket, whose short object lifecycle is unsuitable for state. Supply backend bucket/prefix settings privately and keep the existing state objects. Native builds use their attached identity; operator plans use an explicitly verified profile without modifying shared ADC.
 
-The runtime state bucket must be separate from the original source bucket, whose seven-day deletion rule is unsuitable for Terraform state. Keep versioning, public-access prevention, locking and deletion guards enabled. One-time operator authentication uses the explicitly verified profile and short-lived credentials; shared ADC is preserved. Native builds use their attached identity and receive no user ADC or credential files.
-
-The build identity has repository-scoped image writing, log writing, object administration on the dedicated runtime state bucket, service-scoped Cloud Run read/update, operation polling, and permission to act as the existing runtime identity. It receives no direct Firebase administration, Vertex inference or secret-payload role. Foundation IAM and runtime IAM remain separate from code deployment.
+The builder can write images and logs, manage objects in the state bucket, update the selected service and act as its runtime identity. It has no direct Firebase administration, Vertex inference or secret-payload role. Cloud resources and IAM remain Terraform-managed.
 
 ## Ordinary releases
 
-Review and verify work on a task branch, then merge the approved changes into `main`. From a checkout whose local `main` contains the reviewed commit, the release event is:
+Complete the relevant checks on a task branch, review the changes, then merge to `main` and push:
 
 ```powershell
 rtk git push origin main
 ```
 
-The native [Cloud Build configuration](../cloudbuild.yaml) then:
+[Cloud Build](../cloudbuild.yaml) performs these steps:
 
-1. Verifies the main-branch event, full commit SHA and allowed nonsecret trigger metadata.
-2. Runs workspace typechecks, backend/frontend unit tests and release-boundary tests.
-3. Builds the root Dockerfile from that Git checkout, pushes the commit-tagged image and resolves its immutable Artifact Registry digest.
-4. Initializes the runtime GCS backend, creates a saved Terraform plan, and accepts only a no-op or update to the one adopted service. Create/delete/replace actions and unrelated resource changes fail the release.
-5. Checks the current GitHub main commit before apply, skips an older commit, and applies the verified saved plan with state locking. A plan invalidated by another release is not automatically replanned.
-6. Checks production health for Firebase Auth, cloud Firestore, Vertex configuration and the exact triggering Git commit. The image receives `BUILD_GIT_SHA` at build time; `/health.gitRevision` must match the release. This check does not call Gemini or establish an end-to-end journey test.
+1. Validate the main-branch event, full Git SHA and allowed nonsecret metadata.
+2. Run workspace typechecks, backend/frontend tests, scene/configuration tests, frontend lint and release-boundary tests.
+3. Build the root Dockerfile, publish the commit-tagged image and resolve its immutable registry digest.
+4. Produce a saved Terraform runtime plan. Accept only a no-op or update to the one existing service; reject creation, deletion, replacement and unrelated changes.
+5. Check the current GitHub main commit, skip stale releases and apply the verified plan under the state lock. A stale saved plan is not automatically regenerated.
+6. Require production health to report the exact Git SHA, Firebase Auth, cloud Firestore and Vertex configuration.
 
-The image starts the Express API on an internal port and `next start` on the public port, so the browser reaches the frontend and its same-origin API gateway through one Cloud Run URL. The browser never receives a Gemini or service-account credential.
-
-Frontend and backend ship in the same image, so a release moves them together and no cross-host version skew is possible. Failed checks or plans stop deployment. A failed post-deploy health check fails the build without an automatic rollback; release a reviewed Git revert through main when a rollback is needed.
+Failed checks stop deployment. A failed post-deployment health check fails the build; a reviewed Git revert provides a new release when rollback is needed. Production health does not call Gemini or establish a complete user journey.
 
 ## Private configuration
 
-Actual project/account IDs, connection paths, domains, environment values, plans, state and credentials stay in `../docs/private/` or their provisioned private cloud stores. Committed Terraform and build files contain placeholders and variable references. Trigger metadata contains only the defined runtime identifiers and settings; base64 encoding does not make a credential safe to include.
+Account/project values, connection paths, domains, private variables, credentials, plans and state stay outside this checkout. [Runtime metadata](../infra/runtime/README.md#trigger-contract) describes the allowed build substitutions. Base64 encoding is not encryption; credentials and SDK payloads must never enter trigger metadata.
 
-The public browser settings are baked into the image at build time and the runtime reads the rest from Cloud Run. The frontend values are:
-
-| Key | Required behavior |
+| Setting | Production contract |
 | --- | --- |
-| `FIREBASE_WEB_CONFIG` | Public Firebase SDK configuration for the authorized real project, injected from Secret Manager by numeric version |
-| `NEXT_PUBLIC_API_URL` | Empty, keeping browser API calls on the application origin |
+| `FIREBASE_PROJECT_ID` | The same explicitly configured project as the backend |
+| `FIREBASE_WEB_CONFIG` | Public SDK fields injected from the active Secret Manager secret by numeric version; includes `authMode: "google"` |
+| Optional SDK `appNamespace` | Stable lowercase name, at most 32 characters; preserve it across releases so browser sessions use the same Firebase app identity |
+| `NEXT_PUBLIC_API_URL` | Empty for same-origin API calls |
 | `NEXT_PUBLIC_USE_FIREBASE_EMULATORS` | `false` |
-| `NEXT_PUBLIC_AUTH_MODE` | Legacy build default; production policy is `authMode: "google"` in the pinned `FIREBASE_WEB_CONFIG` |
-| `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | `true`; production requires Google sign-in |
-| `NEXT_TELEMETRY_DISABLED` | `1` |
+| `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | `true` |
+| `APP_MAINTENANCE` | `false` during normal operation; when enabled, health remains available and application routes return retryable maintenance responses |
+| Event delivery | Enabled with its dedicated identity and exact discovered OIDC audience, including `/internal/firestore` when configured on the managed subscription |
 
-Firebase SDK fields are browser-visible configuration, even though their platform storage is marked sensitive. A Gemini key or service-account credential is never one of these values: the runtime calls Vertex with its own Cloud Run identity.
+The gateway preserves the authenticated Eventarc request body and required CloudEvent headers. The API reads authoritative saved jobs, enqueues named tasks and validates worker authentication independently. See the [event delivery contract](event-delivery.md).
 
-The former source-domain configuration and original SDK inputs are retained privately for historical foundation-state verification. Active connected development uses the destination SDK, Google-only policy and stable destination namespace. Future destination domain changes belong to `infra/firebase-migration`, using reviewed private inputs.
+Firebase SDK fields are browser-visible configuration. Gemini uses the runtime's own Vertex identity; model credentials and service-account credentials never reach the browser.
 
-During [Firebase consolidation](firebase-consolidation.md), optional native-release metadata explicitly selects migration maintenance and event delivery. Both default off. Maintenance keeps process health available while returning retryable responses from all API/internal routes. Enabling event delivery supplies its dedicated identity and exact discovered Cloud Run audience, including `/internal/firestore` when present in the managed subscription. The September 13 cutover enables events, disables maintenance, and selects a separate pinned destination SDK secret with Google-only access. Anonymous accounts and guest session transfer are excluded from this rollout. The destination app namespace remains stable for subsequent releases.
+## Verification
 
-## Local verification remains available
+Local fixture, emulator, Rules and browser tools remain available through `npm run test:isolated` and `npm run verify:v1`. Connected development is an explicit local mode with private configuration and real Google sign-in. Production model journeys require a separately bounded scope; routine health checks are read-only and make no model calls.
 
-Keep the existing repository-local setup, emulator snapshot/restore, fixture, connected-development and Playwright tools. They support development and regression testing; they are not manual deployment scripts. `npm run test:isolated` uses the isolated local workflow. Connected, live and production verification remain explicit operator actions using private configuration and bounded model-call scope.
-
-Pipeline unit tests and public health are separate from live multi-turn review, draft/revision persistence, export, room sharing and access-denial evidence. Record the exact commit, image/revision, URLs, executed checks and remaining blockers in the verification record rather than treating a configured trigger or a successful build as complete product verification.
-
-The current home-to-agreement rehearsal uses `npm run test:v1:production -- --target <authorized-https-origin> --expected-git-sha <full-commit>`. It first checks the external private target records and exact deployed revision. Its headed browser journeys allow at most three explicit model jobs and six reserved attempts, retain recordings privately, and cover shared design acceptance and stored agreement downloads in addition to all three starting homes. Local fixture results and production results are recorded separately in [V1 verification](v1-verification.md).
+Record source checks, cloud plans, exact deployed Git SHA/image/revision and user-visible checks separately in [verification.md](verification.md). Existing complete home-to-agreement evidence is retained in [V1 verification](v1-verification.md).

@@ -59,15 +59,11 @@ export class FirestoreRoomDatabase implements RoomDatabase {
 
 export type ClaimedReview = { room: StoredRoom; run: ObserverRun };
 
-function newRoomProjectCount(owner: RoomOwner): number {
-  const total = Object.keys(owner.projects).length;
-  const imported = owner.migratedProjectIds;
-  // This field is written only by a reviewed operator migration. Invalid or
-  // partial metadata never grants an allowance, including unknown project IDs.
-  if (!Array.isArray(imported) || imported.length > 100 || new Set(imported).size !== imported.length
-    || imported.some(id => typeof id !== "string" || id.length !== 36 || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-      || !Object.hasOwn(owner.projects, id))) return total;
-  return total - imported.length;
+function roomOwnerLimit(owner: RoomOwner): number {
+  const limit = owner.roomLimit;
+  // Capacity is server-managed. Missing or malformed settings use the default;
+  // they never waive creation limits or change a room's spent AI allowance.
+  return typeof limit === "number" && Number.isSafeInteger(limit) && limit >= ROOM_OWNER_LIMIT && limit <= 100 ? limit : ROOM_OWNER_LIMIT;
 }
 
 export class RoomStore {
@@ -125,7 +121,8 @@ export class RoomStore {
         transaction.putRoom(existing);
         return existing;
       }
-      if (newRoomProjectCount(owner) >= ROOM_OWNER_LIMIT) throw new AppError(422, "ROOM_LIMIT", "This workspace has reached its 10-room limit. Continue in an existing room.");
+      const limit = roomOwnerLimit(owner);
+      if (Object.keys(owner.projects).length >= limit) throw new AppError(422, "ROOM_LIMIT", `This workspace has reached its ${limit}-room limit. Continue in an existing room.`);
       const created = newRoom(project, this.provider, invitation.stored, now);
       owner.projects[projectId] = created.id;
       transaction.putRoom(created);
@@ -292,7 +289,7 @@ export class RoomStore {
 
   scheduledIds() { return this.database.scheduledIds(); }
 
-  /** Administrative cutover/replay only; production never schedules a global scan. */
+  /** Administrative recovery/replay only; production never schedules a global scan. */
   async ensureDelivery(id: string) {
     return this.database.transaction(async transaction => {
       const room = await transaction.getRoom(id);

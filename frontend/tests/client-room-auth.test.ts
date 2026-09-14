@@ -27,7 +27,6 @@ vi.mock("firebase/auth", () => ({
   setPersistence: sdk.persistence,
   signInAnonymously: sdk.anonymous,
   signInWithPopup: sdk.popup,
-  signInWithCustomToken: vi.fn(),
   signOut: vi.fn(),
 }));
 

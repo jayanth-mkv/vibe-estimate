@@ -8,33 +8,9 @@ import { pathToFileURL } from 'node:url';
 // backend workspace before running this launcher.
 import { obtainNamedProfileToken } from '../backend/dist/vertex-auth.js';
 
-/** Optional extra domains belong to the same explicitly authorized Firebase
- * project. Other private frontend configuration fields are intentionally ignored. */
-export function extraAuthDomains(config: unknown, firebaseProjectId: string): string[] {
-  if(config === undefined)return [];
-  if(!config||typeof config!=='object'||Array.isArray(config))throw new Error('Invalid private frontend domain configuration');
-  const value=config as Record<string,unknown>;
-  if(!firebaseProjectId||value.firebaseProjectId!==firebaseProjectId)throw new Error('Frontend Firebase target mismatch');
-  const domains=value.extraFirebaseAuthDomains;
-  const hostname=/^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/;
-  if(!Array.isArray(domains)||domains.length>20||!domains.every((domain): domain is string => typeof domain==='string'&&domain.length<=253&&domain===domain.trim()&&hostname.test(domain)))throw new Error('Invalid additional Firebase domain list');
-  return [...new Set(domains)];
-}
-
-function privateExtraAuthDomains(privateRoot: string, firebaseProjectId: string): string[] {
-  const file=path.join(privateRoot,'frontend-hosting.json');
-  try {fs.lstatSync(file);}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return [];throw new Error('Private frontend domain configuration is unavailable');}
-  const canonical=fs.realpathSync(file);
-  const relative=path.relative(privateRoot,canonical);
-  if(!relative||relative==='..'||relative.startsWith('..'+path.sep)||path.isAbsolute(relative))throw new Error('Frontend domain configuration must stay in the private directory');
-  const stat=fs.statSync(canonical);
-  if(!stat.isFile()||stat.size>32768)throw new Error('Invalid private frontend domain configuration');
-  return extraAuthDomains(JSON.parse(fs.readFileSync(canonical,'utf8')),firebaseProjectId);
-}
-
-/** The scheduler stays active unless a private setting explicitly targets this backend. */
+/** Event delivery is the default; scheduled recovery requires an explicit setting. */
 export function roomRecoveryPaused(config: unknown, backendProjectId: string): boolean {
-  if(config === undefined)return false;
+  if(config === undefined)return true;
   if(!config||typeof config!=='object'||Array.isArray(config))throw new Error('Invalid private room recovery configuration');
   const value=config as Record<string,unknown>;
   if(Object.keys(value).length!==2||!Object.hasOwn(value,'backendProjectId')||!Object.hasOwn(value,'paused'))throw new Error('Invalid private room recovery configuration');
@@ -46,25 +22,13 @@ export function roomRecoveryPaused(config: unknown, backendProjectId: string): b
 export function privateRoomRecoveryPaused(privateRoot: string, backendProjectId: string): boolean {
   const directory=fs.realpathSync(privateRoot);
   const file=path.join(directory,'room-recovery.json');
-  try {fs.lstatSync(file);}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return false;throw new Error('Private room recovery configuration is unavailable');}
+  try {fs.lstatSync(file);}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return true;throw new Error('Private room recovery configuration is unavailable');}
   const canonical=fs.realpathSync(file);
   const relative=path.relative(directory,canonical);
   if(!relative||relative==='..'||relative.startsWith('..'+path.sep)||path.isAbsolute(relative))throw new Error('Room recovery configuration must stay in the private directory');
   const stat=fs.statSync(canonical);
   if(!stat.isFile()||stat.size>32768)throw new Error('Invalid private room recovery configuration');
   return roomRecoveryPaused(JSON.parse(fs.readFileSync(canonical,'utf8')),backendProjectId);
-}
-
-/** The retired SDK secret stays pinned while current Firebase ownership lives in
- * the migration root. Repointing active client config must not rotate this copy. */
-export function foundationFirebaseConfig(operator: Record<string,unknown>, activeWeb: Record<string,unknown>, retiredWeb?: Record<string,unknown>) {
-  const source=operator.firebaseMigrationSourceProjectId;
-  if(activeWeb.projectId!==operator.firebaseProjectId)throw new Error('Firebase public config target mismatch');
-  if(source!==undefined&&(typeof source!=='string'||!source||source===operator.firebaseProjectId))throw new Error('Invalid retired Firebase source');
-  const web=source===undefined?activeWeb:retiredWeb;
-  const projectId=source??operator.firebaseProjectId;
-  if(!web||web.projectId!==projectId||!['projectId','apiKey','authDomain','appId'].every(key=>typeof web[key]==='string'&&web[key]))throw new Error('Frozen Firebase public config is unavailable');
-  return {projectId,publicConfig:Object.fromEntries(['projectId','apiKey','authDomain','appId'].map(key=>[key,web[key]]))};
 }
 
 async function main() {
@@ -76,10 +40,7 @@ async function main() {
   const operator=JSON.parse(fs.readFileSync(path.join(privateRoot,'local-config.json'),'utf8'));
   const vertex=JSON.parse(fs.readFileSync(path.join(privateRoot,'vertex-local.json'),'utf8'));
   const discovery=JSON.parse(fs.readFileSync(path.join(privateRoot,'production-discovery.json'),'utf8'));
-  const connected=JSON.parse(fs.readFileSync(path.join(privateRoot,'firebase-connected.json'),'utf8'));
-  if(operator.backendProjectId!==vertex.projectId||operator.account!==vertex.account||operator.gcloudConfiguration!==vertex.gcloudConfiguration||operator.firebaseProjectId!==connected.firebaseProjectId||operator.backendRegion!==discovery.region||operator.backendProjectId!==discovery.backendProjectId)throw new Error('Authorized target mismatch');
-  // Authorized domains are owned by firebase-migration after consolidation.
-  const additionalDomains=operator.firebaseMigrationSourceProjectId?[]:privateExtraAuthDomains(privateRoot,operator.firebaseProjectId);
+  if(operator.backendProjectId!==vertex.projectId||operator.account!==vertex.account||operator.gcloudConfiguration!==vertex.gcloudConfiguration||operator.backendRegion!==discovery.region||operator.backendProjectId!==discovery.backendProjectId)throw new Error('Authorized target mismatch');
   const pauseRecovery=privateRoomRecoveryPaused(privateRoot,operator.backendProjectId);
   const adc=path.join(vertex.gcloudConfigDir,'application_default_credentials.json');
   const digest=(data: string|Buffer)=>createHash('sha256').update(data).digest('hex');
@@ -96,15 +57,11 @@ async function main() {
   const tfConfig=path.join(toolDir,'production.rc');fs.writeFileSync(tfConfig,'disable_checkpoint = true\n');
   const imageFile=path.join(privateRoot,'production-image.json');
   const image=fs.existsSync(imageFile)?JSON.parse(fs.readFileSync(imageFile,'utf8')).image:'';
-  const web=JSON.parse(fs.readFileSync(path.resolve(privateRoot,connected.webConfigPath),'utf8'));
-  const retiredWeb=operator.firebaseMigrationSourceProjectId?JSON.parse(fs.readFileSync(path.join(privateRoot,'firebase-ownership-retirement/legacy-web-config.json'),'utf8')):undefined;
-  const {projectId:foundationFirebaseProject,publicConfig}=foundationFirebaseConfig(operator,web,retiredWeb);
-  const vars={backend_project_id:operator.backendProjectId,firebase_project_id:foundationFirebaseProject,project_number:discovery.projectNumber,region:operator.backendRegion,
-    existing_auth_domains:discovery.results.find((r:any)=>r.name==='firebaseAuth').data.authorizedDomains,extra_auth_domains:additionalDomains,pause_room_recovery:pauseRecovery,firestore_database_id:connected.firestoreDatabaseId,gemini_model:vertex.model,image};
+  const vars={backend_project_id:operator.backendProjectId,project_number:discovery.projectNumber,region:operator.backendRegion,pause_room_recovery:pauseRecovery,image};
   const varsFile=path.join(stateDir,'production.tfvars.json');fs.writeFileSync(varsFile,JSON.stringify(vars));
   const env={...process.env};
   for(const k of Object.keys(env))if(/^(TF_|GOOGLE_|GCLOUD_|CLOUDSDK_|GEMINI_|VERTEX_)/i.test(k))delete env[k];
-  Object.assign(env,{TF_CLI_CONFIG_FILE:tfConfig,TF_PLUGIN_CACHE_DIR:cache,TF_DATA_DIR:dataDir,TF_IN_AUTOMATION:'1',CHECKPOINT_DISABLE:'1',TF_VAR_firebase_web_config:JSON.stringify(publicConfig)});
+  Object.assign(env,{TF_CLI_CONFIG_FILE:tfConfig,TF_PLUGIN_CACHE_DIR:cache,TF_DATA_DIR:dataDir,TF_IN_AUTOMATION:'1',CHECKPOINT_DISABLE:'1'});
   const binary=path.join(toolDir,'terraform-1.13.5/terraform.exe');
   const run=(args:string[])=>new Promise<{code:number,output:string}>((resolve,reject)=>{let output='';const child=spawn(binary,args,{cwd:infra,env,windowsHide:true,stdio:['ignore','pipe','pipe']});child.stdout.on('data',chunk=>output+=chunk);child.stderr.on('data',chunk=>output+=chunk);child.on('error',()=>reject(new Error('Terraform could not start')));child.on('close',code=>resolve({code:code??1,output}));});
   const plan=path.join(stateDir,'production.tfplan');
@@ -119,7 +76,7 @@ async function main() {
     }
     else env.TF_VAR_access_token='unused-validation-placeholder';
     let args:string[];
-    if(action==='init')args=['init','-input=false','-no-color','-backend-config=bucket='+stateBucket,...(process.argv[3]==='--migrate-state'?['-migrate-state','-force-copy']:[])];
+    if(action==='init')args=['init','-input=false','-no-color','-backend-config=bucket='+stateBucket];
     else if(action==='validate')args=['validate','-json'];
     else if(action==='fmt')args=['fmt','-no-color'];
     else if(action==='plan')args=['plan','-input=false','-no-color','-var-file='+varsFile,'-out='+plan,...(process.argv[3]==='--bootstrap'?['-target=google_project_service.required']:[])];

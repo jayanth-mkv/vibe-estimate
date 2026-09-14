@@ -27,6 +27,7 @@ export function releaseInputs(env) {
   requireValue(eventAudience === '' || (metadata.event_delivery_enabled === 'true' && eventAudience.replace(/\/internal\/firestore$/, '').length <= 261
     && /^https:\/\/[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?([.][a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*[.]run[.]app(\/internal\/firestore)?$/.test(eventAudience)));
   requireValue([metadata.backend_project_id, metadata.firebase_project_id].every(value => projectId.test(value) && !value.startsWith('demo-')));
+  requireValue(metadata.firebase_project_id === metadata.backend_project_id);
   requireValue(/^[1-9][0-9]{5,19}$/.test(metadata.project_number) && /^[a-z]+-[a-z]+[0-9]$/.test(metadata.region));
   requireValue(metadata.firestore_database_id === '(default)' || /^[a-z][a-z0-9-]{2,61}[a-z0-9]$/.test(metadata.firestore_database_id));
   requireValue(/^[A-Za-z0-9][A-Za-z0-9._-]+$/.test(metadata.gemini_model));

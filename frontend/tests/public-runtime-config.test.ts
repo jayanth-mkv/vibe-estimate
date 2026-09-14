@@ -1,43 +1,30 @@
 import { expect, it } from "vitest";
 import { firebaseConfigScript } from "../src/lib/public-runtime-config";
 
+const config = { projectId: "demo-workspace", apiKey: "demo-browser-key", authDomain: "demo-workspace.firebaseapp.com", appId: "demo-app" };
+
 it("serializes only public SDK fields and escapes executable HTML", () => {
-  const script = firebaseConfigScript(JSON.stringify({ projectId: "test-project", apiKey: "browser-key", authDomain: "test.example", appId: "</script><script>alert(1)</script>", GEMINI_API_KEY: "server-secret", extra: "private" }));
+  const script = firebaseConfigScript(JSON.stringify({ ...config, appId: "</script><script>alert(1)</script>", GEMINI_API_KEY: "server-secret", credentials: { privateKey: "private-value" } }));
   expect(script).not.toMatch(/<|>|server-secret|private|GEMINI_API_KEY/);
   expect(script).toContain("\\u003c/script\\u003e");
-});
-it("rejects incomplete runtime configuration without disclosing its contents", () => {
-  expect(() => firebaseConfigScript('{"apiKey":"secret"}')).toThrow("Public sign-in configuration is invalid");
+  expect(script.match(/window\./g)).toHaveLength(1);
 });
 
-it("exposes only the supported Google policy without leaking private configuration", () => {
-  const script = firebaseConfigScript(JSON.stringify({ projectId: "test-project", apiKey: "browser-key", authDomain: "test.example", appId: "test-app", authMode: "google", clientSecret: "private-secret" }));
-  expect(script).toContain('"authMode":"google"');
+it.each([undefined, "", "{", "null", "[]", '{"apiKey":"secret"}'])("handles missing or malformed runtime config without disclosing contents", raw => {
+  if (!raw) expect(firebaseConfigScript(raw)).toBe("");
+  else expect(() => firebaseConfigScript(raw)).toThrow("Public sign-in configuration is invalid");
+});
+
+it.each(["a", "stable-session", "release-2", "a".repeat(32)])("serializes the opaque session namespace %s and Google policy", appNamespace => {
+  const script = firebaseConfigScript(JSON.stringify({ ...config, appNamespace, authMode: "google", clientSecret: "private-secret" }));
+  expect(script).toBe(`window.__VIBEESTIMATE_FIREBASE__=${JSON.stringify({ ...config, appNamespace, authMode: "google" })};`);
   expect(script).not.toContain("private-secret");
-  expect(() => firebaseConfigScript(JSON.stringify({ projectId: "test-project", apiKey: "browser-key", authDomain: "test.example", appId: "test-app", authMode: "guest" }))).toThrow("Public sign-in configuration is invalid");
 });
 
-const target = { projectId: "target-project", apiKey: "target-browser-key", authDomain: "target.example", appId: "target-app", appNamespace: "migrated" };
-const legacy = { projectId: "source-project", apiKey: "source-browser-key", authDomain: "source.example", appId: "source-app" };
-
-it("serializes only the source public fields and persistent target namespace during migration", () => {
-  const script = firebaseConfigScript(JSON.stringify({ ...target, legacy: { ...legacy, secret: "source-private-value" }, migrationSnapshotSha256: "private-snapshot-fingerprint", credentials: "server-private-value" }));
-  expect(script).toContain('"appNamespace":"migrated"');
-  expect(script).toContain(`window.__VIBEESTIMATE_LEGACY_FIREBASE__=${JSON.stringify(legacy)};`);
-  expect(script).not.toMatch(/private|secret|credentials|migrationSnapshot/);
-  const retired = firebaseConfigScript(JSON.stringify(target));
-  expect(retired).toContain('"appNamespace":"migrated"');
-  expect(retired).not.toContain("LEGACY_FIREBASE");
+it.each(["", "../other", "UPPERCASE", "two spaces", "a".repeat(33), null, false, [], {}])("rejects malformed namespace %j", appNamespace => {
+  expect(() => firebaseConfigScript(JSON.stringify({ ...config, appNamespace }))).toThrow("Public sign-in configuration is invalid");
 });
 
-it.each([
-  { ...target, appNamespace: "arbitrary" },
-  { ...target, appNamespace: undefined, legacy },
-  { ...target, legacy: null },
-  { ...target, legacy: [] },
-  { ...target, legacy: { ...legacy, apiKey: undefined } },
-  { ...target, legacy: { ...legacy, projectId: target.projectId } },
-  { ...target, legacy: { ...legacy, apiKey: target.apiKey } },
-])("rejects ambiguous or malformed migration configuration without exposing it", config => {
-  expect(() => firebaseConfigScript(JSON.stringify(config))).toThrow("Public sign-in configuration is invalid");
+it.each(["guest", "GOOGLE", "", null, false, [], {}])("rejects unsupported auth policy %j", authMode => {
+  expect(() => firebaseConfigScript(JSON.stringify({ ...config, authMode }))).toThrow("Public sign-in configuration is invalid");
 });

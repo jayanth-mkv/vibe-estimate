@@ -19,7 +19,6 @@ import { registerHomeRoutes } from "./home-routes.js";
 import type { HomeCollaboration } from "./home-collaboration.js";
 import { registerHomeCollaborationRoutes } from "./home-collaboration-routes.js";
 import { outboxEventId } from "./room-outbox.js";
-import type { FirebaseSessionMigration } from "./firebase-migration.js";
 import { hasGoogleIdentity, type VerifiedFirebaseIdentity } from "./firebase-auth-policy.js";
 
 export type AppDependencies = {
@@ -27,7 +26,6 @@ export type AppDependencies = {
   store: ProjectStore;
   provider: AnalysisProvider;
   verifyToken: (token: string) => Promise<VerifiedFirebaseIdentity>;
-  sessionMigration?: FirebaseSessionMigration;
   rooms?: RoomStore;
   observer?: RoomObserver;
   tasks?: RoomTasks;
@@ -36,7 +34,7 @@ export type AppDependencies = {
   homeCollaboration?: HomeCollaboration;
 };
 
-export function createApp({ config, store, provider, verifyToken, sessionMigration, rooms, observer, tasks, notifyRoom, homes, homeCollaboration }: AppDependencies) {
+export function createApp({ config, store, provider, verifyToken, rooms, observer, tasks, notifyRoom, homes, homeCollaboration }: AppDependencies) {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
@@ -44,7 +42,7 @@ export function createApp({ config, store, provider, verifyToken, sessionMigrati
   app.use((_request, response, next) => { response.setHeader("Cache-Control", "no-store"); next(); });
   if (config.maintenance) app.use(["/api", "/internal"], (_request, response) => {
     response.setHeader("Retry-After", "60");
-    response.status(503).json({ error: { code: "MIGRATION_MAINTENANCE", message: "Your saved workspace is being moved. Please keep this page open and try again shortly." } });
+    response.status(503).json({ error: { code: "SERVER_MAINTENANCE", message: "The service is temporarily unavailable for maintenance. Please try again shortly." } });
   });
   app.use(express.json({ limit: "48kb" }));
   if (config.appEnv === "production" && rooms && observer && tasks) {
@@ -98,14 +96,6 @@ export function createApp({ config, store, provider, verifyToken, sessionMigrati
   app.get("/health", (_request, response) => {
     response.json({ status: "ok", aiProvider: provider.kind, storage: "firestore", auth: config.appEnv === "local" ? "emulator" : "firebase", storageConnection: config.appEnv === "local" ? "emulator" : "cloud", runtime: config.appEnv, ...(config.maintenance ? { maintenance: true } : {}), ...(config.gitRevision ? { gitRevision: config.gitRevision } : {}), ...(provider.kind === "gemini" ? { geminiTransport: config.geminiTransport ?? "developer" } : {}) });
   });
-  if (config.appEnv === "production" && config.firebaseMigration && sessionMigration) {
-    app.post("/api/auth/migrate", async (request, response) => {
-      z.object({}).strict().parse(request.body);
-      const token = /^Bearer ([^\s]{1,16384})$/.exec(request.header("authorization") ?? "")?.[1];
-      if (!token) throw new AppError(401, "MIGRATION_AUTH_REQUIRED", "Your existing session is required.");
-      response.json(await sessionMigration.exchange(token));
-    });
-  }
   const authenticate: RequestHandler = async (request, response, next) => {
     const header = request.header("authorization");
     const match = /^Bearer ([^\s]+)$/.exec(header ?? "");
@@ -122,7 +112,7 @@ export function createApp({ config, store, provider, verifyToken, sessionMigrati
       return;
     }
     if (config.authMode === "google" && !hasGoogleIdentity(identity)) {
-      next(new AppError(403, "GOOGLE_AUTH_REQUIRED", "Connect Google to this saved session to continue. Your saved work stays with this account."));
+      next(new AppError(403, "GOOGLE_AUTH_REQUIRED", "Sign in with Google to access this workspace."));
       return;
     }
     response.locals.uid = identity.uid;

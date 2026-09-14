@@ -33,7 +33,7 @@ variables {
   access_token            = "synthetic-mock-token-never-used-for-cloud"
   runtime_variables = {
     backend_project_id          = "example-backend"
-    firebase_project_id         = "example-firebase"
+    firebase_project_id         = "example-backend"
     project_number              = "123456789012"
     region                      = "asia-south1"
     firestore_database_id       = "(default)"
@@ -154,6 +154,25 @@ run "reject_eventarc_route_with_query_parameters" {
     runtime_variables = merge(var.runtime_variables, {
       event_delivery_enabled  = "true"
       event_delivery_audience = "https://vibeestimate-example-as.a.run.app/internal/firestore?extra=value"
+    })
+  }
+  expect_failures = [var.runtime_variables]
+}
+
+run "reject_firebase_metadata_outside_the_application_project" {
+  command = plan
+  variables {
+    runtime_variables = merge(var.runtime_variables, { firebase_project_id = "example-other" })
+  }
+  expect_failures = [var.runtime_variables]
+}
+
+run "reject_runtime_metadata_outside_the_delivery_project" {
+  command = plan
+  variables {
+    runtime_variables = merge(var.runtime_variables, {
+      backend_project_id  = "example-other"
+      firebase_project_id = "example-other"
     })
   }
   expect_failures = [var.runtime_variables]

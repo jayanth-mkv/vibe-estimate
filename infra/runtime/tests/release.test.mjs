@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { releaseInputs, runtimeVariables, verifyPlan, verifyHealth } from '../verify-release.mjs';
 
 const metadata = {
-  backend_project_id: 'example-backend', firebase_project_id: 'example-firebase',
+  backend_project_id: 'example-backend', firebase_project_id: 'example-backend',
   project_number: '123456789012', region: 'asia-south1', firestore_database_id: '(default)',
   gemini_model: 'gemini-example-flash', runtime_service_account: 'example-runtime@example-backend.iam.gserviceaccount.com',
   task_queue: 'projects/example-backend/locations/asia-south1/queues/example-reviews',
@@ -35,7 +35,11 @@ test('main metadata becomes an immutable runtime input without auth or payload v
   assert.equal(Object.hasOwn(variables, 'access_token'), false);
 });
 
-test('migration flags default disabled and accept only explicit boolean strings', () => {
+test('release metadata rejects Firebase configured in a second project', () => {
+  assert.throws(() => releaseInputs({ ...environment, RELEASE_RUNTIME_VARS_B64: encode({ ...metadata, firebase_project_id: 'example-other' }) }));
+});
+
+test('operational flags default disabled and accept only explicit boolean strings', () => {
   assert.equal(variables.maintenance_mode, false);
   assert.equal(variables.event_delivery_enabled, false);
   const prepared = releaseInputs({ ...environment, RELEASE_RUNTIME_VARS_B64: encode({ ...metadata, maintenance_mode: 'true', event_delivery_enabled: 'false' }) });

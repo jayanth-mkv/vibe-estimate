@@ -1,10 +1,12 @@
 # Production readiness
 
+Historical readiness record for the initial proposal release on 5 September 2026. The current application requires Google sign-in and delivers room reviews through Firestore events and Cloud Tasks, with scheduled recovery paused. See [current verification](verification.md) and [deployment](deployment.md) for present release status.
+
 The initial release was prepared on `fix/initial-production` from `snapshot/initial-connected-v1` and deployed on 5 September 2026. The current audit and recovery fixes are on `feat/spatial-home-studio`. Spatial features remain planned. Publication, outreach and hackathon submission are separate actions.
 
 ## Current production checkpoint
 
-The deployed service is ready and uses real Firebase Authentication, cloud Firestore and Gemini 3.7 Flash through Vertex. The required campaign label and deployed image were checked through a read-only Cloud Run API request. All 15 distinct production browser checks have passing results across targeted runs, with seven real model calls; this was not a single all-green run. The [quick checklist](quick-test-checklist.md) and [executed record](verification.md#production-journey-audit--5-september-2026) retain the failures, reruns and remaining limits.
+The deployed service is ready and uses real Firebase Authentication, cloud Firestore and Gemini 3.7 Flash through Vertex. The required campaign label and deployed image were checked through a read-only Cloud Run API request. All 15 distinct production browser checks have passing results across targeted runs, with seven real model calls; this was not a single all-green run. The [quick checklist](quick-test-checklist.md) and [executed record](proposal-verification.md#production-journey-audit--5-september-2026) retain the failures, reruns and remaining limits.
 
 The audit found two reliability defects through local reproductions: the room observer could exceed its configured call capacity while database claims were pending, and replaying a direct review could dispatch again or supersede a later draft. Source fixes reserve observer capacity before claiming work and persist review requests before provider dispatch. The browser now checks an interrupted request before offering a deliberate new attempt. A separate emulator-only page hydration defect was fixed by omitting the empty runtime-config head child. These source fixes are not part of the production image verified above; no new rollout or infrastructure change was made during this audit.
 

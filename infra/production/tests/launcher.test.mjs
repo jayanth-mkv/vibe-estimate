@@ -3,23 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { extraAuthDomains, foundationFirebaseConfig, privateRoomRecoveryPaused, roomRecoveryPaused } from '../../../scripts/terraform-production.mts';
+import { privateRoomRecoveryPaused, roomRecoveryPaused } from '../../../scripts/terraform-production.mts';
 
 const backendProjectId = 'example-backend';
 const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const cache = path.join(repository, '.cache', 'production-launcher-tests');
 
-test('Firebase cutover keeps the original foundation SDK secret pinned and fails closed without its snapshot', () => {
-  const oldWeb={projectId:'example-source',apiKey:'old-key',authDomain:'example-source.firebaseapp.com',appId:'old-app'};
-  const activeWeb={projectId:'example-target',apiKey:'new-key',authDomain:'example-target.firebaseapp.com',appId:'new-app',authMode:'google'};
-  const operator={firebaseProjectId:'example-target',firebaseMigrationSourceProjectId:'example-source'};
-  assert.deepEqual(foundationFirebaseConfig(operator,activeWeb,oldWeb),{projectId:'example-source',publicConfig:oldWeb});
-  assert.throws(()=>foundationFirebaseConfig(operator,activeWeb));
-  assert.throws(()=>foundationFirebaseConfig(operator,activeWeb,activeWeb));
-  assert.throws(()=>foundationFirebaseConfig({...operator,firebaseProjectId:'wrong-target'},activeWeb,oldWeb));
-  assert.throws(()=>foundationFirebaseConfig({...operator,firebaseMigrationSourceProjectId:'example-target'},activeWeb,oldWeb));
-  assert.deepEqual(foundationFirebaseConfig({firebaseProjectId:'example-source'},oldWeb),{projectId:'example-source',publicConfig:oldWeb});
-});
 
 function fixture(t) {
   fs.mkdirSync(cache, { recursive: true });
@@ -35,8 +24,8 @@ function fixture(t) {
   return { directory, privateRoot, file: path.join(privateRoot, 'room-recovery.json') };
 }
 
-test('recovery defaults active and accepts only an explicit boolean for the authorized backend', () => {
-  assert.equal(roomRecoveryPaused(undefined, backendProjectId), false);
+test('recovery defaults paused and accepts only an explicit boolean for the authorized backend', () => {
+  assert.equal(roomRecoveryPaused(undefined, backendProjectId), true);
   assert.equal(roomRecoveryPaused({ backendProjectId, paused: false }, backendProjectId), false);
   assert.equal(roomRecoveryPaused({ backendProjectId, paused: true }, backendProjectId), true);
   for (const config of [null, [], {}, { paused: true }, { backendProjectId },
@@ -48,9 +37,9 @@ test('recovery defaults active and accepts only an explicit boolean for the auth
   assert.throws(() => roomRecoveryPaused({ backendProjectId: '', paused: true }, ''));
 });
 
-test('an absent private recovery file leaves the scheduler active; valid files preserve the explicit setting', t => {
+test('an absent private recovery file keeps the scheduler paused; valid files preserve the explicit setting', t => {
   const { privateRoot, file } = fixture(t);
-  assert.equal(privateRoomRecoveryPaused(privateRoot, backendProjectId), false);
+  assert.equal(privateRoomRecoveryPaused(privateRoot, backendProjectId), true);
   for (const paused of [true, false]) {
     fs.writeFileSync(file, JSON.stringify({ backendProjectId, paused }));
     assert.equal(privateRoomRecoveryPaused(privateRoot, backendProjectId), paused);
@@ -74,11 +63,4 @@ test('a recovery configuration symlink cannot escape its private directory', t =
   fs.mkdirSync(outside);
   fs.symlinkSync(outside, file, process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => privateRoomRecoveryPaused(privateRoot, backendProjectId), /must stay in the private directory/);
-});
-
-test('the existing optional domain setting remains scoped to its Firebase project', () => {
-  assert.deepEqual(extraAuthDomains(undefined, 'example-firebase'), []);
-  assert.deepEqual(extraAuthDomains({ firebaseProjectId: 'example-firebase', extraFirebaseAuthDomains: ['app.example.com', 'app.example.com'] }, 'example-firebase'), ['app.example.com']);
-  assert.throws(() => extraAuthDomains({ firebaseProjectId: 'other-firebase', extraFirebaseAuthDomains: ['app.example.com'] }, 'example-firebase'));
-  assert.throws(() => extraAuthDomains({ firebaseProjectId: 'example-firebase', extraFirebaseAuthDomains: ['https://app.example.com'] }, 'example-firebase'));
 });

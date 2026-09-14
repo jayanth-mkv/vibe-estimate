@@ -38,6 +38,10 @@ flowchart LR
   People[Designer and homeowner] --> App[Next.js and Express on Cloud Run]
   App --> Auth[Firebase Authentication]
   App --> Store[Cloud Firestore]
+  Store -->|Saved review job| Events[Eventarc]
+  Events -->|Authenticated dispatch| App
+  App --> Tasks[Cloud Tasks]
+  Tasks -->|Review worker| App
   App --> AI[Gemini on Vertex AI]
   Secrets[Secret Manager] -->|Firebase web configuration| App
 ```
@@ -45,8 +49,9 @@ flowchart LR
 | Service | What the application actually does |
 | --- | --- |
 | **Cloud Run** | Serves the frontend and API together from one container and one origin. Native Cloud Build and Terraform deploy a verified commit and immutable image. |
-| **Firebase Authentication** | Establishes separate user identities. The API verifies ID tokens and derives ownership from the verified UID. Guest entry is supported, with optional Google account linking. |
+| **Firebase Authentication** | Requires Google sign-in in production and keeps designer and homeowner identities separate. The API verifies ID tokens and derives ownership from the verified UID. Anonymous identities are limited to local fixtures. |
 | **Cloud Firestore** | Stores private projects, chat, immutable design revisions, explicit room membership and draft agreements. Every API operation checks owner or member access; direct browser database access is denied. |
+| **Eventarc and Cloud Tasks** | Deliver saved room-review jobs with authenticated events, bounded retries and duplicate protection. The recovery scheduler stays paused during normal operation. |
 | **Gemini** | Generates context-dependent design edits, briefs and agreement drafts through the server-side `@google/genai` SDK. Follow-up design requests use the saved scene and brief; proposal reviews retain multi-turn history. |
 | **Secret Manager** | Injects a pinned Firebase browser-configuration version into Cloud Run. Gemini uses the attached Vertex runtime identity; this deployment does **not** demonstrate Gemini API-key retrieval from Secret Manager. |
 
@@ -82,7 +87,7 @@ Supply an existing, explicitly authorized private configuration outside the repo
 
 The production topology is one Cloud Run service, with separate frontend and backend code boundaries. Infrastructure is managed through Terraform; the repository contains no operator credentials or Terraform state.
 
-1. **Configure your own targets privately.** Identify the Firebase project, backend project, regions and existing resources. Follow the [foundation setup](infra/production/README.md) and [Firebase adoption guide](docs/terraform-setup.md#firebase-adoption); import existing resources before managing them.
+1. **Configure your application privately.** Use one project for Firebase and the backend; verify its regions and existing resources. Follow the [foundation setup](infra/production/README.md) and [Firebase setup](infra/firebase/README.md); import existing resources before managing them.
 2. **Configure identity, storage and runtime access.** Enable the required APIs through Terraform, deploy the [Firestore rules](firestore.rules), authorize the application domain, and grant the runtime only its required Firebase, Vertex and Secret Manager permissions. The [deployment guide](docs/deployment.md#private-configuration) documents the exact configuration contract.
 3. **Adopt native delivery.** Set up the Terraform-managed GitHub connection, build trigger and [runtime state](infra/runtime/README.md). Preserve `dev-tutorial=cloud-run-ai-challenge` on the service; the [runtime configuration](infra/runtime/main.tf) owns that campaign label.
 4. **Verify and release.** Run the local checks below, review the task branch, then push the reviewed commit to `main`. [Cloud Build](cloudbuild.yaml) checks the source, builds and publishes the image, binds its digest, applies a restricted runtime plan and checks the deployed Git SHA.

@@ -48,7 +48,8 @@ function webSettings(settings) {
     || typeof web.apiKey !== "string" || !/^[A-Za-z0-9_-]{20,200}$/.test(web.apiKey)
     || web.authDomain !== settings.firebaseProjectId + ".firebaseapp.com"
     || typeof web.appId !== "string" || !/^1:\d+:web:[A-Za-z0-9]+$/.test(web.appId)) throw invalid();
-  if (web.authMode !== undefined && web.authMode !== "google" || web.appNamespace !== undefined && web.appNamespace !== "migrated") throw invalid();
+  if (web.authMode !== undefined && web.authMode !== "google" || web.appNamespace !== undefined
+    && (typeof web.appNamespace !== "string" || !/^[a-z][a-z0-9-]{0,31}$/.test(web.appNamespace))) throw invalid();
   if (web.storageBucket !== undefined && ![settings.firebaseProjectId + ".appspot.com", settings.firebaseProjectId + ".firebasestorage.app"].includes(web.storageBucket)) throw invalid();
   if (web.messagingSenderId !== undefined && (typeof web.messagingSenderId !== "string" || !/^\d+$/.test(web.messagingSenderId) || web.appId.split(":")[1] !== web.messagingSenderId)) throw invalid();
   if (web.measurementId !== undefined && (typeof web.measurementId !== "string" || !/^G-[A-Z0-9]+$/.test(web.measurementId))) throw invalid();
@@ -83,7 +84,7 @@ export function connectedEnvironments(configPath, inheritedEnv = process.env) {
   const settings = settingsFrom(configPath);
   const web = webSettings(settings);
   // Share only the verified browser fields and policy. Profile credentials and
-  // source-project migration settings never enter the frontend environment.
+  // server configuration never enters the frontend environment.
   const webConfig = JSON.stringify(Object.fromEntries(["projectId", "apiKey", "authDomain", "appId", "authMode", "appNamespace"]
     .filter(key => web[key] !== undefined).map(key => [key, web[key]])));
   const backendBase = {

@@ -6,7 +6,7 @@ variable "backend_project_id" {
   }
 }
 variable "maintenance_mode" {
-  description = "Temporarily block API and worker operations for a verified migration snapshot."
+  description = "Temporarily pause API and worker operations for planned maintenance."
   type        = bool
   default     = false
 }
@@ -16,7 +16,7 @@ variable "event_delivery_enabled" {
   default     = false
 }
 variable "event_delivery_audience" {
-  description = "Exact native Cloud Run origin or /internal/firestore route used by Eventarc; empty retains the existing workflow audience."
+  description = "Exact native Cloud Run origin or /internal/firestore route used by Eventarc; empty uses the service's configured origin."
   type        = string
   default     = ""
   validation {
@@ -29,8 +29,8 @@ variable "event_delivery_audience" {
 variable "firebase_project_id" {
   type = string
   validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.firebase_project_id)) && !startswith(var.firebase_project_id, "demo-")
-    error_message = "Select the existing real Firebase project."
+    condition     = var.firebase_project_id == var.backend_project_id && can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.firebase_project_id)) && !startswith(var.firebase_project_id, "demo-")
+    error_message = "Firebase and the application runtime must use the same verified real project."
   }
 }
 variable "project_number" {

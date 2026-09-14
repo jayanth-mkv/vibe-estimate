@@ -1,6 +1,6 @@
 # Quick product test checklist
 
-Production audit of `88f253f` on `feat/spatial-home-studio`, 5 September 2026: all 15 distinct browser checks have passing results across targeted runs, with seven real Gemini calls. The subsequent source fixes passed one clean **28/28 desktop/mobile regression** on fresh emulators. The full [executed record](verification.md#production-journey-audit--5-september-2026) lists failures, fixes and evidence separately. Completed Google consent and deployment of the verified recovery/concurrency fixes remain separate gates; future 3D releases are not implemented. Reset the statuses when repeating this checklist against another deployment.
+Production audit of `88f253f` on `feat/spatial-home-studio`, 5 September 2026: all 15 distinct browser checks have passing results across targeted runs, with seven real Gemini calls. The subsequent source fixes passed one clean **28/28 desktop/mobile regression** on fresh emulators. The full [executed record](proposal-verification.md#production-journey-audit--5-september-2026) lists failures, fixes and evidence separately. Completed Google consent and deployment of the verified recovery/concurrency fixes remain separate gates; future 3D releases are not implemented. Reset the statuses when repeating this checklist against another deployment.
 
 ## What can be tested now
 

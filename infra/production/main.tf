@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.13.5, < 2.0.0"
-  # Foundation IAM, secrets, queue and Firebase settings are the highest-value state in this repository.
+  # Foundation identities, image storage and queue use protected private state.
   # Versioned, locked, private GCS state; supply only the bucket name at init.
   backend "gcs" {
     prefix = "production"
@@ -10,41 +10,18 @@ terraform {
       source  = "hashicorp/google"
       version = "8.1.0"
     }
-    restful = {
-      source  = "magodo/restful"
-      version = "0.25.2"
-    }
   }
 }
 
 variable "backend_project_id" { type = string }
-variable "firebase_project_id" { type = string }
 variable "project_number" { type = string }
 variable "region" { type = string }
-variable "existing_auth_domains" { type = list(string) }
-variable "extra_auth_domains" {
-  type    = list(string)
-  default = []
-  validation {
-    condition = length(var.extra_auth_domains) <= 20 && alltrue([
-      for domain in var.extra_auth_domains : length(domain) <= 253 && domain == trimspace(domain) && can(regex("^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$", domain))
-    ])
-    error_message = "Additional Firebase domains must be at most 20 lowercase DNS hostnames without schemes, paths, ports, wildcards or IP addresses."
-  }
-}
-variable "firestore_database_id" { type = string }
-variable "gemini_model" { type = string }
 variable "pause_room_recovery" {
   type        = bool
-  default     = false
-  description = "Pause the existing recovery schedule only after event delivery has been verified."
+  default     = true
+  description = "Keep periodic recovery paused while Firestore events deliver saved review work."
 }
 variable "access_token" {
-  type      = string
-  sensitive = true
-  ephemeral = true
-}
-variable "firebase_web_config" {
   type      = string
   sensitive = true
   ephemeral = true
@@ -63,11 +40,6 @@ provider "google" {
   billing_project       = var.backend_project_id
   user_project_override = true
   access_token          = var.access_token
-}
-provider "restful" {
-  base_url = "https://identitytoolkit.googleapis.com/admin/v2"
-  security = { http = { token = { token = var.access_token } } }
-  header   = { "X-Goog-User-Project" = var.firebase_project_id }
 }
 
 locals {
@@ -103,17 +75,6 @@ resource "google_service_account" "delivery" {
   display_name = "VibeEstimate authenticated review task delivery"
 }
 
-# Destination Firebase IAM is independently owned by infra/firebase-migration.
-# Retire the old source bindings without changing access before its separately
-# verified project shutdown. They cannot be recreated by future foundation plans.
-removed {
-  from = google_project_iam_custom_role.firebase_auth
-  lifecycle { destroy = false }
-}
-removed {
-  from = google_project_iam_member.firebase
-  lifecycle { destroy = false }
-}
 resource "google_project_iam_custom_role" "gemini" {
   project     = var.backend_project_id
   role_id     = "vibeestimateGeminiCaller"
@@ -175,35 +136,6 @@ resource "google_project_iam_member" "build_logs" {
   member  = "serviceAccount:${google_service_account.build.email}"
 }
 
-# Public browser SDK configuration is injected at runtime, never placed in
-# the repository, image build context or Terraform state. This is not a Gemini key.
-resource "google_secret_manager_secret" "web_config" {
-  project   = var.backend_project_id
-  secret_id = "vibeestimate-web-config"
-  labels    = local.labels
-  replication {
-    auto {}
-  }
-  lifecycle { prevent_destroy = true }
-}
-resource "google_secret_manager_secret_version" "web_config" {
-  secret                 = google_secret_manager_secret.web_config.id
-  secret_data_wo         = var.firebase_web_config
-  secret_data_wo_version = 1
-  deletion_policy        = "ABANDON"
-}
-resource "google_secret_manager_secret_iam_member" "web_config" {
-  project   = var.backend_project_id
-  secret_id = google_secret_manager_secret.web_config.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.runtime.email}"
-}
-
-# The source domain leaf belongs to the old project's retirement boundary.
-removed {
-  from = restful_resource.auth_domains
-  lifecycle { destroy = false }
-}
 
 resource "google_cloud_tasks_queue" "reviews" {
   project  = var.backend_project_id
@@ -223,12 +155,6 @@ resource "google_cloud_tasks_queue" "reviews" {
   depends_on = [google_project_service.required]
 }
 
-# Import the existing service into infra/runtime before applying this handoff.
-# Forget its old state entry without deleting or recreating the live service.
-removed {
-  from = google_cloud_run_v2_service.application
-  lifecycle { destroy = false }
-}
 resource "google_cloud_run_v2_service_iam_member" "public" {
   count      = local.deploy ? 1 : 0
   project    = var.backend_project_id

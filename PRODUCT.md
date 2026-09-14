@@ -18,13 +18,13 @@ Confirmed on September 6: this complete journey replaces the sources-first homep
 
 ## Operating Context
 
-Designers work at a desk; homeowners may join from a phone. The operator confirmed Google-only production access on September 13. A subsequent explicit request adds formerly guest-owned work to the existing Google workspace, without importing anonymous Auth accounts. Preserve original messages, participant attribution, immutable revisions, agreements and spent call counters during that ownership transfer. Historical client identities remain distinct; imported rooms start paused. Keep the original private backup and verify every destination record. Explicit local fixtures continue to support anonymous ownership for isolated tests. Examples are synthetic and use the same real application endpoints. The product must never present fixture inference as live Gemini.
+Designers work at a desk; homeowners may join from a phone. Production requires Google sign-in, with separate designer and homeowner identities. Preserve original messages, participant attribution, immutable revisions, agreements and spent call counters. Private work belongs to its verified owner; room membership grants access only to that room's shared work. Explicit local fixtures support anonymous ownership for isolated tests. Examples are synthetic and use the same real application endpoints. The product must never present fixture inference as live Gemini.
 
 The first release starts with three complete, measured single-floor templates, actual local furniture assets and Plan/Overview/Inside views. A template represents an authored starting point, not a survey of a person's property. Ceiling heights, finishes and illustrative lighting remain disclosed assumptions.
 
 ## Capabilities and Constraints
 
-Next.js frontend and Express API retain their respective responsibilities and are served together from the existing Cloud Run runtime. Firebase verifies identity, Firestore retains private records, Gemini runs server-side through the configured Google SDK, and Terraform owns infrastructure. Actual operator configuration and credentials stay outside the public repository.
+Next.js frontend and Express API retain their respective responsibilities and are served together from one Cloud Run runtime. Firebase verifies identity, Firestore retains private records, Gemini runs server-side through the configured Google SDK, and Terraform owns infrastructure. Firebase and the backend use the same application project. Saved room-review jobs trigger Eventarc delivery to Cloud Tasks. Actual operator configuration and credentials stay outside the public repository.
 
 AI fills project titles, design briefs, descriptions and summaries; code derives inventory and geometry. People supply preferences through a prompt or conversation. Do not force empty forms for information the app can safely derive. Do not invent agreed scope, client messages, prices, approval, site dimensions or signatures. Unknown commercial terms stay visibly unresolved.
 

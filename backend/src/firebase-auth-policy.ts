@@ -20,8 +20,8 @@ export function readFirebaseAuthMode(raw: string | undefined, targetProjectId: s
 }
 
 /** Check only a token already verified by the configured Firebase Admin SDK.
- * Migrated accounts sign in with a custom token, so sign_in_provider alone
- * cannot establish whether the same account has a Google identity attached.
+ * Google-linked accounts can also have custom-token sessions. Their attached
+ * provider identities establish Google access independently of sign_in_provider.
  */
 export function hasGoogleIdentity(identity: VerifiedFirebaseIdentity): boolean {
   const google = identity.firebase?.identities?.["google.com"];

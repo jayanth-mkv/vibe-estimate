@@ -1,5 +1,4 @@
 import { validateNamedGcloudTarget, validateVertexTarget } from "./vertex-config.js";
-import { readFirebaseMigration, type FirebaseMigrationConfig } from "./firebase-migration.js";
 import { readFirebaseAuthMode, type FirebaseAuthMode } from "./firebase-auth-policy.js";
 
 export type AppConfig = {
@@ -24,7 +23,6 @@ export type AppConfig = {
   taskServiceAccount?: string;
   eventServiceAccount?: string;
   eventAudience?: string;
-  firebaseMigration?: FirebaseMigrationConfig;
   authMode?: FirebaseAuthMode;
   maintenance?: boolean;
   authEmulatorHost?: string;
@@ -112,18 +110,17 @@ export function readConfig(env: NodeJS.ProcessEnv): AppConfig {
   const gitRevision = env.BUILD_GIT_SHA || undefined;
   if (gitRevision !== undefined && !/^[0-9a-f]{40}$/.test(gitRevision)) throw new Error("BUILD_GIT_SHA must be a complete 40-character lowercase hexadecimal Git revision.");
   const taskQueuePath = env.ROOM_TASK_QUEUE;
-  const firebaseMigration = readFirebaseMigration(env.FIREBASE_WEB_CONFIG, projectId, appEnv);
   const authMode = readFirebaseAuthMode(env.FIREBASE_WEB_CONFIG, projectId);
   if (env.APP_MAINTENANCE !== undefined && !["true", "false"].includes(env.APP_MAINTENANCE)) throw new Error("APP_MAINTENANCE must be an explicit boolean.");
   const maintenance = env.APP_MAINTENANCE === "true";
-  if (maintenance && appEnv !== "production") throw new Error("Migration maintenance requires production configuration.");
+  if (maintenance && appEnv !== "production") throw new Error("Maintenance mode requires production configuration.");
   const taskServiceAccount = env.ROOM_TASK_SERVICE_ACCOUNT;
   if (appEnv === "production" && (!/^projects\/[a-z][a-z0-9-]+\/locations\/[a-z]+-[a-z]+[0-9]\/queues\/[a-z][a-z0-9-]+$/.test(taskQueuePath ?? "") || !/^[a-z][a-z0-9-]+@[a-z][a-z0-9-]+\.iam\.gserviceaccount\.com$/.test(taskServiceAccount ?? ""))) throw new Error("Production requires a managed room task queue and delivery identity.");
   return {
     appEnv, aiProvider, projectId, frontendOrigin, port, gitRevision, authEmulatorHost, firestoreEmulatorHost,
     firestoreDatabaseId, geminiApiKey: env.GEMINI_API_KEY?.trim(), geminiModel: env.GEMINI_MODEL?.trim(), geminiFallbackModel, geminiTransport,
     vertexProjectId: runtimeVertex ? env.VERTEX_PROJECT_ID : vertex?.projectId, vertexLocation: runtimeVertex ? env.VERTEX_LOCATION : vertex?.location,
-    vertexAuthMode: runtimeVertex ? "runtime" : "named-profile", taskQueuePath, taskServiceAccount, eventServiceAccount, eventAudience, firebaseMigration, authMode, maintenance,
+    vertexAuthMode: runtimeVertex ? "runtime" : "named-profile", taskQueuePath, taskServiceAccount, eventServiceAccount, eventAudience, authMode, maintenance,
     vertexGcloudConfiguration: vertex?.gcloudConfiguration, vertexGcloudAccount: vertex?.gcloudAccount, vertexGcloudConfigDir: vertex?.gcloudConfigDir,
     connectedAuthProjectId: connected?.projectId, connectedAuthGcloudConfiguration: connected?.gcloudConfiguration,
     connectedAuthGcloudAccount: connected?.gcloudAccount, connectedAuthGcloudConfigDir: connected?.gcloudConfigDir

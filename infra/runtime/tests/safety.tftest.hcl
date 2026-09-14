@@ -3,7 +3,7 @@ mock_provider "google" {}
 
 variables {
   backend_project_id          = "example-backend"
-  firebase_project_id         = "example-firebase"
+  firebase_project_id         = "example-backend"
   project_number              = "123456789012"
   region                      = "asia-southeast1"
   firestore_database_id       = "(default)"
@@ -108,7 +108,7 @@ run "the_frontend_origin_is_this_service_own_url" {
   }
 }
 
-run "event_delivery_uses_the_dedicated_firebase_project_identity" {
+run "event_delivery_uses_the_dedicated_application_project_identity" {
   command = plan
   variables { event_delivery_enabled = true }
 
@@ -117,7 +117,7 @@ run "event_delivery_uses_the_dedicated_firebase_project_identity" {
       for env in google_cloud_run_v2_service.application.template[0].containers[0].env :
       env.value if env.name == "ROOM_EVENT_SERVICE_ACCOUNT"
     ] == ["vibeestimate-events@${var.firebase_project_id}.iam.gserviceaccount.com"]
-    error_message = "Event delivery must trust exactly the dedicated event identity in the configured Firebase project."
+    error_message = "Event delivery must trust exactly the dedicated event identity in the application project."
   }
   assert {
     condition = [
@@ -126,6 +126,12 @@ run "event_delivery_uses_the_dedicated_firebase_project_identity" {
     ] == ["https://vibeestimate-${var.project_number}.${var.region}.run.app"]
     error_message = "An absent explicit audience must retain the existing workflow audience."
   }
+}
+
+run "reject_firebase_outside_the_application_project" {
+  command = plan
+  variables { firebase_project_id = "example-other" }
+  expect_failures = [var.firebase_project_id]
 }
 
 run "direct_eventarc_can_use_its_exact_canonical_route_audience" {
@@ -168,7 +174,7 @@ run "reject_event_audience_outside_native_cloud_run" {
   expect_failures = [var.event_delivery_audience]
 }
 
-run "ordinary_releases_keep_api_access_and_legacy_delivery_until_explicit_cutover" {
+run "runtime_delivery_and_maintenance_follow_explicit_settings" {
   command = plan
   assert {
     condition = (
@@ -176,16 +182,16 @@ run "ordinary_releases_keep_api_access_and_legacy_delivery_until_explicit_cutove
       length([for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env if env.name == "ROOM_EVENT_AUDIENCE"]) == 0 &&
       [for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env.value if env.name == "APP_MAINTENANCE"] == ["false"]
     )
-    error_message = "Neither maintenance nor event delivery may be enabled implicitly during the preparatory release."
+    error_message = "Maintenance and event delivery must follow their explicit runtime settings."
   }
 }
 
-run "migration_maintenance_is_an_explicit_reversible_runtime_setting" {
+run "maintenance_is_an_explicit_reversible_runtime_setting" {
   command = plan
   variables { maintenance_mode = true }
   assert {
     condition     = [for env in google_cloud_run_v2_service.application.template[0].containers[0].env : env.value if env.name == "APP_MAINTENANCE"] == ["true"]
-    error_message = "The frozen-copy stage must block application mutations through its explicit maintenance setting."
+    error_message = "Planned maintenance must block application mutations through its explicit runtime setting."
   }
 }
 

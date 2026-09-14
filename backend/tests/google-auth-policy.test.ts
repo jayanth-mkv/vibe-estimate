@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app.js";
 import { readConfig } from "../src/config.js";
 import type { VerifiedFirebaseIdentity } from "../src/firebase-auth-policy.js";
-import { createSessionMigration } from "../src/firebase-migration.js";
 import { FIXTURE_MESSAGES, FIXTURE_NAME, FIXTURE_SCOPE } from "../src/fixtures.js";
 import { MemoryProjectStore } from "./helpers.js";
 
@@ -80,7 +79,7 @@ describe("explicit Google-only Firebase policy", () => {
     const { app, verifyToken } = api();
     await request(app).get("/api/projects").expect(401);
     expect(verifyToken).not.toHaveBeenCalled();
-    const forged = await request(app).get("/api/projects").set("Authorization", "Bearer forged-source-token").set("X-Auth-Provider", "google.com").expect(401);
+    const forged = await request(app).get("/api/projects").set("Authorization", "Bearer forged-id-token").set("X-Auth-Provider", "google.com").expect(401);
     expect(JSON.stringify(forged.body)).not.toContain("synthetic-private");
     for (const tenant of [{ firebase: { ...googleIdentity().firebase, tenant: "another-tenant" } }, { tenant_id: "another-tenant" }]) {
       const tenantApp = api({ ...googleIdentity(), ...tenant }).app;
@@ -88,39 +87,4 @@ describe("explicit Google-only Firebase policy", () => {
     }
   });
 
-  it("preserves saved guest data through source transfer and permits it only after linking Google to the same UID", async () => {
-    const sourceProjectId = "source-project";
-    const snapshotSha256 = "a".repeat(64);
-    const store = new MemoryProjectStore();
-    const saved = await store.create("saved-owner", input);
-    const createToken = vi.fn(async (uid: string) => `synthetic-custom-${uid}`);
-    const bridge = createSessionMigration({ sourceProjectId, snapshotSha256 }, {
-      verifySource: async token => {
-        if (token !== "source-guest-token") throw Object.assign(new Error("source credential rejected"), { code: "auth/invalid-id-token" });
-        return { uid: "saved-owner" };
-      },
-      mapping: async uid => ({ sourceProjectId, snapshotSha256, sourceUid: uid, targetUid: uid }),
-      targetUser: async uid => ({ uid, disabled: false }), createToken,
-    });
-    let linked = false;
-    const verifyToken = vi.fn(async (token: string): Promise<VerifiedFirebaseIdentity> => {
-      if (token !== "target-transferred-token") throw new Error("wrong Firebase project");
-      return linked ? { ...googleIdentity(), firebase: { ...googleIdentity().firebase, sign_in_provider: "custom" } } : { uid: "saved-owner", firebase: { identities: {} } };
-    });
-    const app = createApp({
-      config: readConfig({ ...production, FIREBASE_WEB_CONFIG: JSON.stringify({ ...web, appNamespace: "migrated", legacy: { projectId: sourceProjectId }, migrationSnapshotSha256: snapshotSha256 }) }),
-      store, provider: { kind: "gemini", analyze: vi.fn() }, verifyToken, sessionMigration: bridge,
-    });
-    const exchanged = await request(app).post("/api/auth/migrate").set("Authorization", "Bearer source-guest-token").send({}).expect(200);
-    expect(exchanged.body.uid).toBe("saved-owner");
-    expect(createToken).toHaveBeenCalledWith("saved-owner");
-    expect(verifyToken).not.toHaveBeenCalled();
-    await request(app).get(`/api/projects/${saved.id}`).set("Authorization", "Bearer source-guest-token").expect(401);
-    await request(app).get(`/api/projects/${saved.id}`).set("Authorization", "Bearer target-transferred-token").expect(403);
-    linked = true;
-    const recovered = await request(app).get(`/api/projects/${saved.id}`).set("Authorization", "Bearer target-transferred-token").expect(200);
-    expect(recovered.body.project).toMatchObject({ id: saved.id, scope: input.scope, messages: input.messages });
-    expect(await store.get("saved-owner", saved.id)).toEqual(saved);
-    expect(store.projects.size).toBe(1);
-  });
 });

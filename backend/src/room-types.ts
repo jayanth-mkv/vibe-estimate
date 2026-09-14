@@ -63,7 +63,7 @@ export type StoredRoom = Omit<Room, "role" | "clientJoined" | "messages" | "shar
 };
 export type RoomOwner = {
   projects: Record<string, string>;
-  /** Operator-reviewed imports preserve the workspace's remaining new-room allowance. Never accepted from an API request. */
-  migratedProjectIds?: string[];
+  /** Optional server-managed capacity. Never accepted from an API request. */
+  roomLimit?: number;
   active?: { roomId: string; runId: string; leaseUntil: number };
 };

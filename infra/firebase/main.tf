@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.13.5, < 2.0.0"
-  backend "gcs" { prefix = "firebase-migration" }
+  backend "gcs" {}
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -14,30 +14,29 @@ terraform {
 }
 
 provider "google" {
-  project               = var.target_project_id
-  billing_project       = var.target_project_id
+  project               = var.project_id
+  billing_project       = var.project_id
   user_project_override = true
   access_token          = var.access_token
 }
 provider "google-beta" {
-  project               = var.target_project_id
-  billing_project       = var.target_project_id
+  project               = var.project_id
+  billing_project       = var.project_id
   user_project_override = true
   access_token          = var.access_token
 }
 
-# Existing destination Firebase membership is imported, never recreated.
+# Import existing Firebase membership before managing it.
 resource "google_firebase_project" "destination" {
   provider = google-beta
-  project  = var.target_project_id
+  project  = var.project_id
   lifecycle { prevent_destroy = true }
 }
 
-# Bootstrap enables only these discovered prerequisites. Database creation is a
-# separate reviewed stage after a successful destination database inventory.
+# API ownership remains separate from the application and delivery roots.
 resource "google_project_service" "destination" {
   for_each           = toset(["firestore.googleapis.com", "firebaserules.googleapis.com"])
-  project            = var.target_project_id
+  project            = var.project_id
   service            = each.key
   disable_on_destroy = false
   lifecycle { prevent_destroy = true }

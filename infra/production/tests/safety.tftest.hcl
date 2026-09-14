@@ -1,6 +1,5 @@
 # Mock providers: these tests make no cloud API call and create no infrastructure.
 mock_provider "google" {}
-mock_provider "restful" {}
 
 # Identities and custom roles are referenced by the bindings under test, so they
 # need values a mock provider would otherwise only produce at apply time.
@@ -34,24 +33,12 @@ override_resource {
   values          = { name = "vibeestimate" }
 }
 
-override_resource {
-  override_during = plan
-  target          = google_secret_manager_secret.web_config
-  values          = { id = "projects/example-backend/secrets/vibeestimate-web-config" }
-}
-
 variables {
-  backend_project_id    = "example-backend"
-  firebase_project_id   = "example-firebase"
-  project_number        = "123456789012"
-  region                = "asia-southeast1"
-  firestore_database_id = "(default)"
-  gemini_model          = "synthetic-model"
-  existing_auth_domains = ["localhost", "example-firebase.firebaseapp.com", "example-firebase.web.app"]
-  extra_auth_domains    = []
-  access_token          = "synthetic-mock-token-never-used-for-cloud"
-  firebase_web_config   = "{\"apiKey\":\"synthetic-public-sdk-key\",\"appId\":\"synthetic-app\",\"authDomain\":\"example-firebase.firebaseapp.com\",\"projectId\":\"example-firebase\"}"
-  image                 = "asia-southeast1-docker.pkg.dev/example-backend/example/application@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  backend_project_id = "example-backend"
+  project_number     = "123456789012"
+  region             = "asia-southeast1"
+  access_token       = "synthetic-mock-token-never-used-for-cloud"
+  image              = "asia-southeast1-docker.pkg.dev/example-backend/example/application@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 }
 
 run "the_runtime_identity_gets_scoped_roles_and_no_project_administration" {
@@ -61,7 +48,7 @@ run "the_runtime_identity_gets_scoped_roles_and_no_project_administration" {
     condition = (
       toset(google_project_iam_custom_role.gemini.permissions) == toset(["aiplatform.endpoints.predict", "serviceusage.services.use"])
     )
-    error_message = "The backend custom role must stay limited to publisher-model inference; Firebase IAM belongs to its separate destination state."
+    error_message = "The backend custom role must stay limited to publisher-model inference; Firebase IAM belongs to the Firebase root."
   }
   assert {
     condition = (
@@ -83,29 +70,6 @@ run "the_builder_may_publish_images_and_logs_but_not_read_secrets" {
       google_project_iam_member.build_logs.role == "roles/logging.logWriter"
     )
     error_message = "The image builder must be limited to writing this repository and its build logs."
-  }
-  assert {
-    condition = (
-      google_secret_manager_secret_iam_member.web_config.role == "roles/secretmanager.secretAccessor" &&
-      google_secret_manager_secret_iam_member.web_config.member == "serviceAccount:${google_service_account.runtime.email}"
-    )
-    error_message = "Only the runtime identity may read the browser SDK configuration secret."
-  }
-}
-
-run "the_browser_config_secret_never_stores_its_payload_in_state" {
-  command = plan
-
-  assert {
-    condition = (
-      google_secret_manager_secret.web_config.secret_id == "vibeestimate-web-config" &&
-      length(google_secret_manager_secret.web_config.replication[0].auto) == 1
-    )
-    error_message = "The browser SDK configuration must live in the named automatically replicated secret."
-  }
-  assert {
-    condition     = google_secret_manager_secret_version.web_config.secret_data == null && google_secret_manager_secret_version.web_config.deletion_policy == "ABANDON"
-    error_message = "The secret version must use the write-only argument, leaving no payload in state, and must abandon rather than destroy versions."
   }
 }
 
@@ -136,25 +100,25 @@ run "review_delivery_retries_are_bounded_and_authenticated" {
   }
   assert {
     condition = (
-      !google_cloud_scheduler_job.reconcile[0].paused &&
+      google_cloud_scheduler_job.reconcile[0].paused &&
       google_cloud_scheduler_job.reconcile[0].schedule == "* * * * *" &&
       google_cloud_scheduler_job.reconcile[0].http_target[0].uri == "https://vibeestimate-${var.project_number}.${var.region}.run.app/internal/reconcile" &&
       google_cloud_scheduler_job.reconcile[0].http_target[0].oidc_token[0].service_account_email == google_service_account.delivery.email
     )
-    error_message = "Recovery stays active every minute by default and calls this service's own origin with a verified OIDC identity."
+    error_message = "Periodic recovery must remain paused by default while preserving the service-scoped OIDC target."
   }
 }
 
-run "event_cutover_pauses_the_existing_scheduler_and_preserves_its_target" {
+run "explicit_recovery_override_preserves_the_existing_authenticated_target" {
   command = plan
   variables {
-    pause_room_recovery = true
+    pause_room_recovery = false
   }
 
   assert {
     condition = (
       length(google_cloud_scheduler_job.reconcile) == 1 &&
-      google_cloud_scheduler_job.reconcile[0].paused &&
+      !google_cloud_scheduler_job.reconcile[0].paused &&
       google_cloud_scheduler_job.reconcile[0].name == "vibeestimate-review-recovery" &&
       google_cloud_scheduler_job.reconcile[0].schedule == "* * * * *" &&
       google_cloud_scheduler_job.reconcile[0].time_zone == "Etc/UTC" &&
@@ -163,7 +127,7 @@ run "event_cutover_pauses_the_existing_scheduler_and_preserves_its_target" {
       google_cloud_scheduler_job.reconcile[0].http_target[0].oidc_token[0].service_account_email == google_service_account.delivery.email &&
       google_cloud_scheduler_job.reconcile[0].http_target[0].oidc_token[0].audience == "https://vibeestimate-${var.project_number}.${var.region}.run.app"
     )
-    error_message = "Event cutover must pause the retained scheduler without changing its schedule, endpoint or OIDC identity."
+    error_message = "An explicit recovery override must preserve the existing schedule, endpoint and OIDC identity."
   }
 }
 
@@ -185,20 +149,4 @@ run "reject_a_mutable_image_reference" {
     image = "asia-southeast1-docker.pkg.dev/example-backend/example/application:latest"
   }
   expect_failures = [var.image]
-}
-
-run "reject_a_domain_that_is_a_url_rather_than_a_hostname" {
-  command = plan
-  variables {
-    extra_auth_domains = ["https://app.example.com/path"]
-  }
-  expect_failures = [var.extra_auth_domains]
-}
-
-run "reject_a_wildcard_domain" {
-  command = plan
-  variables {
-    extra_auth_domains = ["*.example.com"]
-  }
-  expect_failures = [var.extra_auth_domains]
 }

@@ -1,6 +1,7 @@
 type FirebaseSdkFields = { projectId: string; apiKey: string; authDomain: string; appId: string };
-export type PublicFirebaseConfig = FirebaseSdkFields & { appNamespace?: "migrated"; authMode?: "google" };
-declare global { interface Window { __VIBEESTIMATE_FIREBASE__?: PublicFirebaseConfig; __VIBEESTIMATE_LEGACY_FIREBASE__?: FirebaseSdkFields } }
+export type PublicFirebaseConfig = FirebaseSdkFields & { appNamespace?: string; authMode?: "google" };
+declare global { interface Window { __VIBEESTIMATE_FIREBASE__?: PublicFirebaseConfig } }
+export const isFirebaseAppNamespace = (value: unknown): value is string => typeof value === "string" && /^[a-z][a-z0-9-]{0,31}$/.test(value);
 
 function publicFields(value: unknown): FirebaseSdkFields {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Public sign-in configuration is invalid.");
@@ -20,17 +21,12 @@ export function firebaseConfigScript(raw: string | undefined): string {
   try { data = JSON.parse(raw); } catch { throw new Error("Public sign-in configuration is invalid."); }
   const config: PublicFirebaseConfig = publicFields(data);
   if (data.appNamespace !== undefined) {
-    if (data.appNamespace !== "migrated") throw new Error("Public sign-in configuration is invalid.");
-    config.appNamespace = "migrated";
+    if (!isFirebaseAppNamespace(data.appNamespace)) throw new Error("Public sign-in configuration is invalid.");
+    config.appNamespace = data.appNamespace;
   }
   if (data.authMode !== undefined) {
     if (data.authMode !== "google") throw new Error("Public sign-in configuration is invalid.");
     config.authMode = "google";
   }
-  let legacy: FirebaseSdkFields | undefined;
-  if (data.legacy !== undefined) {
-    legacy = publicFields(data.legacy);
-    if (config.appNamespace !== "migrated" || legacy.projectId === config.projectId || legacy.apiKey === config.apiKey) throw new Error("Public sign-in configuration is invalid.");
-  }
-  return `window.__VIBEESTIMATE_FIREBASE__=${safeJson(config)};${legacy ? `window.__VIBEESTIMATE_LEGACY_FIREBASE__=${safeJson(legacy)};` : ""}`;
+  return `window.__VIBEESTIMATE_FIREBASE__=${safeJson(config)};`;
 }

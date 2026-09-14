@@ -1,5 +1,7 @@
 # Challenge completion checklist
 
+Historical submission-preparation checklist dated 5 September 2026. See [current verification](verification.md) for today's release and confirmed Google access; the submission status below records this earlier checkpoint.
+
 Current status on 5 September 2026: **the implemented core journey works end to end; the submission is not yet complete.** Use the operator's supplied form and [official codelab](https://codelabs.developers.google.com/codelabs/cloud-run/cloud-run-ai-challenge) for the required fields. Planned spatial features are not needed to demonstrate the existing original enhancement.
 
 The operator confirmed that this agent-assisted repository is the build history in place of a separate AI Studio app. Its instructions, commits, source and verification are the authentic evidence. The codelab permits a similar coding assistant for enhancements; no AI Studio UI session is claimed.
@@ -21,6 +23,6 @@ The operator confirmed that this agent-assisted repository is the build history 
 
 The supplied form snapshot gives **6 September 2026, 11:59 PM IST** as the deadline and a **1,024-character** description limit. The authenticated dashboard was not rechecked. The current form explicitly asks for the live/walkthrough URL, public repository, demo/social URL and service confirmations. Do not check an unverified service merely to complete the form.
 
-The [production audit](verification.md#production-journey-audit--5-september-2026) has passing results for all 15 distinct checks across targeted runs, with seven real model calls. The recovery checkpoint separately passed 28/28 emulator browser checks, 183 backend tests, 44 frontend tests, 34 configuration tests, three Rules checks and builds. These do not establish completed personal Google consent or final submission.
+The [production audit](proposal-verification.md#production-journey-audit--5-september-2026) has passing results for all 15 distinct checks across targeted runs, with seven real model calls. The recovery checkpoint separately passed 28/28 emulator browser checks, 183 backend tests, 44 frontend tests, 34 configuration tests, three Rules checks and builds. These do not establish completed personal Google consent or final submission.
 
 Use the [quick product checklist](quick-test-checklist.md), [build provenance and evidence](ai-studio-evidence.md), [production readiness](production-readiness.md) and [demo walkthrough](demo-walkthrough.md) as the review bundle. The supplied form and operational submission draft remain in the outer private workspace. No new Gemini request, full test rerun, public post or submission was made during this closeout.

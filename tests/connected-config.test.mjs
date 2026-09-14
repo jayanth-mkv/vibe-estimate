@@ -95,7 +95,7 @@ test("separates connected backend credentials from guest frontend public Firebas
 
 test("keeps Google-only policy and stable target namespace consistent between connected children", t => {
   const files = fixture(t);
-  for (const optional of [{ authMode: "google" }, { appNamespace: "migrated" }, { authMode: "google", appNamespace: "migrated" }]) {
+  for (const optional of [{ authMode: "google" }, { appNamespace: "workspace" }, { authMode: "google", appNamespace: "workspace" }]) {
     files.write({ web: { ...files.web, ...optional } });
     const { backendEnv, frontendEnv } = connectedEnvironments(files.filename, {
       NEXT_PUBLIC_AUTH_MODE: "guest", NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: "false",
@@ -122,13 +122,12 @@ test("keeps Google-only policy and stable target namespace consistent between co
   }
 });
 
-test("rejects malformed connected policies, namespaces and source-session migration fields", t => {
+test("rejects malformed connected policies, namespaces and private server fields", t => {
   const files = fixture(t);
   for (const optional of [
     ...["guest", "GOOGLE", "", null, false, [], { secret: syntheticSecret }].map(authMode => ({ authMode })),
-    ...["default", "MIGRATED", "", null, false, [], { secret: syntheticSecret }].map(appNamespace => ({ appNamespace })),
-    { legacy: { projectId: "source-project", private_key: syntheticSecret } },
-    { migrationSnapshotSha256: "a".repeat(64) }
+    ...["has spaces", "WORKSPACE", "", "a".repeat(33), null, false, [], { secret: syntheticSecret }].map(appNamespace => ({ appNamespace })),
+    { serverConfig: { private_key: syntheticSecret } }
   ]) {
     files.write({ web: { ...files.web, ...optional } });
     safeFailure(() => connectedEnvironments(files.filename, {}));
