@@ -34,6 +34,8 @@ The homeowner explicitly accepts an exact saved design revision; the designer re
 
 Keep existing private scope reviews and proposals accessible through a secondary proposal workspace. Their source evidence, included-item treatment, integer-money calculations, missing-price checks, revisions and exports remain intact. The old proposal flow does not collect client approval; the new scene review has explicit design decisions.
 
+Confirmed September 14: owners can delete saved homes and shared rooms through recoverable Trash. Preserve the same saved identities, evidence and histories; stop shared access and active assistant work while trashed. Restore reopens saved work and existing membership without reactivating old invitations or automatically restarting the scope observer. This does not delete physical rooms from a floor plan.
+
 ## Brand Commitments
 
 VibeEstimate uses a calm navy/red identity, self-hosted Poppins and DM Sans, and its original illustrations. Keep the header compact and the canvas central. The homepage presents real homes and the next action, with no competing demonstration controls. The optional tour must describe the delivered product. Use generated shadcn primitives and the project-local Impeccable workflow.

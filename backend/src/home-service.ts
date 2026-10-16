@@ -34,36 +34,40 @@ export function designMarkdown(revision: HomeRevision, title: string, narrative:
 export class HomeService {
   constructor(readonly store: HomeStore, readonly provider: HomeAIProvider, private projects: ProjectStore) {}
   async template(uid: string, id: string, input: { requestId: string; baseRevisionId: string | null; templateId: string }) {
+    const lifecycleVersion = (await this.store.stored(uid, id)).lifecycleVersion ?? 0;
     const hash = homeHash(input); const receipt = await this.store.receipt(uid, id, input.requestId, "template", hash);
     if (receipt) return this.store.get(uid, id);
     if (input.baseRevisionId !== null) await this.store.revision(uid, id, input.baseRevisionId);
     const scene = sceneCheck(() => createHomeTemplate(input.templateId));
     const revision: HomeRevision = { id: randomUUID(), parentRevisionId: input.baseRevisionId, title: scene.name, description: "Selected an authored starting layout.", createdAt: new Date().toISOString(), source: "template", conflict: false, scene, brief: { title: scene.name, summary: "A starting layout ready for your design brief.", source: "template", assumptions: HOME_ASSUMPTIONS }, requestId: input.requestId };
-    return this.store.publish(uid, id, { ...input, hash, kind: "template", revision });
+    return this.store.publish(uid, id, { ...input, hash, kind: "template", revision, lifecycleVersion });
   }
   async edit(uid: string, id: string, input: { requestId: string; baseRevisionId: string; patch: HousePatch; selection: DesignSelection }) {
+    const lifecycleVersion = (await this.store.stored(uid, id)).lifecycleVersion ?? 0;
     const hash = homeHash(input); if (await this.store.receipt(uid, id, input.requestId, "manual", hash)) return this.store.get(uid, id);
     const base = await this.store.revision(uid, id, input.baseRevisionId);
     const scene = sceneCheck(() => applyDesignPatch(base.scene, input.patch, input.selection));
     const revision: HomeRevision = { id: randomUUID(), parentRevisionId: base.id, title: base.title, description: `Saved ${input.patch.operations.length} selected design ${input.patch.operations.length === 1 ? "change" : "changes"}.`, createdAt: new Date().toISOString(), source: "manual", conflict: false, scene, brief: base.brief, requestId: input.requestId, patch: input.patch, changes: describeDesignChanges(base.scene, scene) };
-    return this.store.publish(uid, id, { ...input, hash, kind: "manual", revision });
+    return this.store.publish(uid, id, { ...input, hash, kind: "manual", revision, lifecycleVersion });
   }
   async restore(uid: string, id: string, input: { requestId: string; baseRevisionId: string; revisionId: string }) {
+    const lifecycleVersion = (await this.store.stored(uid, id)).lifecycleVersion ?? 0;
     const hash = homeHash(input); if (await this.store.receipt(uid, id, input.requestId, "restore", hash)) return this.store.get(uid, id);
     const selected = await this.store.revision(uid, id, input.revisionId);
     await this.store.revision(uid, id, input.baseRevisionId);
     const revision: HomeRevision = { id: randomUUID(), parentRevisionId: input.baseRevisionId, title: selected.title, description: `Restored saved design ${selected.id}.`, createdAt: new Date().toISOString(), source: "restore", conflict: false, scene: selected.scene, brief: selected.brief, requestId: input.requestId };
-    return this.store.publish(uid, id, { ...input, hash, kind: "restore", revision });
+    return this.store.publish(uid, id, { ...input, hash, kind: "restore", revision, lifecycleVersion });
   }
   private async run(uid: string, id: string, input: { requestId: string; baseRevisionId: string; prompt?: string; selection?: DesignSelection }, kind: "generate" | "summary" | "agreement", options?: { actorId: string; assistant?: { name: string; instructions: string }; reviewSource?: HomeReviewSource }) {
+    const lifecycleVersion = (await this.store.stored(uid, id)).lifecycleVersion ?? 0;
     const base = await this.store.revision(uid, id, input.baseRevisionId);
     if (input.selection) sceneCheck(() => resolveDesignScope(base.scene, input.selection!));
     const hash = homeHash({ ...input, ...(options ? { actorId: options.actorId, assistant: options.assistant ?? null } : {}) });
     if (kind !== "generate") {
-      const cached = await this.store.cachedProse(uid, id, { requestId: input.requestId, baseRevisionId: input.baseRevisionId, kind, hash });
+      const cached = await this.store.cachedProse(uid, id, { requestId: input.requestId, baseRevisionId: input.baseRevisionId, kind, hash, lifecycleVersion });
       if (cached) return { home: await this.store.get(uid, id), job: cached };
     }
-    const started = await this.store.beginJob(uid, id, { requestId: input.requestId, baseRevisionId: input.baseRevisionId, kind, hash });
+    const started = await this.store.beginJob(uid, id, { requestId: input.requestId, baseRevisionId: input.baseRevisionId, kind, hash, lifecycleVersion });
     if (!started.dispatch) {
       if (started.job.status === "save_pending") await this.store.complete(uid, id, input.requestId);
       return { home: await this.store.get(uid, id), job: await this.store.job(uid, id, input.requestId) };
@@ -115,13 +119,14 @@ export class HomeService {
   summarize(uid: string, id: string, input: { requestId: string; baseRevisionId: string }) { return this.run(uid, id, input, "summary"); }
   draftAgreement(uid: string, id: string, input: { requestId: string; baseRevisionId: string }, actorId: string, reviewSource: HomeReviewSource) { return this.run(uid, id, input, "agreement", { actorId, reviewSource }); }
   async proposal(uid: string, id: string, input: { requestId: string; baseRevisionId: string }) {
+    const lifecycleVersion = (await this.store.stored(uid, id)).lifecycleVersion ?? 0;
     const hash = homeHash(input); const receipt = await this.store.receipt(uid, id, input.requestId, "proposal", hash);
     if (receipt?.projectId) return { home: await this.store.get(uid, id), project: await this.projects.get(uid, receipt.projectId) };
     const revision = await this.store.revision(uid, id, input.baseRevisionId);
     const scope = "No construction scope or commercial terms have been agreed. This is an AI-assisted proposed interior design for owner review; site measurements and feasibility remain unconfirmed.";
     const messages = `Proposed design brief, not client messages or approval:\n${revision.brief.summary}\nSource saved home revision: ${revision.id}.`;
     const project = newProject(uid, { name: revision.title, scope, messages });
-    const projectId = await this.store.linkProposal(uid, id, { ...input, hash, project });
+    const projectId = await this.store.linkProposal(uid, id, { ...input, hash, project, lifecycleVersion });
     return { home: await this.store.get(uid, id), project: await this.projects.get(uid, projectId) };
   }
 }

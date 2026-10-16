@@ -10,6 +10,7 @@ export class MemoryRoomDatabase implements RoomDatabase {
   owners = new Map<string, RoomOwner>();
   deliveries = new Map<string, RoomDelivery>();
   private tail: Promise<unknown> = Promise.resolve();
+  mutex?: { run<T>(operation: () => Promise<T>): Promise<T> };
   failNext = false;
   constructor(readonly projects: MemoryProjectStore) {}
   transaction<T>(operation: (transaction: RoomTransaction) => Promise<T>): Promise<T> {
@@ -38,6 +39,7 @@ export class MemoryRoomDatabase implements RoomDatabase {
       for (const [key, delivery] of deliveries) this.deliveries.set(key, delivery);
       return structuredClone(value);
     };
+    if (this.mutex) return this.mutex.run(execute);
     const result = this.tail.then(execute, execute);
     this.tail = result.catch(() => {});
     return result;

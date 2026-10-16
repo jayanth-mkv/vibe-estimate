@@ -20,6 +20,7 @@ import type { HomeCollaboration } from "./home-collaboration.js";
 import { registerHomeCollaborationRoutes } from "./home-collaboration-routes.js";
 import { outboxEventId } from "./room-outbox.js";
 import { hasGoogleIdentity, type VerifiedFirebaseIdentity } from "./firebase-auth-policy.js";
+import { registerLifecycleRoutes, type WorkspaceLifecycle } from "./workspace-lifecycle.js";
 
 export type AppDependencies = {
   config: AppConfig;
@@ -32,9 +33,10 @@ export type AppDependencies = {
   notifyRoom?: (id: string) => Promise<void>;
   homes?: HomeService;
   homeCollaboration?: HomeCollaboration;
+  lifecycle?: WorkspaceLifecycle;
 };
 
-export function createApp({ config, store, provider, verifyToken, rooms, observer, tasks, notifyRoom, homes, homeCollaboration }: AppDependencies) {
+export function createApp({ config, store, provider, verifyToken, rooms, observer, tasks, notifyRoom, homes, homeCollaboration, lifecycle }: AppDependencies) {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet());
@@ -192,6 +194,7 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
   if (rooms) registerRoomRoutes(app, rooms, config.eventServiceAccount ? undefined : notifyRoom);
   if (homes) registerHomeRoutes(app, homes);
   if (homeCollaboration) registerHomeCollaborationRoutes(app, homeCollaboration);
+  if (lifecycle) registerLifecycleRoutes(app, lifecycle);
   app.use((_request, _response, next) => next(new AppError(404, "NOT_FOUND", "This endpoint could not be found.")));
   const errors: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
     if (error instanceof AppError) { response.status(error.status).json({ error: { code: error.code, message: error.message, ...(error instanceof ReviewRequestError && error.reviewRequest ? { reviewRequest: error.reviewRequest } : {}) } }); return; }

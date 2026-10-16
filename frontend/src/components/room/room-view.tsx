@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Bot, Check, CheckCheck, ChevronDown, CircleHelp, FileText, LoaderCircle, MessageCircle, Pause, Play, Send, ShieldCheck, Users, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ interface Props {
   onPrepareDraft: () => void;
   onShareDraft: () => void;
   onNavigate: (href: string) => void;
+  ownerActions?: ReactNode;
 }
 
 const money = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(paise / 100);
@@ -116,7 +117,7 @@ export function RoomView(props: Props) {
           <h1>{room.name}</h1>
           <p>One conversation. A clearer scope. Every draft kept.</p>
         </div>
-        {designer && <RoomInvitation roomId={room.id} clientJoined={room.clientJoined} open={inviteOpen} inviteHref={inviteHref} joinCode={joinCode} busy={!!busy} local={local} notice={notice} error={actionError} onOpenChange={onToggleInvite} onCreate={onCreateInvite} onCopyLink={onCopyInvite} onCopyCode={onCopyCode} />}
+        {designer && <div className={styles.roomActions}>{props.ownerActions}<RoomInvitation roomId={room.id} clientJoined={room.clientJoined} open={inviteOpen} inviteHref={inviteHref} joinCode={joinCode} busy={!!busy} local={local} notice={notice} error={actionError} onOpenChange={onToggleInvite} onCreate={onCreateInvite} onCopyLink={onCopyInvite} onCopyCode={onCopyCode} /></div>}
       </div>
 
       <div className={styles.roomPeople} aria-label="Room participants">

@@ -6,14 +6,17 @@ import { AppError } from "./errors.js";
 import { homeHash } from "./home-store.js";
 import type { HomeService } from "./home-service.js";
 import type { HomeGenerationInput, HomeJob, StoredHome } from "./home-types.js";
-import type { RoomStore } from "./room-store.js";
-import { memberRole, requireDesigner } from "./room-domain.js";
-import type { StoredRoom } from "./room-types.js";
+import { activeRoomProjectCount, roomOwnerLimit, type RoomStore } from "./room-store.js";
+import { memberRole, requireDesigner, newInvite, newRoom } from "./room-domain.js";
+import type { RoomOwner, StoredRoom } from "./room-types.js";
 import type { DesignAgreement, DesignAssistant, DesignAssistantReply, SharedHome, StoredDesignAssistant, StoredHomeRoom } from "./home-collaboration-types.js";
 
 export type AssistantIndex = { profiles: Record<string, StoredDesignAssistant>; receipts: Record<string, { hash: string; id: string }> };
 export interface HomeCollaborationTransaction {
   getRoom(roomId: string): Promise<StoredRoom | undefined>;
+  putRoom(room: StoredRoom): void;
+  getRoomOwner(uid: string): Promise<RoomOwner>;
+  putRoomOwner(uid: string, owner: RoomOwner): void;
   getLink(roomId: string): Promise<StoredHomeRoom | undefined>;
   putLink(link: StoredHomeRoom): void;
   getHome(ownerId: string, homeId: string): Promise<StoredHome | undefined>;
@@ -29,6 +32,9 @@ export class FirestoreHomeCollaborationDatabase implements HomeCollaborationData
   transaction<T>(operation: (transaction: HomeCollaborationTransaction) => Promise<T>) {
     return this.db.runTransaction(transaction => operation({
       getRoom: async id => (await transaction.get(this.db.collection("rooms").doc(id))).data() as StoredRoom | undefined,
+      putRoom: room => { transaction.set(this.db.collection("rooms").doc(room.id), room); },
+      getRoomOwner: async uid => (await transaction.get(this.db.collection("roomOwners").doc(uid))).data() as RoomOwner ?? { projects: {} },
+      putRoomOwner: (uid, owner) => { transaction.set(this.db.collection("roomOwners").doc(uid), owner); },
       getLink: async id => (await transaction.get(this.db.collection("homeRooms").doc(id))).data() as StoredHomeRoom | undefined,
       putLink: link => { if (Buffer.byteLength(JSON.stringify(link)) > 800_000) throw new AppError(422, "ROOM_HISTORY_LIMIT", "This room has reached its saved-history limit."); transaction.set(this.db.collection("homeRooms").doc(link.roomId), link); },
       getHome: async (uid, id) => (await transaction.get(this.db.collection("users").doc(uid).collection("homes").doc(id))).data() as StoredHome | undefined,
@@ -69,6 +75,7 @@ export class HomeCollaboration {
     });
   }
   async createRoom(uid: string, homeId: string, input: { requestId: string; assistantId?: string }) {
+    const lifecycleVersion = (await this.homes.store.stored(uid, homeId)).lifecycleVersion ?? 0;
     const home = await this.homes.store.get(uid, homeId);
     if (!home.headRevisionId) throw new AppError(409, "LAYOUT_REQUIRED", "Choose a starting layout before inviting someone to design it with you.");
     const existingId = await this.database.transaction(async transaction => (await transaction.getIndex(uid))[homeId]);
@@ -79,19 +86,24 @@ export class HomeCollaboration {
       if (!found) throw new AppError(404, "ASSISTANT_NOT_FOUND", "This design assistant could not be found."); assistant = found;
     } else assistant = await this.createAssistant(uid, { requestId: input.requestId });
     const source = await this.homes.proposal(uid, homeId, { requestId: input.requestId, baseRevisionId: home.headRevisionId });
-    const result = await this.rooms.create(uid, source.project.id);
-    // This room has an explicit selected-design assistant. The old textual scope
-    // observer stays paused, so one message cannot trigger two paid workflows.
-    await this.rooms.attachHome(uid, result.room.id, homeId);
+    const invitation = newInvite(Date.now());
+    let created = false;
     const roomId = await this.database.transaction(async transaction => {
-      const index = await transaction.getIndex(uid); if (index[homeId]) return index[homeId]!;
-      const room = await transaction.getRoom(result.room.id); requireDesigner(room, uid);
+      const index = await transaction.getIndex(uid);
       const currentHome = await transaction.getHome(uid, homeId);
-      if (!currentHome || currentHome.ownerId !== uid) throw noSharedHome();
+      if (!currentHome || currentHome.ownerId !== uid || currentHome.trash || (currentHome.lifecycleVersion ?? 0) !== lifecycleVersion) throw noSharedHome();
+      if (index[homeId]) { created = false; return index[homeId]!; }
+      const owner = await transaction.getRoomOwner(uid);
+      const limit = roomOwnerLimit(owner);
+      if (activeRoomProjectCount(owner) >= limit) throw new AppError(422, "ROOM_LIMIT", `This workspace has reached its ${limit}-room limit. Continue in an existing room.`);
+      const room = newRoom(source.project, this.rooms.provider, invitation.stored, Date.now());
+      // Both association directions and their shared state commit atomically.
+      room.homeId = homeId; room.paused = true; room.observer.status = "paused";
       const link: StoredHomeRoom = { roomId: room.id, homeId, ownerId: uid, assistant, decisions: [], agreements: [], requests: {} };
-      currentHome.roomId = room.id; index[homeId] = room.id; transaction.putLink(link); transaction.putIndex(uid, index); transaction.putHome(currentHome); return room.id;
+      currentHome.roomId = room.id; index[homeId] = room.id; owner.projects[source.project.id] = room.id; created = true;
+      transaction.putRoom(room); transaction.putRoomOwner(uid, owner); transaction.putLink(link); transaction.putIndex(uid, index); transaction.putHome(currentHome); return room.id;
     });
-    return { ...await this.get(uid, roomId), ...(roomId === result.room.id ? { inviteToken: result.inviteToken, joinCode: result.joinCode } : await this.rooms.invite(uid, roomId)) };
+    return { ...await this.get(uid, roomId), ...(created ? { inviteToken: invitation.token, joinCode: invitation.joinCode } : {}) };
   }
   async get(uid: string, roomId: string): Promise<SharedHome> {
     const { link, role } = await this.checked(uid, roomId);
@@ -170,7 +182,7 @@ export class HomeCollaboration {
       const room = await transaction.getRoom(roomId); const role = memberRole(room, uid); const link = await transaction.getLink(roomId);
       if (!link || room!.ownerId !== link.ownerId) throw noSharedHome();
       const home = await transaction.getHome(link.ownerId, link.homeId);
-      if (!home || home.ownerId !== link.ownerId) throw noSharedHome();
+      if (!home || home.ownerId !== link.ownerId || home.trash) throw noSharedHome();
       if (action === "accept" ? role !== "client" : role !== "designer") throw new AppError(403, "DESIGN_ROLE_REQUIRED", action === "accept" ? "The homeowner must accept their chosen design." : "The designer must approve the homeowner's chosen design.");
       const hash = homeHash({ action, ...input }); const previous = link.requests[input.requestId];
       if (previous) { if (previous.actorId !== uid || previous.hash !== hash) throw new AppError(409, "REQUEST_REUSED", "This review request was already used with different values."); return; }
@@ -187,15 +199,15 @@ export class HomeCollaboration {
       const room = await transaction.getRoom(roomId); requireDesigner(room, uid); const link = await transaction.getLink(roomId);
       if (!link || link.ownerId !== uid) throw noSharedHome();
       const home = await transaction.getHome(uid, link.homeId);
-      if (!home || home.headRevisionId !== revisionId) throw new AppError(409, "DESIGN_CHANGED", "The design has changed. Review and choose its latest version before preparing an agreement.");
+      if (!home || home.trash || home.headRevisionId !== revisionId) throw new AppError(409, "DESIGN_CHANGED", "The design has changed. Review and choose its latest version before preparing an agreement.");
       const accepted = link.decisions.findLast(item => item.action === "accept" && item.revisionId === revisionId);
       const approved = link.decisions.findLast(item => item.action === "approve" && item.revisionId === revisionId);
       if (!accepted || !approved) throw new AppError(409, "DESIGN_REVIEW_REQUIRED", "The homeowner must accept and the designer must approve this exact design before a draft agreement can be prepared.");
-      return { link, accepted, approved };
+      return { link, accepted, approved, lifecycleVersion: home.lifecycleVersion ?? 0 };
     });
   }
   async agreement(uid: string, roomId: string, input: { requestId: string; revisionId: string }) {
-    const { link, accepted, approved } = await this.agreementAuthority(uid, roomId, input.revisionId);
+    const { link, accepted, approved, lifecycleVersion } = await this.agreementAuthority(uid, roomId, input.revisionId);
     const hash = homeHash({ kind: "agreement", ...input }); const receipt = link.requests[input.requestId];
     if (receipt && (receipt.actorId !== uid || receipt.hash !== hash)) throw new AppError(409, "REQUEST_REUSED", "This request was already used with different values.");
     if (link.agreements.some(item => item.revisionId === input.revisionId)) return this.get(uid, roomId);
@@ -216,7 +228,8 @@ export class HomeCollaboration {
       const room = await transaction.getRoom(roomId); requireDesigner(room, uid); const current = await transaction.getLink(roomId);
       if (!current || current.ownerId !== uid) throw noSharedHome();
       const home = await transaction.getHome(uid, current.homeId);
-      if (home?.headRevisionId !== input.revisionId || !current.decisions.some(item => item.action === "accept" && item.revisionId === input.revisionId) || !current.decisions.some(item => item.action === "approve" && item.revisionId === input.revisionId)) throw new AppError(409, "DESIGN_CHANGED", "The design changed while its agreement was prepared. The current design remains unchanged; review it before generating another draft.");
+      if ((home?.lifecycleVersion ?? 0) !== lifecycleVersion) throw new AppError(409, "DESIGN_CHANGED", "This home moved to trash while its agreement was prepared. Refresh before preparing another agreement.");
+      if (home?.trash || home?.headRevisionId !== input.revisionId || !current.decisions.some(item => item.action === "accept" && item.revisionId === input.revisionId) || !current.decisions.some(item => item.action === "approve" && item.revisionId === input.revisionId)) throw new AppError(409, "DESIGN_CHANGED", "The design changed while its agreement was prepared. The current design remains unchanged; review it before generating another draft.");
       if (current.agreements.some(item => item.revisionId === input.revisionId)) return;
       current.agreements.push(agreement); current.requests[input.requestId] = { actorId: uid, hash, resultId: agreement.id }; transaction.putLink(current);
     });

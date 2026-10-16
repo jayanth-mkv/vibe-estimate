@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckCheck } from "lucide-react";
-import { allowsAnonymousSessions, canUseSession, ensureSessionReady, isGuestUser, isGoogleAuthEnabled, sessionAccessMessage, openGoogleClientRoom, saveAccessWithGoogle, startSession, usesEmulators, type SessionIdentity } from "@/lib/firebase";
+import { allowsAnonymousSessions, canUseSession, clientAuth, ensureSessionReady, isGuestUser, isGoogleAuthEnabled, sessionAccessMessage, openGoogleClientRoom, saveAccessWithGoogle, startSession, usesEmulators, type SessionIdentity } from "@/lib/firebase";
 import { recoverClientRoom, selectedClientIdentity, verifiedClientRoom } from "@/lib/client-room-access";
 import { api as projectApi } from "@/lib/api";
 import { workspaceStatus } from "@/lib/workspace-status";
@@ -12,6 +12,8 @@ import type { Health } from "@/lib/types";
 import { makeRoomApi } from "@/lib/room-api";
 import type { Room } from "@/lib/room-types";
 import { Button } from "@/components/ui/button";
+import { DeleteSavedItem } from "@/components/delete-saved-item";
+import { ServiceError } from "@/lib/service-request";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RoomView } from "./room-view";
 import { HomeStudio } from "../spatial/home-studio";
@@ -25,6 +27,8 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
   const [activeIdentity, setActiveIdentity] = useState<SessionIdentity>(identity);
   const api = useMemo(() => makeRoomApi(activeIdentity), [activeIdentity]);
   const [room, setRoom] = useState<Room | null>(null);
+  const [roomOwnerUid, setRoomOwnerUid] = useState("");
+  const [unavailable, setUnavailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const googleAuthEnabled = !loading && isGoogleAuthEnabled();
   const usesAnonymousAuth = !loading && allowsAnonymousSessions();
@@ -88,10 +92,12 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
         }
         setNeedsSignIn(false);
         setAnonymous(isGuestUser(auth.currentUser));
+        const requestingUid = auth.currentUser?.uid;
         const result = activeIdentity === "client" && inviteToken.current
           ? await api.join(roomId, inviteToken.current)
           : await api.get(roomId);
-        if (cancelled) return;
+        if (cancelled || !requestingUid || clientAuth(activeIdentity).currentUser?.uid !== requestingUid) return;
+        setRoomOwnerUid(requestingUid);
         if (identity === "client") {
           inviteToken.current = "";
           if (new URLSearchParams(window.location.hash.slice(1)).has("invite")) {
@@ -127,8 +133,11 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
           acceptRoom(result.room);
           setConnectionError("");
         }
-      } catch {
-        if (!cancelled) setConnectionError("Connection interrupted. Your saved conversation is here; reconnecting…");
+      } catch (cause) {
+        if (!cancelled) {
+          if (cause instanceof ServiceError && cause.status === 404) { setUnavailable(true); setRoom(null); }
+          else setConnectionError("Connection interrupted. Your saved conversation is here; reconnecting…");
+        }
       } finally { polling = false; }
     }
     const timer = window.setInterval(() => void refresh(), 1500);
@@ -275,6 +284,8 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
     else router.push(href);
   }
 
+  if (unavailable) return <div className={styles.page}><header className={styles.header}><Link className="brand" href="/">VibeEstimate</Link></header><main className={styles.connectionPage}><h1>This shared room is unavailable.</h1><p role="status">It may have been moved to Trash or your access may have changed. Saved work can only be restored by its owner.</p><Link className={styles.backLink} href={identity === "designer" ? "/trash" : "/join"}>{identity === "designer" ? "Open Trash" : "Join a room"}</Link><Link className={styles.backLink} href="/">Your homes</Link></main></div>;
+
   if (!room) return <div className={styles.page}>
     <header className={styles.header}><Link className="brand" href="/"><span className="brand-mark"><CheckCheck size={19} aria-hidden="true" /></span>VibeEstimate</Link><span className={styles.viewBadge}>{identity === "client" ? "Client room" : "Project room"}</span></header>
     <main className={styles.connectionPage}>
@@ -285,6 +296,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
         {initialError && <p role="alert" className={styles.error}>{initialError}</p>}
         {needsSignIn ? <Button className="button primary" disabled={!!busy} onClick={() => void signIn()}>{busy ? "Connecting…" : usesAnonymousAuth ? "Reconnect to room" : "Continue with Google"}</Button> : <Button className="button primary" disabled={!!busy} onClick={() => setBootVersion((value) => value + 1)}>Try again</Button>}
         {identity === "client" && <Link className={styles.joinRecovery} href="/join">Join with a room code</Link>}
+        {identity === "designer" && <Link className={styles.joinRecovery} href="/trash">Open Trash</Link>}
         {identity === "client" && googleAuthEnabled && !needsSignIn && <section className={styles.googleRecovery} aria-labelledby="google-recovery-title"><h2 id="google-recovery-title">Saved access with Google?</h2><p>Open this room with the Google account you used. Your other saved work stays private.</p><Button className="button secondary" disabled={!!busy} onClick={() => void recoverGoogleAccess()}>{busy === "recover-google" ? "Opening your room…" : "Continue with Google"}</Button></section>}
         {identity === "client" && <p className={styles.small}>The scope agent sees the conversation. It helps review changes; it does not approve work or prices.</p>}
       </>}
@@ -295,6 +307,7 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
 
   return <>
     <RoomView room={room} text={text} pending={pending} busy={busy} notice={notice} actionError={actionError} connectionError={connectionError} inviteOpen={inviteOpen} inviteHref={inviteHref} joinCode={joinCode} environmentLabel={workspaceStatus(health)} googleAvailable={googleAuthEnabled && anonymous} local={usesEmulators} composerRef={composerRef}
+      ownerActions={room.role === "designer" && <><Link className={styles.backLink} href="/trash" onClick={event => { event.preventDefault(); navigate("/trash"); }}>Trash</Link><DeleteSavedItem key={`${roomOwnerUid}:${room.id}`} target={{ kind: "room", id: room.id, name: room.name }} ownerUid={roomOwnerUid} identity={activeIdentity} disabled={Boolean(busy || pending?.status === "sending")} unsavedChanges={Boolean(text.trim() || pending)} onDeleted={item => { setText(""); setPending(null); setRoom(null); router.replace(`/trash?moved=${encodeURIComponent(item.trashId)}`); }} /></>}
       onTextChange={setText} onSend={() => void sendMessage()} onRetryMessage={() => void sendMessage(true)} onObserver={(action) => void act(action)}
       onToggleInvite={() => { setInviteOpen((value) => !value); setNotice(""); setActionError(""); }} onCreateInvite={() => void createInvite()} onCopyInvite={() => void copyInvite()} onCopyCode={() => void copyCode()} onGoogle={() => void saveGoogleAccess()} onPrepareDraft={() => void prepareDraft()} onShareDraft={() => void shareDraft()} onNavigate={navigate} />
     <AlertDialog open={!!leaveHref} onOpenChange={(open) => { if (!open) setLeaveHref(""); }}>

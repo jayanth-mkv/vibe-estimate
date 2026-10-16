@@ -1,4 +1,5 @@
 import type { DesignSelection, HouseDocument, HousePatch } from "@vibeestimate/scene-schema";
+import type { TrashItem } from "./workspace-lifecycle-types.js";
 
 export type HomeBrief = { title: string; summary: string; source: "template" | "gemini" | "fixture"; assumptions: string[] };
 export type HomeRevisionSummary = { id: string; parentRevisionId: string | null; title: string; description: string; createdAt: string; source: "template" | "manual" | "gemini" | "fixture" | "restore"; conflict: boolean; model?: string; changes?: string[] };
@@ -24,6 +25,7 @@ export type StoredHomeJob = HomeJob & { expiresAt: number; stagedRevisionId?: st
 export type StoredHome = Omit<HomeProject, "scene" | "activeJob"> & {
   ownerId: string; receipts: Record<string, HomeReceipt>; jobs: Record<string, StoredHomeJob>;
   activeRequestId?: string; callsUsed: number;
+  trash?: TrashItem; lifecycleVersion?: number;
 };
 export type HomeOwner = { homeIds: string[]; creations: Record<string, string>; callsUsed: number; active?: { homeId: string; requestId: string; expiresAt: number } };
 export type HomeGenerationInput = { requestId: string; baseRevisionId: string; prompt: string; selection: DesignSelection };

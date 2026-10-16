@@ -4,6 +4,7 @@ import type { HomeCollaborationDatabase, HomeCollaborationTransaction, Assistant
 import type { StoredHomeRoom } from "../src/home-collaboration-types.js";
 import { AppError } from "../src/errors.js";
 import type { StoredProject } from "../src/types.js";
+import type { RoomOwner, StoredRoom } from "../src/room-types.js";
 import { MemoryProjectStore } from "./helpers.js";
 import { MemoryRoomDatabase } from "./room-helpers.js";
 
@@ -33,24 +34,36 @@ export class MemoryHomeDatabase implements HomeDatabase {
     });
   }
   async list(uid: string) { return structuredClone([...this.homes.values()].filter(home => home.ownerId === uid)); }
-  async putRevision(uid: string, id: string, revision: HomeRevision) {
+  async putRevision(uid: string, id: string, revision: HomeRevision, lifecycleVersion?: number) {
     if (this.failRevisionWrites > 0) { this.failRevisionWrites--; throw new Error("private storage error"); }
+    const home = this.homes.get(id);
+    if (!home || home.ownerId !== uid || home.trash) throw new AppError(404, "HOME_NOT_FOUND", "Home not found.");
+    if (lifecycleVersion !== undefined && (home.lifecycleVersion ?? 0) !== lifecycleVersion) throw new AppError(409, "HOME_CHANGED", "Home deletion status changed.");
     const key = `${uid}/${id}/${revision.id}`; const previous = this.revisions.get(key);
     if (previous && homeHash({ ...previous, createdAt: "" }) !== homeHash({ ...revision, createdAt: "" })) throw new AppError(409, "REQUEST_REUSED", "Different saved content.");
     if (!previous) this.revisions.set(key, structuredClone(revision));
   }
   async getRevision(uid: string, id: string, revisionId: string) { return structuredClone(this.revisions.get(`${uid}/${id}/${revisionId}`)); }
-  async putSummary(uid: string, id: string, summary: HomeSummary) { const key = `${uid}/${id}/${summary.purpose ?? "design"}/${summary.id}`; if (!this.summaries.has(key)) this.summaries.set(key, structuredClone(summary)); }
+  async putSummary(uid: string, id: string, summary: HomeSummary, lifecycleVersion?: number) {
+    const home = this.homes.get(id);
+    if (!home || home.ownerId !== uid || home.trash) throw new AppError(404, "HOME_NOT_FOUND", "Home not found.");
+    if (lifecycleVersion !== undefined && (home.lifecycleVersion ?? 0) !== lifecycleVersion) throw new AppError(409, "HOME_CHANGED", "Home deletion status changed.");
+    const key = `${uid}/${id}/${summary.purpose ?? "design"}/${summary.id}`; if (!this.summaries.has(key)) this.summaries.set(key, structuredClone(summary));
+  }
   async getSummary(uid: string, id: string, summaryId: string, purpose?: "agreement") { return structuredClone(this.summaries.get(`${uid}/${id}/${purpose ?? "design"}/${summaryId}`)); }
 }
 export class MemoryHomeCollaborationDatabase implements HomeCollaborationDatabase {
   links = new Map<string, StoredHomeRoom>(); indices = new Map<string, Record<string, string>>(); assistants = new Map<string, AssistantIndex>();
-  constructor(readonly homes: MemoryHomeDatabase, readonly rooms: MemoryRoomDatabase) {}
+  constructor(readonly homes: MemoryHomeDatabase, readonly rooms: MemoryRoomDatabase) { rooms.mutex = homes.mutex; }
   transaction<T>(operation: (transaction: HomeCollaborationTransaction) => Promise<T>) {
     return this.homes.mutex.run(async () => {
       const links = new Map<string, StoredHomeRoom>(); const indices = new Map<string, Record<string, string>>(); const assistants = new Map<string, AssistantIndex>(); const homes = new Map<string, StoredHome>();
+      const rooms = new Map<string, StoredRoom>(); const roomOwners = new Map<string, RoomOwner>();
       const result = await operation({
         getRoom: async id => structuredClone(this.rooms.rooms.get(id)), getLink: async id => structuredClone(this.links.get(id)), putLink: link => { links.set(link.roomId, structuredClone(link)); },
+        putRoom: room => { rooms.set(room.id, structuredClone(room)); },
+        getRoomOwner: async uid => structuredClone(this.rooms.owners.get(uid) ?? { projects: {} }),
+        putRoomOwner: (uid, owner) => { roomOwners.set(uid, structuredClone(owner)); },
         getHome: async (uid, id) => { const home = this.homes.homes.get(id); return home?.ownerId === uid ? structuredClone(home) : undefined; },
         putHome: home => { homes.set(home.id, structuredClone(home)); },
         getIndex: async uid => structuredClone(this.indices.get(uid) ?? {}), putIndex: (uid, index) => { indices.set(uid, structuredClone(index)); },
@@ -58,6 +71,7 @@ export class MemoryHomeCollaborationDatabase implements HomeCollaborationDatabas
       });
       for (const [id, link] of links) this.links.set(id, link); for (const [uid, index] of indices) this.indices.set(uid, index); for (const [uid, index] of assistants) this.assistants.set(uid, index);
       for (const [id, home] of homes) this.homes.homes.set(id, home);
+      for (const [id, room] of rooms) this.rooms.rooms.set(id, room); for (const [uid, owner] of roomOwners) this.rooms.owners.set(uid, owner);
       return structuredClone(result);
     });
   }

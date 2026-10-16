@@ -59,11 +59,19 @@ export class FirestoreRoomDatabase implements RoomDatabase {
 
 export type ClaimedReview = { room: StoredRoom; run: ObserverRun };
 
-function roomOwnerLimit(owner: RoomOwner): number {
+export function roomOwnerLimit(owner: RoomOwner): number {
   const limit = owner.roomLimit;
   // Capacity is server-managed. Missing or malformed settings use the default;
   // they never waive creation limits or change a room's spent AI allowance.
   return typeof limit === "number" && Number.isSafeInteger(limit) && limit >= ROOM_OWNER_LIMIT && limit <= 100 ? limit : ROOM_OWNER_LIMIT;
+}
+
+/** Trashed rooms keep their project mapping but release active capacity. Malformed trash metadata releases nothing. */
+export function activeRoomProjectCount(owner: RoomOwner): number {
+  const total = Object.keys(owner.projects).length;
+  const trashed = owner.trashedProjectIds ?? [];
+  const valid = Array.isArray(trashed) && new Set(trashed).size === trashed.length && trashed.every(id => typeof id === "string" && Object.hasOwn(owner.projects, id));
+  return valid ? total - trashed.length : total;
 }
 
 export class RoomStore {
@@ -71,7 +79,7 @@ export class RoomStore {
 
   /** One outstanding delivery per room coalesces messages without losing the atomic enqueue intent. */
   private queueDelivery(transaction: RoomTransaction, room: StoredRoom) {
-    if (!this.eventDelivery || room.homeId || room.paused || !["queued", "thinking"].includes(room.observer.status) || room.delivery) return;
+    if (!this.eventDelivery || room.trash || room.homeId || room.paused || !["queued", "thinking"].includes(room.observer.status) || room.delivery) return;
     const delivery: RoomDelivery = { id: randomUUID(), roomId: room.id, ownerId: room.ownerId, createdAt: this.clock(), deadline: this.clock() + ROOM_DELIVERY_TIMEOUT_MS, status: "pending" };
     room.delivery = { id: delivery.id, deadline: delivery.deadline };
     transaction.putDelivery(delivery);
@@ -122,7 +130,7 @@ export class RoomStore {
         return existing;
       }
       const limit = roomOwnerLimit(owner);
-      if (Object.keys(owner.projects).length >= limit) throw new AppError(422, "ROOM_LIMIT", `This workspace has reached its ${limit}-room limit. Continue in an existing room.`);
+      if (activeRoomProjectCount(owner) >= limit) throw new AppError(422, "ROOM_LIMIT", `This workspace has reached its ${limit}-room limit. Continue in an existing room.`);
       const created = newRoom(project, this.provider, invitation.stored, now);
       owner.projects[projectId] = created.id;
       transaction.putRoom(created);
@@ -293,7 +301,7 @@ export class RoomStore {
   async ensureDelivery(id: string) {
     return this.database.transaction(async transaction => {
       const room = await transaction.getRoom(id);
-      if (!room) return;
+      if (!room || room.trash) return;
       this.queueDelivery(transaction, room);
       transaction.putRoom(room);
       return room.delivery?.id;
@@ -305,7 +313,7 @@ export class RoomStore {
       const delivery = await transaction.getDelivery(id);
       if (!delivery || delivery.id !== id || delivery.status !== "pending") return;
       const room = await transaction.getRoom(delivery.roomId);
-      if (!room || room.ownerId !== delivery.ownerId || room.delivery?.id !== id || room.homeId) {
+      if (!room || room.trash || room.ownerId !== delivery.ownerId || room.delivery?.id !== id || room.homeId) {
         transaction.putDelivery({ ...delivery, status: "failed" });
         return;
       }
@@ -329,7 +337,7 @@ export class RoomStore {
   hasPendingReview(id: string) {
     return this.database.transaction(async transaction => {
       const room = await transaction.getRoom(id);
-      return Boolean(room?.run || room?.observer.status === "queued");
+      return Boolean(room && !room.trash && (room.run || room.observer.status === "queued"));
     });
   }
 
@@ -337,7 +345,7 @@ export class RoomStore {
   async claim(id: string, deliveryId?: string): Promise<ClaimedReview | undefined> {
     return this.database.transaction(async transaction => {
       const room = await transaction.getRoom(id);
-      if (!room) return;
+      if (!room || room.trash) return;
       if (deliveryId && room.delivery?.id !== deliveryId) return;
       if (room.homeId) {
         if (room.observer.status !== "paused") { room.paused = true; room.observer.status = "paused"; transaction.putRoom(room); }
@@ -385,7 +393,7 @@ export class RoomStore {
   async finish(id: string, runId: string, result: { analysis: Analysis } | { error: string }) {
     await this.database.transaction(async transaction => {
       const room = await transaction.getRoom(id);
-      if (!room?.run || room.run.id !== runId) return;
+      if (!room?.run || room.trash || room.run.id !== runId) return;
       const owner = await transaction.getOwner(room.ownerId);
       const delivery = room.delivery ? await transaction.getDelivery(room.delivery.id) : undefined;
       const count = room.run.messageCount;

@@ -22,7 +22,7 @@ export const roomObserverSchema = z.object({ action: z.enum(["retry", "pause", "
 export const roomNotFound = () => new AppError(404, "ROOM_NOT_FOUND", "This room could not be found.");
 
 export function memberRole(room: StoredRoom | undefined, uid: string): RoomRole {
-  if (!room) throw roomNotFound();
+  if (!room || room.trash) throw roomNotFound();
   if (room.ownerId === uid) return "designer";
   if (room.clientId === uid) return "client";
   throw roomNotFound();
@@ -44,14 +44,14 @@ export function joinCodeHash(value: string) {
 export function assertJoinCodeHash(room: StoredRoom, suppliedHash: string, now: number) {
   const expected = Buffer.from(room.invite.codeHash ?? "", "hex");
   const supplied = Buffer.from(suppliedHash, "hex");
-  if (now >= room.invite.expiresAt || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+  if (room.trash || now >= room.invite.expiresAt || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
     throw new AppError(403, "INVITE_INVALID", "This room code is invalid or has expired. Ask the designer for a new invitation.");
   }
 }
 export function assertInvite(room: StoredRoom, token: string, now: number) {
   const supplied = createHash("sha256").update(token).digest();
   const expected = Buffer.from(room.invite.hash, "hex");
-  if (now >= room.invite.expiresAt || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+  if (room.trash || now >= room.invite.expiresAt || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
     throw new AppError(403, "INVITE_INVALID", "This invitation is invalid or has expired. Ask the designer for a new invitation.");
   }
 }

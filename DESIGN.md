@@ -18,6 +18,7 @@ Operate mode governs the product. People use the studio at a desk and on a phone
 | /rooms/:id | Designer room: shared home, conversation, assistant, review and agreement library |
 | /client/rooms/:id | Homeowner room: same authorized design and conversation, homeowner acceptance and stored draft downloads |
 | /join | Invitation/code entry using an independent client identity |
+| /trash | Owner's recoverable deleted homes and shared rooms, with saved-state restoration |
 | /proposals | Existing source review and confirmed commercial proposal records |
 | /welcome | Optional illustrated tour aligned to the current product |
 | /studio | Redirect to the integrated home workspace |
@@ -41,6 +42,8 @@ Keep self-hosted Poppins headings and DM Sans body/controls, with their existing
 Lead with actual work: saved home names and dates when present; a concise outcome and New project when empty. Template previews depict actual canonical geometry and disclose room count, measured area and an authored starting point. Three distinct full homes are offered; test fixtures are not gallery choices.
 
 Project creation establishes private ownership quietly. The next screen lets the person choose a layout, then describe their preferences. Suggested prompts populate the same editable composer and call the same endpoint. Gemini supplies useful title/brief defaults after a real generation. Preserve prompt text on failure.
+
+Delete is a separate action beside each saved home and in owner home/room controls. Confirm the exact name with generated AlertDialog, initially focus Cancel, and explain linked shared access and preserved history. The server confirms removal; errors preserve the dialog and target for retry. Trash lists real deleted records with Restore actions and clear saved state. Restoration keeps old invitations expired and the scope observer paused.
 
 ## Studio
 

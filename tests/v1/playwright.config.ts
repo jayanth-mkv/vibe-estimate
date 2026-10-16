@@ -8,7 +8,7 @@ if (!evidence || !fs.existsSync(evidence) || baseURL !== 'http://127.0.0.1:3100'
 const live = process.env.V1_PROVIDER === 'gemini';
 const legacy = process.env.V1_LEGACY === '1';
 if (live && legacy) throw new Error('Legacy fixture checks cannot run with live inference.');
-const stories = live ? ['**/v1/live.spec.ts'] : ['**/v1/journeys.spec.ts', '**/v1/recovery.spec.ts'];
+const stories = live ? ['**/v1/live.spec.ts'] : ['**/v1/journeys.spec.ts', '**/v1/recovery.spec.ts', '**/v1/deletion.spec.ts'];
 export default defineConfig({
   testDir: '..', fullyParallel: false, workers: 1, retries: 0,
   timeout: 180_000, expect: { timeout: 60_000 },
@@ -22,7 +22,7 @@ export default defineConfig({
     { name: live ? 'live-desktop' : 'desktop', testMatch: [...stories, ...(!live ? ['**/v1/access.spec.ts'] : []), ...(legacy ? ['**/e2e/*.spec.ts'] : [])], use: { viewport: { width: 1440, height: 1000 } } },
     ...(!live ? [
       { name: 'mobile', testMatch: [...stories, ...(legacy ? ['**/e2e/ui.spec.ts', '**/e2e/rooms.spec.ts', '**/e2e/review-recovery.spec.ts'] : [])], use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, video: { mode: 'on' as const, size: { width: 390, height: 844 } } } },
-      { name: 'narrow', testMatch: ['**/v1/responsive.spec.ts'], use: { viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, reducedMotion: 'reduce' as const, video: { mode: 'on' as const, size: { width: 320, height: 740 } } } },
+      { name: 'narrow', testMatch: ['**/v1/responsive.spec.ts', '**/v1/deletion.spec.ts'], use: { viewport: { width: 320, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, reducedMotion: 'reduce' as const, video: { mode: 'on' as const, size: { width: 320, height: 740 } } } },
     ] : []),
   ],
 });

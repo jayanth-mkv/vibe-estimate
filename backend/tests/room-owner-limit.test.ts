@@ -50,6 +50,18 @@ describe("server-managed workspace room capacity", () => {
     expect(database.owners.get("owner")!.roomLimit).toBe(23);
   });
 
+  it("releases capacity only for valid trashed projects under the configured limit", async () => {
+    const ids = await seed(23, 23);
+    database.owners.get("owner")!.trashedProjectIds = [ids[0]!, ids[0]!];
+    await expect(create()).rejects.toMatchObject({ code: "ROOM_LIMIT" });
+    database.owners.get("owner")!.trashedProjectIds = ["unknown-project"];
+    await expect(create()).rejects.toMatchObject({ code: "ROOM_LIMIT" });
+    database.owners.get("owner")!.trashedProjectIds = [ids[0]!];
+    await create();
+    expect(database.rooms.size).toBe(24);
+    await expect(create()).rejects.toMatchObject({ code: "ROOM_LIMIT", message: expect.stringContaining("23-room") });
+  });
+
   it.each([10, 100])("enforces valid capacity boundary %i without changing saved rooms", async limit => {
     await seed(limit - 1, limit); await create();
     await expect(create()).rejects.toMatchObject({ code: "ROOM_LIMIT" });

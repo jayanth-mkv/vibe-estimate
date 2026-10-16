@@ -7,7 +7,7 @@ import { publicHomeJob, type HomeJob, type HomeOwner, type HomeProject, type Hom
 export const HOME_LIMITS = { homes: 20, revisions: 80, requests: 100, homeCalls: 24, ownerCalls: 60, leaseMs: 55_000, chunkBytes: 128 * 1024 } as const;
 export const homeHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const missing = () => new AppError(404, "HOME_NOT_FOUND", "This home project could not be found.");
-const ownerOf = (home: StoredHome | undefined, uid: string): StoredHome => { if (!home || home.ownerId !== uid) throw missing(); return home; };
+const ownerOf = (home: StoredHome | undefined, uid: string): StoredHome => { if (!home || home.ownerId !== uid || home.trash) throw missing(); return home; };
 const emptyOwner = (): HomeOwner => ({ homeIds: [], creations: {}, callsUsed: 0 });
 const revisionSummary = ({ id, parentRevisionId, title, description, createdAt, source, conflict, model, changes }: HomeRevision) => ({ id, parentRevisionId, title, description, createdAt, source, conflict, ...(model ? { model } : {}), ...(changes ? { changes } : {}) });
 
@@ -22,9 +22,9 @@ export interface HomeTransaction {
 export interface HomeDatabase {
   transaction<T>(operation: (transaction: HomeTransaction) => Promise<T>): Promise<T>;
   list(uid: string): Promise<StoredHome[]>;
-  putRevision(uid: string, homeId: string, revision: HomeRevision): Promise<void>;
+  putRevision(uid: string, homeId: string, revision: HomeRevision, lifecycleVersion?: number): Promise<void>;
   getRevision(uid: string, homeId: string, revisionId: string): Promise<HomeRevision | undefined>;
-  putSummary(uid: string, homeId: string, summary: HomeSummary): Promise<void>;
+  putSummary(uid: string, homeId: string, summary: HomeSummary, lifecycleVersion?: number): Promise<void>;
   getSummary(uid: string, homeId: string, summaryId: string, purpose?: "agreement"): Promise<HomeSummary | undefined>;
 }
 
@@ -43,20 +43,21 @@ export class FirestoreHomeDatabase implements HomeDatabase {
     }));
   }
   async list(uid: string) {
-    const result = await this.db.collection("users").doc(uid).collection("homes").orderBy("updatedAt", "desc").limit(HOME_LIMITS.homes).get();
-    return result.docs.map(doc => doc.data() as StoredHome).filter(home => home.ownerId === uid);
+    const result = await this.db.collection("users").doc(uid).collection("homes").orderBy("updatedAt", "desc").get();
+    return result.docs.map(doc => doc.data() as StoredHome).filter(home => home.ownerId === uid && !home.trash);
   }
-  async putRevision(uid: string, homeId: string, revision: HomeRevision) {
+  async putRevision(uid: string, homeId: string, revision: HomeRevision, lifecycleVersion?: number) {
     const serialized = JSON.stringify(revision);
     if (Buffer.byteLength(serialized) > HOME_LIMITS.chunkBytes) throw new AppError(422, "SCENE_TOO_LARGE", "This layout exceeds the supported scene size.");
     const reference = this.home(uid, homeId).collection("revisions").doc(revision.id);
     const hash = homeHash({ ...revision, createdAt: "" });
-    try { await reference.create({ content: serialized, hash }); }
-    catch (error) {
-      if (!(typeof error === "object" && error && "code" in error && [6, "already-exists"].includes(error.code as number | string))) throw error;
-      const previous = (await reference.get()).data();
-      if (previous?.hash !== hash) throw new AppError(409, "REQUEST_REUSED", "This request already saved different content. Start a new change.");
-    }
+    await this.db.runTransaction(async transaction => {
+      const home = ownerOf((await transaction.get(this.home(uid, homeId))).data() as StoredHome | undefined, uid);
+      if (lifecycleVersion !== undefined && (home.lifecycleVersion ?? 0) !== lifecycleVersion) throw new AppError(409, "HOME_CHANGED", "This home's deletion status changed while saving. Refresh before making another change.");
+      const previous = (await transaction.get(reference)).data();
+      if (previous && previous.hash !== hash) throw new AppError(409, "REQUEST_REUSED", "This request already saved different content. Start a new change.");
+      if (!previous) transaction.create(reference, { content: serialized, hash });
+    });
   }
   async getRevision(uid: string, homeId: string, revisionId: string) {
     const data = (await this.home(uid, homeId).collection("revisions").doc(revisionId).get()).data();
@@ -65,11 +66,15 @@ export class FirestoreHomeDatabase implements HomeDatabase {
     if (homeHash({ ...revision, createdAt: "" }) !== data.hash) throw new AppError(503, "SCENE_CORRUPT", "The saved layout could not be verified. Its history has been preserved.");
     return revision;
   }
-  async putSummary(uid: string, homeId: string, summary: HomeSummary) {
+  async putSummary(uid: string, homeId: string, summary: HomeSummary, lifecycleVersion?: number) {
     if (Buffer.byteLength(JSON.stringify(summary)) > 100_000) throw new AppError(422, "SUMMARY_TOO_LARGE", "The design summary is too long.");
     const reference = this.home(uid, homeId).collection(summary.purpose === "agreement" ? "agreementProse" : "summaries").doc(summary.id);
-    try { await reference.create(summary); }
-    catch (error) { if (!(typeof error === "object" && error && "code" in error && [6, "already-exists"].includes(error.code as number | string))) throw error; }
+    await this.db.runTransaction(async transaction => {
+      const home = ownerOf((await transaction.get(this.home(uid, homeId))).data() as StoredHome | undefined, uid);
+      if (lifecycleVersion !== undefined && (home.lifecycleVersion ?? 0) !== lifecycleVersion) throw new AppError(409, "HOME_CHANGED", "This home's deletion status changed while saving. Refresh before making another change.");
+      const previous = await transaction.get(reference);
+      if (!previous.exists) transaction.create(reference, summary);
+    });
   }
   async getSummary(uid: string, homeId: string, summaryId: string, purpose?: "agreement") {
     return (await this.home(uid, homeId).collection(purpose === "agreement" ? "agreementProse" : "summaries").doc(summaryId).get()).data() as HomeSummary | undefined;
@@ -112,7 +117,7 @@ export class HomeStore {
     return { id, title, createdAt, updatedAt, templateId, headRevisionId, brief, revisions, summary, proposalProjectId, ...(roomId ? { roomId } : {}), scene: revision?.scene ?? null, activeJob: job ? publicHomeJob(job) : null };
   }
   async get(uid: string, id: string) { return this.project(await this.stored(uid, id)); }
-  async list(uid: string) { return Promise.all((await this.database.list(uid)).map(home => this.project(home))); }
+  async list(uid: string) { return Promise.all((await this.database.list(uid)).filter(home => !home.trash).map(home => this.project(home))); }
   async revision(uid: string, id: string, revisionId: string) {
     const home = await this.stored(uid, id);
     if (!home.revisions.some(revision => revision.id === revisionId)) throw new AppError(404, "REVISION_NOT_FOUND", "This saved version could not be found.");
@@ -125,12 +130,13 @@ export class HomeStore {
     if (receipt && (receipt.kind !== kind || receipt.hash !== hash)) throw new AppError(409, "REQUEST_REUSED", "This request was already used with different values. Start a new change.");
     return receipt;
   }
-  async publish(uid: string, id: string, input: { requestId: string; hash: string; kind: string; baseRevisionId: string | null; revision: HomeRevision; templateId?: string }) {
+  async publish(uid: string, id: string, input: { requestId: string; hash: string; kind: string; baseRevisionId: string | null; revision: HomeRevision; templateId?: string; lifecycleVersion?: number }) {
     const previous = await this.receipt(uid, id, input.requestId, input.kind, input.hash);
     if (previous?.revisionId) return this.get(uid, id);
-    await this.database.putRevision(uid, id, input.revision);
+    await this.database.putRevision(uid, id, input.revision, input.lifecycleVersion);
     await this.database.transaction(async transaction => {
       const home = ownerOf(await transaction.getHome(uid, id), uid);
+      if (input.lifecycleVersion !== undefined && (home.lifecycleVersion ?? 0) !== input.lifecycleVersion) throw new AppError(409, "HOME_CHANGED", "This home moved to trash while the change was being prepared. Refresh before making another change.");
       const receipt = home.receipts[input.requestId];
       if (receipt) { if (receipt.hash !== input.hash || receipt.kind !== input.kind) throw new AppError(409, "REQUEST_REUSED", "This request was already used with different values."); return; }
       if (home.revisions.length >= HOME_LIMITS.revisions || Object.keys(home.receipts).length >= HOME_LIMITS.requests) throw new AppError(422, "HOME_HISTORY_LIMIT", "This home has reached its saved-history limit.");
@@ -146,11 +152,12 @@ export class HomeStore {
     });
     return this.get(uid, id);
   }
-  async beginJob(uid: string, id: string, input: { requestId: string; hash: string; kind: "generate" | "summary" | "agreement"; baseRevisionId: string }) {
+  async beginJob(uid: string, id: string, input: { requestId: string; hash: string; kind: "generate" | "summary" | "agreement"; baseRevisionId: string; lifecycleVersion?: number }) {
     await this.stored(uid, id);
     return this.database.transaction(async transaction => {
       const home = ownerOf(await transaction.getHome(uid, id), uid);
       const owner = await transaction.getOwner(uid);
+      if (input.lifecycleVersion !== undefined && (home.lifecycleVersion ?? 0) !== input.lifecycleVersion) throw new AppError(409, "HOME_CHANGED", "This home's deletion status changed. Refresh before starting another request.");
       const receipt = home.receipts[input.requestId];
       if (receipt) {
         if (receipt.kind !== input.kind || receipt.hash !== input.hash) throw new AppError(409, "REQUEST_REUSED", "This request was already used with different values.");
@@ -170,9 +177,10 @@ export class HomeStore {
       return { dispatch: true, job: publicHomeJob(job) };
     });
   }
-  async cachedProse(uid: string, id: string, input: { requestId: string; hash: string; kind: "summary" | "agreement"; baseRevisionId: string }) {
+  async cachedProse(uid: string, id: string, input: { requestId: string; hash: string; kind: "summary" | "agreement"; baseRevisionId: string; lifecycleVersion?: number }) {
     return this.database.transaction(async transaction => {
       const home = ownerOf(await transaction.getHome(uid, id), uid);
+      if (input.lifecycleVersion !== undefined && (home.lifecycleVersion ?? 0) !== input.lifecycleVersion) throw new AppError(409, "HOME_CHANGED", "This home's deletion status changed. Refresh before starting another request.");
       const receipt = home.receipts[input.requestId];
       if (receipt) {
         if (receipt.kind !== input.kind || receipt.hash !== input.hash) throw new AppError(409, "REQUEST_REUSED", "This request was already used with different values.");
@@ -209,9 +217,11 @@ export class HomeStore {
     });
   }
   async stage(uid: string, id: string, requestId: string, result: { revision: HomeRevision } | { summary: HomeSummary }) {
-    if ("revision" in result) await this.database.putRevision(uid, id, result.revision);
+    const state = await this.stored(uid, id); const pending = state.jobs[requestId];
+    if (!pending || !["running", "unknown"].includes(pending.status) || state.activeRequestId !== requestId) return;
+    if ("revision" in result) await this.database.putRevision(uid, id, result.revision, state.lifecycleVersion ?? 0);
     else {
-      await this.database.putSummary(uid, id, result.summary);
+      await this.database.putSummary(uid, id, result.summary, state.lifecycleVersion ?? 0);
       const saved = await this.database.getSummary(uid, id, result.summary.id, result.summary.purpose);
       if (!saved) throw new AppError(503, "HOME_SAVE_PENDING", "The generated summary is waiting to finish saving.");
       result = { summary: saved };
@@ -279,9 +289,10 @@ export class HomeStore {
     if (!summary) throw new AppError(409, "SUMMARY_REQUIRED", "Prepare a design summary for this saved version before exporting.");
     return summary;
   }
-  async linkProposal(uid: string, id: string, input: { requestId: string; baseRevisionId: string; hash: string; project: StoredProject }) {
+  async linkProposal(uid: string, id: string, input: { requestId: string; baseRevisionId: string; hash: string; project: StoredProject; lifecycleVersion?: number }) {
     const projectId = await this.database.transaction(async transaction => {
       const home = ownerOf(await transaction.getHome(uid, id), uid); const receipt = home.receipts[input.requestId];
+      if (input.lifecycleVersion !== undefined && (home.lifecycleVersion ?? 0) !== input.lifecycleVersion) throw new AppError(409, "HOME_CHANGED", "This home's deletion status changed. Refresh before preparing a proposal.");
       if (receipt) { if (receipt.hash !== input.hash || receipt.kind !== "proposal") throw new AppError(409, "REQUEST_REUSED", "This request was already used with different values."); return receipt.projectId!; }
       if (home.headRevisionId !== input.baseRevisionId) throw new AppError(409, "HOME_CHANGED", "This home has a newer saved version. Reload before preparing a proposal.");
       if (Object.keys(home.receipts).length >= HOME_LIMITS.requests) throw new AppError(422, "HOME_HISTORY_LIMIT", "This home has reached its saved-history limit.");

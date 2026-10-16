@@ -10,18 +10,21 @@ const reviewErrorCodes = new Set([
   "REVIEW_IN_PROGRESS", "REVIEW_RETRY_REQUIRED", "REVIEW_SAVE_PENDING", "REVIEW_OUTCOME_UNKNOWN",
   "REVIEW_REQUEST_NOT_FOUND", "REVIEW_REPLACED", "INVALID_REVIEW_RETRY", "REVIEW_REQUEST_LIMIT",
   "REQUEST_REUSED", "PROJECT_CHANGED", "AI_UNAVAILABLE", "AI_INVALID_RESPONSE",
-  "FIXTURE_UNSUPPORTED", "ROOM_FIXTURE_UNSUPPORTED", "CLARIFICATION_REQUIRED", "CONVERSATION_LIMIT"
+  "FIXTURE_UNSUPPORTED", "ROOM_FIXTURE_UNSUPPORTED", "CLARIFICATION_REQUIRED", "CONVERSATION_LIMIT",
+  "HOME_CHANGED", "TRASH_CHANGED"
 ]);
 
 export class ServiceError extends Error {
   readonly code?: string;
   readonly reviewRequest?: ReviewRequest;
+  readonly status?: number;
 
-  constructor(message: string, code?: string, reviewRequest?: ReviewRequest) {
+  constructor(message: string, code?: string, reviewRequest?: ReviewRequest, status?: number) {
     super(message);
     this.name = "ServiceError";
     this.code = code && reviewErrorCodes.has(code) ? code : undefined;
     this.reviewRequest = readReviewRequest(reviewRequest);
+    this.status = status;
   }
 }
 
@@ -49,7 +52,7 @@ export async function serviceRequest(path: string, user: Session, options?: Requ
     const code = typeof payload?.error?.code === "string" && reviewErrorCodes.has(payload.error.code) ? payload.error.code : undefined;
     throw new ServiceError(typeof message === "string" && message.length > 0 && message.length < 600
       ? message : "This action could not be completed. Your inputs are still here. Please try again.", code,
-    readReviewRequest(payload?.error?.reviewRequest));
+    readReviewRequest(payload?.error?.reviewRequest), response.status);
   }
   return plain ? response.text() : response.json();
 }

@@ -1,4 +1,5 @@
 import type { Analysis } from "./types.js";
+import type { TrashItem } from "./workspace-lifecycle-types.js";
 
 export type RoomRole = "designer" | "client";
 export type RoomMessage = { id: string; role: RoomRole; text: string; createdAt: string };
@@ -52,6 +53,7 @@ export type ReviewSnapshot = {
 export type ObserverRun = { id: string; messageCount: number; leaseUntil: number };
 export type StoredRoom = Omit<Room, "role" | "clientJoined" | "messages" | "shareableDraft"> & {
   ownerId: string;
+  trash?: TrashItem; lifecycleVersion?: number;
   clientId?: string;
   invite: { hash: string; codeHash?: string; expiresAt: number };
   messages: StoredRoomMessage[];
@@ -65,5 +67,7 @@ export type RoomOwner = {
   projects: Record<string, string>;
   /** Optional server-managed capacity. Never accepted from an API request. */
   roomLimit?: number;
+  /** Reversible deletion releases active capacity while retaining the project-to-room mapping. */
+  trashedProjectIds?: string[];
   active?: { roomId: string; runId: string; leaseUntil: number };
 };
