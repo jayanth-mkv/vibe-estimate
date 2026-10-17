@@ -14,6 +14,7 @@ import type { Room } from "@/lib/room-types";
 import { Button } from "@/components/ui/button";
 import { DeleteSavedItem } from "@/components/delete-saved-item";
 import { ServiceError } from "@/lib/service-request";
+import { useAdaptiveRefresh } from "@/lib/use-adaptive-refresh";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RoomView } from "./room-view";
 import { HomeStudio } from "../spatial/home-studio";
@@ -120,31 +121,24 @@ export function RoomWorkspace({ roomId, identity }: { roomId: string; identity: 
 
   const connectedRoomId = room?.id;
   const connectedHomeId = room?.homeId;
-  useEffect(() => {
-    if (!connectedRoomId || connectedHomeId) return;
-    let cancelled = false;
-    let polling = false;
-    async function refresh() {
-      if (polling) return;
-      polling = true;
-      try {
-        const result = await api.get(connectedRoomId!);
-        if (!cancelled) {
-          acceptRoom(result.room);
-          setConnectionError("");
-        }
-      } catch (cause) {
-        if (!cancelled) {
-          if (cause instanceof ServiceError && cause.status === 404) { setUnavailable(true); setRoom(null); }
-          else setConnectionError("Connection interrupted. Your saved conversation is here; reconnecting…");
-        }
-      } finally { polling = false; }
+  const lastRoomSnapshot = useRef("");
+  const refreshRoom = useCallback(async () => {
+    const roomId = connectedRoomId!;
+    try {
+      const result = await api.get(roomId);
+      if (roomId !== connectedRoomId) return false;
+      const snapshot = JSON.stringify(result.room), changed = snapshot !== lastRoomSnapshot.current;
+      lastRoomSnapshot.current = snapshot;
+      acceptRoom(result.room);
+      setConnectionError("");
+      return changed;
+    } catch (cause) {
+      if (cause instanceof ServiceError && cause.status === 404) { setUnavailable(true); setRoom(null); }
+      else setConnectionError("Connection interrupted. Your saved conversation is here; reconnecting…");
+      return false;
     }
-    const timer = window.setInterval(() => void refresh(), 1500);
-    const onFocus = () => void refresh();
-    window.addEventListener("focus", onFocus);
-    return () => { cancelled = true; window.clearInterval(timer); window.removeEventListener("focus", onFocus); };
-  }, [connectedRoomId, api, acceptRoom, connectedHomeId]);
+  }, [connectedRoomId, api, acceptRoom]);
+  useAdaptiveRefresh(refreshRoom, { enabled: Boolean(connectedRoomId && !connectedHomeId), fastestMs: 1500, slowestMs: 10_000 });
 
   useEffect(() => {
     if (!text.trim() && !pending) return;
