@@ -12,6 +12,18 @@ test('a visitor tries a furnished home without an account, restyles and arranges
   await capture(page, info, 'try-first-view', false);
   await accessible(page);
 
+  // Dropping a piece onto another one is refused, and the person is told why it stayed put.
+  const sofa = page.locator('.home-canvas svg [data-instance-id="sofa-living"]');
+  await sofa.click();
+  const placed = await sofa.evaluate(element => element.outerHTML.replace(/class="[^"]*"/g, ''));
+  const from = (await sofa.boundingBox())!, onto = (await page.locator('.home-canvas svg [data-instance-id="table-living"]').boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2); await page.mouse.down();
+  for (let step = 1; step <= 15; step++) await page.mouse.move(from.x + from.width / 2 + (onto.x + onto.width / 2 - from.x - from.width / 2) * step / 15, from.y + from.height / 2 + (onto.y + onto.height / 2 - from.y - from.height / 2) * step / 15);
+  await page.mouse.up();
+  await expect(page.getByText('That spot isn’t clear, so the piece stays where it was. Try an open stretch of wall.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
+  expect(await sofa.evaluate(element => element.outerHTML.replace(/class="[^"]*"/g, ''))).toBe(placed);
+
   await page.getByRole('button', { name: 'Calm sage', exact: true }).click();
   await expect(page.getByText('Calm sage applied.')).toBeVisible();
   await page.getByRole('button', { name: 'Arrange for me', exact: true }).click();

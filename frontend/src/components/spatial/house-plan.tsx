@@ -4,13 +4,15 @@ import { catalog, type HouseDocument, type HouseOperation, type HouseScope } fro
 
 type Drag = { id: string; pointerId: number; startX: number; startZ: number; preview: SnappedMove | null };
 
-export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef, focusRoomId, onMoveItem }: {
+export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef, focusRoomId, onMoveItem, onBlockedMove }: {
   document: HouseDocument; selectedIds?: string[]; region?: HouseScope["region"];
   onSelect?: (id: string, surface?: "floor" | "front" | "back" | "body") => void;
   svgRef?: Ref<SVGSVGElement>;
   focusRoomId?: string;
   /** Enables direct dragging of an already-selected object; receives a validated move. */
   onMoveItem?: (id: string, operations: HouseOperation[]) => void;
+  /** Called when a piece is dropped where it cannot fit, so the person knows why it stayed put. */
+  onBlockedMove?: (id: string) => void;
 }) {
   const [drag, setDrag] = useState<Drag | null>(null);
   const svgOf = (event: ReactPointerEvent) => (event.currentTarget as Element).closest("svg");
@@ -37,6 +39,7 @@ export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef
     if (!drag || event.pointerId !== drag.pointerId) return;
     const result = drag.preview; setDrag(null);
     if (result?.valid) onMoveItem?.(drag.id, result.operations);
+    else if (result) onBlockedMove?.(drag.id);
   }
   const dragged = drag?.preview ? document.instances.find(item => item.id === drag.id) : undefined;
   const minX = Math.min(...document.walls.flatMap(wall => [wall.start[0], wall.end[0]]));
