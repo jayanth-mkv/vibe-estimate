@@ -1,8 +1,8 @@
-import type { DesignSelection, HouseDocument, HousePatch } from "@vibeestimate/scene-schema";
+import type { DesignSelection, HouseDocument, HousePatch, PlanReading } from "@vibeestimate/scene-schema";
 import type { TrashItem } from "./workspace-lifecycle-types.js";
 
 export type HomeBrief = { title: string; summary: string; source: "template" | "gemini" | "fixture"; assumptions: string[] };
-export type HomeRevisionSummary = { id: string; parentRevisionId: string | null; title: string; description: string; createdAt: string; source: "template" | "manual" | "gemini" | "fixture" | "restore"; conflict: boolean; model?: string; changes?: string[] };
+export type HomeRevisionSummary = { id: string; parentRevisionId: string | null; title: string; description: string; createdAt: string; source: "template" | "manual" | "gemini" | "fixture" | "restore" | "plan"; conflict: boolean; model?: string; changes?: string[] };
 export type HomeRevision = HomeRevisionSummary & { scene: HouseDocument; brief: HomeBrief; requestId: string; prompt?: string; patch?: HousePatch };
 export type HomeJob = {
   requestId: string; kind: "generate" | "summary" | "agreement";
@@ -13,12 +13,15 @@ export type HomeJob = {
 };
 export type HomeReviewSource = { startingRevisionId: string; acceptedDecisionId: string; approvedDecisionId: string; messages: { id: string; role: "designer" | "client"; text: string; createdAt: string }[]; changes: string[] };
 export type HomeSummary = { id: string; revisionId: string; title: string; narrative: string; markdown: string; provider: "gemini" | "fixture"; model: string; createdAt: string; purpose?: "agreement"; reviewSource?: HomeReviewSource };
+/** An uploaded floor-plan image and what was read from it. Bytes live in their own document. */
+export type HomePlan = { id: string; sha256: string; mimeType: "image/png" | "image/jpeg" | "image/webp"; width: number; height: number; createdAt: string; attempts: number; reading?: PlanReading; provider?: "gemini" | "fixture"; model?: string; readAt?: string; error?: { code: string; message: string } };
 export type HomeProject = {
   id: string; title: string; createdAt: string; updatedAt: string; templateId: string | null;
   headRevisionId: string | null; scene: HouseDocument | null; brief: HomeBrief | null;
   revisions: HomeRevisionSummary[]; activeJob: HomeJob | null; summary: HomeSummary | null;
   proposalProjectId: string | null;
   roomId?: string;
+  plan?: HomePlan | null;
 };
 export type HomeReceipt = { hash: string; kind: string; revisionId?: string; projectId?: string };
 export type StoredHomeJob = HomeJob & { expiresAt: number; stagedRevisionId?: string; stagedSummary?: HomeSummary };
@@ -35,6 +38,8 @@ export interface HomeAIProvider {
   readonly models: readonly string[];
   generate(context: HomeModelContext, model: string): Promise<unknown>;
   summarize(context: HomeModelContext, model: string): Promise<{ title: string; narrative: string }>;
+  /** Report what a floor-plan image shows. Output is validated before any use. */
+  readPlan(image: { data: Buffer; mimeType: string; width: number; height: number }, model: string): Promise<unknown>;
 }
 
 export function publicHomeJob(job: StoredHomeJob): HomeJob {

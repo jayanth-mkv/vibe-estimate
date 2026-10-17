@@ -3,3 +3,7 @@ export * from './house-fixtures.js';
 export * from './home-templates.js';
 export * from './design.js';
 export * from './design-fixture.js';
+export * from './layout.js';
+export * from './style-kits.js';
+export * from './tour.js';
+export * from './plan-import.js';

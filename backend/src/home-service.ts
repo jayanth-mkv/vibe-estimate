@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { catalog, type DesignSelection, type HousePatch } from "@vibeestimate/scene-schema";
-import { applyDesignPatch, compileDesignResponse, createHomeTemplate, describeDesignChanges, resolveDesignScope } from "@vibeestimate/scene-core";
+import { applyDesignPatch, applyStyleKit, compileDesignResponse, createHomeTemplate, describeDesignChanges, resolveDesignScope } from "@vibeestimate/scene-core";
 import { AppError } from "./errors.js";
 import { HomeModelError } from "./home-ai.js";
 import { homeHash, HomeStore } from "./home-store.js";
@@ -49,6 +49,15 @@ export class HomeService {
     const scene = sceneCheck(() => applyDesignPatch(base.scene, input.patch, input.selection));
     const revision: HomeRevision = { id: randomUUID(), parentRevisionId: base.id, title: base.title, description: `Saved ${input.patch.operations.length} selected design ${input.patch.operations.length === 1 ? "change" : "changes"}.`, createdAt: new Date().toISOString(), source: "manual", conflict: false, scene, brief: base.brief, requestId: input.requestId, patch: input.patch, changes: describeDesignChanges(base.scene, scene) };
     return this.store.publish(uid, id, { ...input, hash, kind: "manual", revision, lifecycleVersion });
+  }
+  /** Deterministic finishes and light settings: no model call and one saved version. */
+  async style(uid: string, id: string, input: { requestId: string; baseRevisionId: string; kitId: string }) {
+    const lifecycleVersion = (await this.store.stored(uid, id)).lifecycleVersion ?? 0;
+    const hash = homeHash(input); if (await this.store.receipt(uid, id, input.requestId, "style", hash)) return this.store.get(uid, id);
+    const base = await this.store.revision(uid, id, input.baseRevisionId);
+    const styled = sceneCheck(() => applyStyleKit(base.scene, input.kitId));
+    const revision: HomeRevision = { id: randomUUID(), parentRevisionId: base.id, title: base.title, description: styled.changes[0]!, createdAt: new Date().toISOString(), source: "manual", conflict: false, scene: styled.document, brief: base.brief, requestId: input.requestId, changes: [...styled.changes, ...describeDesignChanges(base.scene, styled.document)].slice(0, 24) };
+    return this.store.publish(uid, id, { ...input, hash, kind: "style", revision, lifecycleVersion });
   }
   async restore(uid: string, id: string, input: { requestId: string; baseRevisionId: string; revisionId: string }) {
     const lifecycleVersion = (await this.store.stored(uid, id)).lifecycleVersion ?? 0;

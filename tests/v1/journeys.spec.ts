@@ -103,7 +103,7 @@ test('Flow 3 — refine a living room while every neighbouring room stays intact
   const sofa = designed.scene!.instances.find(item => item.catalogId === 'sofa' && item.roomId === 'living')!;
   await page.getByRole('tab', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Edit selection', { exact: true }).selectOption('object:' + sofa.id);
-  await page.getByText('Position and size', { exact: true }).click();
+  await page.getByText('Exact position (advanced)', { exact: true }).click();
   await page.getByLabel('Position X (mm)', { exact: true }).fill(String(table!.position[0]));
   await page.getByLabel('Position Z (mm)', { exact: true }).fill(String(table!.position[2]));
   await page.getByRole('button', { name: 'Apply position', exact: true }).click();

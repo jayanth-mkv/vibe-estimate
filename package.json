@@ -48,7 +48,7 @@
     "review:v1": "node scripts/v1-preview.mjs review",
     "test:v1:config": "node --test tests/v1/env.test.mjs tests/v1/startup.test.mjs tests/live/v1-target.test.mjs",
     "verify:v1": "node scripts/verify-v1.mjs",
-    "test:v1:scene": "tsx --test tests/v1/design-core.test.ts",
+    "test:v1:scene": "tsx --test tests/v1/design-core.test.ts tests/v1/layout.test.ts tests/v1/tour.test.ts tests/v1/plan-import.test.ts",
     "assets:homes": "node scripts/spatial-home-previews.mjs",
     "test:v1:production": "node scripts/verify-v1-production.mjs",
     "test:v1:container": "node scripts/verify-v1-container.mjs",

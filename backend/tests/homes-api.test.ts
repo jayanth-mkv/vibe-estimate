@@ -38,6 +38,23 @@ describe("owner-scoped home API and persistent request boundary", () => {
     const json = (await get(`/api/homes/${home.id}`)).body.home;
     for (const field of ["ownerId", "jobs", "receipts", "callsUsed"]) expect(json[field]).toBeUndefined();
   });
+  it("applies a one-tap style kit as one validated version without a model call, replays safely and denies other users", async () => {
+    const home = await create("compact-apartment"); const generate = vi.spyOn(provider, "generate");
+    const body = { requestId: randomUUID(), baseRevisionId: home.headRevisionId!, kitId: "calm-sage" };
+    await request(app).post(`/api/homes/${home.id}/style`).set("Authorization", other).send(body).expect(404);
+    const styled = (await post(`/api/homes/${home.id}/style`, body).expect(200)).body.home as HomeProject;
+    expect(styled.revisions).toHaveLength(2);
+    expect(styled.scene!.walls.map(wall => [wall.id, wall.start, wall.end])).toEqual(home.scene!.walls.map(wall => [wall.id, wall.start, wall.end]));
+    expect(styled.scene!.instances.map(item => [item.id, item.position, item.rotation])).toEqual(home.scene!.instances.map(item => [item.id, item.position, item.rotation]));
+    expect(styled.scene!.walls.some(wall => wall.frontMaterialId === "paint-sage" || wall.backMaterialId === "paint-sage")).toBe(true);
+    expect(styled.scene!.rooms.find(room => room.id === "bathroom")!.floorMaterialId).toBe("tile-stone");
+    expect(((await post(`/api/homes/${home.id}/style`, body).expect(200)).body.home as HomeProject).revisions).toHaveLength(2);
+    await post(`/api/homes/${home.id}/style`, { ...body, kitId: "bold-navy" }).expect(409);
+    await post(`/api/homes/${home.id}/style`, { requestId: randomUUID(), baseRevisionId: styled.headRevisionId, kitId: "not-a-kit" }).expect(422);
+    await post(`/api/homes/${home.id}/style`, { requestId: randomUUID(), baseRevisionId: styled.headRevisionId, kitId: "Bad Kit" }).expect(422);
+    expect(generate).not.toHaveBeenCalled();
+  });
+
   it("creates idempotently and opens all three admitted templates with real valid stored scenes", async () => {
     const input = { requestId: randomUUID() }; const first = await post("/api/homes", input).expect(201); const second = await post("/api/homes", input).expect(201); expect(second.body.home.id).toBe(first.body.home.id);
     await post("/api/homes", { ...input, ownerId: "other" }).expect(422);

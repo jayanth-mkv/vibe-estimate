@@ -51,6 +51,15 @@ export class MemoryHomeDatabase implements HomeDatabase {
     const key = `${uid}/${id}/${summary.purpose ?? "design"}/${summary.id}`; if (!this.summaries.has(key)) this.summaries.set(key, structuredClone(summary));
   }
   async getSummary(uid: string, id: string, summaryId: string, purpose?: "agreement") { return structuredClone(this.summaries.get(`${uid}/${id}/${purpose ?? "design"}/${summaryId}`)); }
+  planImages = new Map<string, { data: Buffer; sha256: string; mimeType: string }>();
+  async putPlanImage(uid: string, id: string, planId: string, image: { data: Buffer; sha256: string; mimeType: string }) {
+    const home = this.homes.get(id);
+    if (!home || home.ownerId !== uid || home.trash) throw new AppError(404, "HOME_NOT_FOUND", "Home not found.");
+    const key = `${uid}/${id}/${planId}`, previous = this.planImages.get(key);
+    if (previous && previous.sha256 !== image.sha256) throw new AppError(409, "REQUEST_REUSED", "Different image.");
+    if (!previous) this.planImages.set(key, { ...image, data: Buffer.from(image.data) });
+  }
+  async getPlanImage(uid: string, id: string, planId: string) { const image = this.planImages.get(`${uid}/${id}/${planId}`); return image && { ...image, data: Buffer.from(image.data) }; }
 }
 export class MemoryHomeCollaborationDatabase implements HomeCollaborationDatabase {
   links = new Map<string, StoredHomeRoom>(); indices = new Map<string, Record<string, string>>(); assistants = new Map<string, AssistantIndex>();

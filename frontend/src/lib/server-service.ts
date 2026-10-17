@@ -10,6 +10,9 @@ export async function forwardService(request: Request, path: string) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
+  // Only the floor-plan upload accepts a larger body, and only as an image.
+  const planUpload = /^\/api\/homes\/[0-9a-f-]{36}\/plans$/.test(path) && /^image\/(png|jpeg|webp)$/.test(request.headers.get("content-type") ?? "");
+  const limit = planUpload ? 1024 * 1024 : 49152;
   let body: Uint8Array | undefined;
   if (request.method === "POST" && request.body) {
     const reader = request.body.getReader();
@@ -19,9 +22,9 @@ export async function forwardService(request: Request, path: string) {
       const chunk = await reader.read();
       if (chunk.done) break;
       size += chunk.value.length;
-      if (size > 49152) {
+      if (size > limit) {
         await reader.cancel();
-        return Response.json({ error: { code: "INPUT_TOO_LARGE", message: "This source text is too long. Please use a shorter excerpt." } }, { status: 413 });
+        return Response.json({ error: planUpload ? { code: "PLAN_IMAGE_TOO_LARGE", message: "This image is larger than 1 MB. Try a smaller export or screenshot." } : { code: "INPUT_TOO_LARGE", message: "This source text is too long. Please use a shorter excerpt." } }, { status: 413 });
       }
       chunks.push(chunk.value);
     }

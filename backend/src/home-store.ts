@@ -26,6 +26,9 @@ export interface HomeDatabase {
   getRevision(uid: string, homeId: string, revisionId: string): Promise<HomeRevision | undefined>;
   putSummary(uid: string, homeId: string, summary: HomeSummary, lifecycleVersion?: number): Promise<void>;
   getSummary(uid: string, homeId: string, summaryId: string, purpose?: "agreement"): Promise<HomeSummary | undefined>;
+  /** Immutable private plan image bytes, written before the home references them. */
+  putPlanImage(uid: string, homeId: string, planId: string, image: { data: Buffer; sha256: string; mimeType: string }): Promise<void>;
+  getPlanImage(uid: string, homeId: string, planId: string): Promise<{ data: Buffer; sha256: string; mimeType: string } | undefined>;
 }
 
 /** Content is immutable and written before the transaction publishing a head. */
@@ -79,6 +82,22 @@ export class FirestoreHomeDatabase implements HomeDatabase {
   async getSummary(uid: string, homeId: string, summaryId: string, purpose?: "agreement") {
     return (await this.home(uid, homeId).collection(purpose === "agreement" ? "agreementProse" : "summaries").doc(summaryId).get()).data() as HomeSummary | undefined;
   }
+  async putPlanImage(uid: string, homeId: string, planId: string, image: { data: Buffer; sha256: string; mimeType: string }) {
+    const reference = this.home(uid, homeId).collection("planImages").doc(planId);
+    await this.db.runTransaction(async transaction => {
+      ownerOf((await transaction.get(this.home(uid, homeId))).data() as StoredHome | undefined, uid);
+      const previous = (await transaction.get(reference)).data();
+      if (previous && previous.sha256 !== image.sha256) throw new AppError(409, "REQUEST_REUSED", "This upload already saved a different image.");
+      if (!previous) transaction.create(reference, { data: image.data, sha256: image.sha256, mimeType: image.mimeType });
+    });
+  }
+  async getPlanImage(uid: string, homeId: string, planId: string) {
+    const data = (await this.home(uid, homeId).collection("planImages").doc(planId).get()).data();
+    if (!data) return;
+    const bytes = Buffer.from(data.data as Uint8Array);
+    if (createHash("sha256").update(bytes).digest("hex") !== data.sha256) throw new AppError(503, "PLAN_CORRUPT", "The saved plan image could not be verified.");
+    return { data: bytes, sha256: data.sha256 as string, mimeType: data.mimeType as string };
+  }
 }
 
 export class HomeStore {
@@ -110,11 +129,11 @@ export class HomeStore {
     });
   }
   private async project(home: StoredHome): Promise<HomeProject> {
-    const { id, title, createdAt, updatedAt, templateId, headRevisionId, brief, revisions, summary, proposalProjectId, roomId } = home;
+    const { id, title, createdAt, updatedAt, templateId, headRevisionId, brief, revisions, summary, proposalProjectId, roomId, plan } = home;
     const revision = headRevisionId ? await this.database.getRevision(home.ownerId, id, headRevisionId) : undefined;
     if (headRevisionId && !revision) throw new AppError(503, "SCENE_UNAVAILABLE", "The saved layout could not be loaded. Retry without creating a new project.");
     const job = home.activeRequestId ? home.jobs[home.activeRequestId] : undefined;
-    return { id, title, createdAt, updatedAt, templateId, headRevisionId, brief, revisions, summary, proposalProjectId, ...(roomId ? { roomId } : {}), scene: revision?.scene ?? null, activeJob: job ? publicHomeJob(job) : null };
+    return { id, title, createdAt, updatedAt, templateId, headRevisionId, brief, revisions, summary, proposalProjectId, ...(roomId ? { roomId } : {}), plan: plan ?? null, scene: revision?.scene ?? null, activeJob: job ? publicHomeJob(job) : null };
   }
   async get(uid: string, id: string) { return this.project(await this.stored(uid, id)); }
   async list(uid: string) { return Promise.all((await this.database.list(uid)).filter(home => !home.trash).map(home => this.project(home))); }

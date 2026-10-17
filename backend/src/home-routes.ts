@@ -9,6 +9,7 @@ import { publicProject } from "./types.js";
 const uuid = z.string().uuid();
 export const homeMutationSchema = z.strictObject({ requestId: uuid, baseRevisionId: uuid });
 export const homeGenerationSchema = homeMutationSchema.extend({ prompt: z.string().trim().min(1).max(2000), selection: designSelectionSchema });
+export const homeStyleSchema = homeMutationSchema.extend({ kitId: z.string().regex(/^[a-z][a-z-]{1,40}$/) });
 export const homeEditSchema = homeMutationSchema.extend({ patch: housePatchSchema, selection: designSelectionSchema });
 const asUuid = (value: unknown) => { const parsed = uuid.safeParse(value); if (!parsed.success) throw new AppError(404, "HOME_NOT_FOUND", "This home project could not be found."); return parsed.data; };
 
@@ -43,6 +44,7 @@ export function registerHomeRoutes(app: Express, service: HomeService) {
     response.json({ home: await service.store.resume(uid, id, requestId), job: await service.store.job(uid, id, requestId) });
   });
   app.post("/api/homes/:homeId/revisions", async (request, response) => response.json({ home: await service.edit(response.locals.uid as string, asUuid(request.params.homeId), homeEditSchema.parse(request.body)) }));
+  app.post("/api/homes/:homeId/style", async (request, response) => response.json({ home: await service.style(response.locals.uid as string, asUuid(request.params.homeId), homeStyleSchema.parse(request.body)) }));
   app.post("/api/homes/:homeId/restore", async (request, response) => response.json({ home: await service.restore(response.locals.uid as string, asUuid(request.params.homeId), homeMutationSchema.extend({ revisionId: uuid }).parse(request.body)) }));
   app.get("/api/homes/:homeId/revisions/:revisionId", async (request, response) => response.json({ revision: await service.store.revision(response.locals.uid as string, asUuid(request.params.homeId), asUuid(request.params.revisionId)) }));
   app.post("/api/homes/:homeId/summary", async (request, response) => response.json(await service.summarize(response.locals.uid as string, asUuid(request.params.homeId), homeMutationSchema.parse(request.body))));

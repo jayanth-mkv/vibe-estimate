@@ -88,6 +88,23 @@ describe("internal delivery gateway", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it("admits up to 1 MB only for a floor-plan image upload and keeps 48 KiB everywhere else", async () => {
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ home: {} }, { status: 201 })); vi.stubGlobal("fetch", fetcher);
+    const home = "/api/homes/dd080bf4-3b35-4c77-a12d-d73507c6a1ac";
+    const image = new Uint8Array(600_000); image.set([0x89, 0x50, 0x4e, 0x47]);
+    const ok = await forwardService(new Request(`https://service.example${home}/plans?requestId=x`, { method: "POST", headers: { "Content-Type": "image/png", Authorization: "Bearer t" }, body: image }), `${home}/plans`);
+    expect(ok.status).toBe(201);
+    expect((fetcher.mock.calls[0]![1] as RequestInit).body).toHaveProperty("length", 600_000);
+    fetcher.mockClear();
+    const tooBig = await forwardService(new Request(`https://service.example${home}/plans`, { method: "POST", headers: { "Content-Type": "image/png" }, body: new Uint8Array(1024 * 1024 + 1) }), `${home}/plans`);
+    expect(tooBig.status).toBe(413); expect((await tooBig.json()).error.code).toBe("PLAN_IMAGE_TOO_LARGE");
+    const disguised = await forwardService(new Request(`https://service.example${home}/plans`, { method: "POST", headers: { "Content-Type": "application/json" }, body: new Uint8Array(60_000) }), `${home}/plans`);
+    expect(disguised.status).toBe(413);
+    const elsewhere = await forwardService(new Request(`https://service.example${home}/style`, { method: "POST", headers: { "Content-Type": "image/png" }, body: new Uint8Array(60_000) }), `${home}/style`);
+    expect(elsewhere.status).toBe(413);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it.each(["observer", "reconcile", "outbox"])("forwards authenticated JSON for %s without changing the payload", async action => {
     const fetcher = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetcher);

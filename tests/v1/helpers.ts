@@ -16,7 +16,7 @@ export const test = base.extend<{ browserFailures: string[] }>({
       failures.push('The browser attempted an external request.');
       await route.abort('blockedbyclient');
     });
-    context.on('page', page => page.on('pageerror', error => failures.push(error.message)));
+    context.on('page', page => page.on('pageerror', error => failures.push(String(error.stack ?? error.message))));
     await use(failures);
     expect(failures).toEqual([]);
   }, { auto: true }],

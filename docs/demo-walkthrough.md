@@ -26,7 +26,7 @@ Choose **Evening**, select **Living & dining**, then open **Inside**. Show the r
 
 ## 3. Make one room work better
 
-Set **Design area → Living & dining**. Ask for a smaller dining table and soft finishes while keeping the doorway clear. Inspect the changed table and unchanged neighbouring rooms in Plan and Overview. Use **Edit → Position and size** for a precise adjustment. An invalid move into another object shows a readable error and preserves the last saved design.
+Set **Design area → Living & dining**. Ask for a smaller dining table and soft finishes while keeping the doorway clear. Inspect the changed table and unchanged neighbouring rooms in Plan and Overview. Use **Edit → Exact position (advanced)** for a precise adjustment. An invalid move into another object shows a readable error and preserves the last saved design.
 
 ## 4. Choose the exact surface
 

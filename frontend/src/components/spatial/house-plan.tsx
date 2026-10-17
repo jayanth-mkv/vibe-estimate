@@ -1,12 +1,44 @@
-import type { Ref } from "react";
-import { catalog, type HouseDocument, type HouseScope } from "@vibeestimate/scene-schema";
+import { useState, type PointerEvent as ReactPointerEvent, type Ref } from "react";
+import { snapMove, type SnappedMove } from "@vibeestimate/scene-core";
+import { catalog, type HouseDocument, type HouseOperation, type HouseScope } from "@vibeestimate/scene-schema";
 
-export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef, focusRoomId }: {
+type Drag = { id: string; pointerId: number; startX: number; startZ: number; preview: SnappedMove | null };
+
+export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef, focusRoomId, onMoveItem }: {
   document: HouseDocument; selectedIds?: string[]; region?: HouseScope["region"];
   onSelect?: (id: string, surface?: "floor" | "front" | "back" | "body") => void;
   svgRef?: Ref<SVGSVGElement>;
   focusRoomId?: string;
+  /** Enables direct dragging of an already-selected object; receives a validated move. */
+  onMoveItem?: (id: string, operations: HouseOperation[]) => void;
 }) {
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const svgOf = (event: ReactPointerEvent) => (event.currentTarget as Element).closest("svg");
+  function point(event: ReactPointerEvent) {
+    const svg = svgOf(event), matrix = svg?.getScreenCTM();
+    if (!svg || !matrix) return null;
+    const p = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
+    return [p.x, p.y] as const;
+  }
+  function begin(event: ReactPointerEvent, id: string) {
+    if (!onMoveItem || !selectedIds.includes(id)) return;
+    const at = point(event); if (!at) return;
+    event.stopPropagation(); event.preventDefault();
+    svgOf(event)?.setPointerCapture(event.pointerId);
+    setDrag({ id, pointerId: event.pointerId, startX: at[0], startZ: at[1], preview: null });
+  }
+  function move(event: ReactPointerEvent) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const at = point(event); if (!at) return;
+    if (!drag.preview && Math.hypot(at[0] - drag.startX, at[1] - drag.startZ) < 40) return;
+    try { setDrag({ ...drag, preview: snapMove(document, drag.id, at[0], at[1]) }); } catch { setDrag(null); }
+  }
+  function end(event: ReactPointerEvent) {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const result = drag.preview; setDrag(null);
+    if (result?.valid) onMoveItem?.(drag.id, result.operations);
+  }
+  const dragged = drag?.preview ? document.instances.find(item => item.id === drag.id) : undefined;
   const minX = Math.min(...document.walls.flatMap(wall => [wall.start[0], wall.end[0]]));
   const minZ = Math.min(...document.walls.flatMap(wall => [wall.start[1], wall.end[1]]));
   const maxX = Math.max(...document.walls.flatMap(wall => [wall.start[0], wall.end[0]]));
@@ -20,7 +52,7 @@ export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef
     : `${minX - 550} ${minZ - 650} ${maxX - minX + 1100} ${maxZ - minZ + 1250}`;
   const color = (id: string) => document.materials.find(material => material.id === id)?.color ?? "#dae2e8";
   const selected = (id: string) => selectedIds.includes(id);
-  return <svg ref={svgRef} className="house-plan" viewBox={viewBox} role="img" aria-label={`${focusedRoom ? `${focusedRoom.name} focused room` : document.name} floor plan`} xmlns="http://www.w3.org/2000/svg" style={{ fontFamily: "Arial, sans-serif" }}>
+  return <svg ref={svgRef} className="house-plan" onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDrag(null)} data-dragging={drag?.preview ? "true" : undefined} viewBox={viewBox} role="img" aria-label={`${focusedRoom ? `${focusedRoom.name} focused room` : document.name} floor plan`} xmlns="http://www.w3.org/2000/svg" style={{ fontFamily: "Arial, sans-serif" }}>
     <title>{`${focusedRoom?.name ?? document.name} — floor plan`}</title>
     <desc>Single-floor design plan. Measurements use millimetres. Select rooms, walls and objects using the selection controls. Template measurements must be checked against the actual home.</desc>
     <rect x={minX - 550} y={minZ - 650} width={maxX - minX + 1100} height={maxZ - minZ + 1250} fill="#f4f6f8" />
@@ -60,7 +92,7 @@ export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef
       const asset = catalog.find(entry => entry.id === instance.catalogId)!;
       const [width, , depth] = instance.dimensions;
       const isLight = asset.kind === "light";
-      return <g key={instance.id} transform={`translate(${instance.position[0]} ${instance.position[2]}) rotate(${instance.rotation})`} onClick={() => onSelect?.(instance.id, "body")} style={{ cursor: onSelect ? "pointer" : undefined }}>
+      return <g key={instance.id} transform={`translate(${instance.position[0]} ${instance.position[2]}) rotate(${instance.rotation})`} onClick={() => onSelect?.(instance.id, "body")} onPointerDown={event => begin(event, instance.id)} style={{ cursor: onMoveItem && selected(instance.id) ? "grab" : onSelect ? "pointer" : undefined, touchAction: onMoveItem && selected(instance.id) ? "none" : undefined }} data-instance-id={instance.id}>
         <rect x={-width / 2} y={-depth / 2} width={width} height={depth} rx={isLight ? width / 2 : 45} fill={color(instance.materialId)} stroke={selected(instance.id) ? "#c52031" : "#647684"} strokeWidth={selected(instance.id) ? 45 : 15} />
         {isLight && <circle r={width * 0.2} fill={instance.light?.enabled ? "#edb95c" : "#71808d"} />}
         {asset.id === "sofa" && <path d={`M ${-width / 2 + 100} ${-depth / 2 + 160} H ${width / 2 - 100} M 0 ${-depth / 2 + 160} V ${depth / 2 - 80}`} fill="none" stroke="#647684" strokeWidth="18" />}
@@ -77,6 +109,10 @@ export function HousePlan({ document, selectedIds = [], region, onSelect, svgRef
         <text x={centre} y={room.z + 110 + textSize * 2.16} textAnchor="middle" fill="#536775" fontSize={textSize * 0.87}>{room.width / 1000} × {room.depth / 1000} m</text>
       </g>;
     })}
+    {dragged && drag?.preview && <g pointerEvents="none" transform={`translate(${drag.preview.position[0]} ${drag.preview.position[2]}) rotate(${drag.preview.rotation})`} data-drop={drag.preview.valid ? "valid" : "blocked"}>
+      <rect x={-dragged.dimensions[0] / 2} y={-dragged.dimensions[2] / 2} width={dragged.dimensions[0]} height={dragged.dimensions[2]} rx={45} fill={drag.preview.valid ? "#2f7d57" : "#c52031"} fillOpacity="0.18" stroke={drag.preview.valid ? "#2f7d57" : "#c52031"} strokeWidth="35" strokeDasharray="90 60" />
+      <line x1={0} y1={0} x2={0} y2={-dragged.dimensions[2] / 2} stroke={drag.preview.valid ? "#2f7d57" : "#c52031"} strokeWidth="25" />
+    </g>}
     {region && <rect x={region.x} y={region.z} width={region.width} height={region.depth} fill="#c52031" fillOpacity="0.07" stroke="#c52031" strokeWidth="25" strokeDasharray="95 65" pointerEvents="none" />}
     {!focusedRoom && <><g fill="#536775" fontSize={textSize * 0.85}><text x={minX} y={maxZ + 390}>Ceiling {document.level.ceilingHeight / 1000} m · assumed</text><text x={maxX} y={maxZ + 390} textAnchor="end">Design plan · mm</text></g>
     <g stroke="#647684" strokeWidth="10"><path d={`M ${minX} ${minZ - 360} H ${maxX} M ${minX} ${minZ - 440} V ${minZ - 280} M ${maxX} ${minZ - 440} V ${minZ - 280}`} /></g>

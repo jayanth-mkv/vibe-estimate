@@ -3,7 +3,7 @@ import { z } from "zod";
 import { designSelectionSchema } from "@vibeestimate/scene-schema";
 import { AppError } from "./errors.js";
 import type { HomeCollaboration } from "./home-collaboration.js";
-import { homeEditSchema, homeGenerationSchema } from "./home-routes.js";
+import { homeEditSchema, homeGenerationSchema, homeStyleSchema } from "./home-routes.js";
 
 const uuid = z.string().uuid();
 const decision = z.strictObject({ requestId: uuid, revisionId: uuid });
@@ -21,6 +21,7 @@ export function registerHomeCollaborationRoutes(app: Express, collaboration: Hom
   app.get("/api/rooms/:roomId/home", async (request, response) => response.json(await collaboration.get(response.locals.uid as string, parseId(request.params.roomId))));
   app.post("/api/rooms/:roomId/home/generate", async (request, response) => response.json(await collaboration.generate(response.locals.uid as string, parseId(request.params.roomId), homeGenerationSchema.parse(request.body))));
   app.post("/api/rooms/:roomId/home/revisions", async (request, response) => response.json(await collaboration.edit(response.locals.uid as string, parseId(request.params.roomId), homeEditSchema.parse(request.body))));
+  app.post("/api/rooms/:roomId/home/style", async (request, response) => response.json(await collaboration.style(response.locals.uid as string, parseId(request.params.roomId), homeStyleSchema.parse(request.body))));
   app.get("/api/rooms/:roomId/home/revisions/:revisionId", async (request, response) => response.json({ revision: await collaboration.revision(response.locals.uid as string, parseId(request.params.roomId), parseId(request.params.revisionId)) }));
   app.post("/api/rooms/:roomId/home/messages", async (request, response) => {
     const input = z.strictObject({ text: z.string().trim().min(1).max(1500), requestId: uuid, askAssistant: z.boolean(), baseRevisionId: uuid, selection: designSelectionSchema }).parse(request.body);

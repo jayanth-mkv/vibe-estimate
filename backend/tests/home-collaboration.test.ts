@@ -91,7 +91,7 @@ describe("shared home identity, exact-revision decisions and saved agreements", 
     const agreement = generated.body.agreements[0]; expect(agreement.status).toBe("draft"); expect(agreement.source.messages[0]).toMatchObject({ role: "client", text: "Add warm ceiling lights throughout the home." }); expect(agreement.source.changes.length).toBeGreaterThan(0);
     expect(agreement.source.acceptedDecisionId).toBeTruthy(); expect(agreement.source.approvedDecisionId).toBeTruthy();
     const replay = await post("designer", `${endpoint}/agreements`, input).expect(200); expect(replay.body.agreements[0]).toEqual(agreement); expect(spy).toHaveBeenCalledTimes(1);
-    const exported = await get("homeowner", `${endpoint}/agreements/${agreement.id}/export`).expect(200); expect(exported.text).toContain(current.home.headRevisionId); expect(exported.text).toContain("Terms still to be agreed"); expect(exported.text).toContain("not signatures"); expect(exported.text).toContain("Source conversation");
+    const exported = await get("homeowner", `${endpoint}/agreements/${agreement.id}/export`).expect(200); expect(exported.text).toContain(current.home.headRevisionId); expect(exported.text).toContain("Terms still to be agreed"); expect(exported.text).toContain("design revision rounds are included"); expect(exported.text).toContain("not signatures"); expect(exported.text).toContain("Source conversation");
     await get("other", `${endpoint}/agreements/${agreement.id}/export`).expect(404);
     await post("homeowner", `${endpoint}/agreements`, choice(current)).expect(403);
   });

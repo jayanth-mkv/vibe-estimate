@@ -16,6 +16,7 @@ import type { RoomObserver } from "./room-observer.js";
 import type { RoomTasks } from "./room-tasks.js";
 import type { HomeService } from "./home-service.js";
 import { registerHomeRoutes } from "./home-routes.js";
+import { HomePlans, registerPlanRoutes } from "./home-plans.js";
 import type { HomeCollaboration } from "./home-collaboration.js";
 import { registerHomeCollaborationRoutes } from "./home-collaboration-routes.js";
 import { outboxEventId } from "./room-outbox.js";
@@ -192,14 +193,14 @@ export function createApp({ config, store, provider, verifyToken, rooms, observe
     response.type("text/plain").send(exportProposal(project));
   });
   if (rooms) registerRoomRoutes(app, rooms, config.eventServiceAccount ? undefined : notifyRoom);
-  if (homes) registerHomeRoutes(app, homes);
+  if (homes) { registerHomeRoutes(app, homes); registerPlanRoutes(app, new HomePlans(homes.store, homes.provider)); }
   if (homeCollaboration) registerHomeCollaborationRoutes(app, homeCollaboration);
   if (lifecycle) registerLifecycleRoutes(app, lifecycle);
   app.use((_request, _response, next) => next(new AppError(404, "NOT_FOUND", "This endpoint could not be found.")));
-  const errors: ErrorRequestHandler = (error: unknown, _request, response, _next) => {
+  const errors: ErrorRequestHandler = (error: unknown, request, response, _next) => {
     if (error instanceof AppError) { response.status(error.status).json({ error: { code: error.code, message: error.message, ...(error instanceof ReviewRequestError && error.reviewRequest ? { reviewRequest: error.reviewRequest } : {}) } }); return; }
     if (error instanceof ZodError || (error instanceof SyntaxError && "body" in error)) { response.status(422).json({ error: { code: "INVALID_INPUT", message: "Check the supplied fields. Text is required; quantities and prices must be positive whole numbers within the supported limits." } }); return; }
-    if (typeof error === "object" && error !== null && "type" in error && error.type === "entity.too.large") { response.status(413).json({ error: { code: "INPUT_TOO_LARGE", message: "This source text is too long. Please use a shorter excerpt." } }); return; }
+    if (typeof error === "object" && error !== null && "type" in error && error.type === "entity.too.large") { response.status(413).json({ error: request.path.endsWith("/plans") ? { code: "PLAN_IMAGE_TOO_LARGE", message: "This image is larger than 1 MB. Try a smaller export or screenshot." } : { code: "INPUT_TOO_LARGE", message: "This source text is too long. Please use a shorter excerpt." } }); return; }
     // Never log source text, model content, authorization headers, or raw upstream errors.
     console.error(JSON.stringify({ event: "request_failed", code: "SERVICE_UNAVAILABLE" }));
     response.status(503).json({ error: { code: "SERVICE_UNAVAILABLE", message: "The project service is unavailable. Your change was not confirmed saved. Please reload and retry." } });

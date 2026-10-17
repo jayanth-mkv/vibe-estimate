@@ -202,3 +202,21 @@
 @media (max-width: 480px) { .home-product { font-size: 14px; } .home-header { padding: 10px 16px; min-height: 60px; gap: 10px; } .home-header .brand { font-size: 17px; } .home-studio-header .brand { font-size: 0; } .home-header nav { gap: 10px; font-size: 12px; } .home-header nav button { font-size: 11px; padding: 6px; } .home-library { padding: 26px 16px 20px; } .home-library-heading { align-items: start; gap: 10px; } .home-library-heading h1 { font-size: 25px; } .home-library-heading p { font-size: 13px; } .home-first-use h2 { font-size: 27px; } .home-first-use p { font-size: 15px; } .home-library-footer { flex-direction: column; gap: 10px; margin-top: 28px; } .home-project-grid { grid-template-columns: 1fr; } .home-project-image { height: 225px; } .home-template-page h1 { font-size: 26px; } .home-template-grid article { display: block; } .home-template-grid img { height: 230px; min-height: 0; width: 100%; } .home-template-grid article > div { padding: 18px; } .home-canvas-column { padding: 8px; padding-bottom: 0; } .home-canvas { min-height: 300px; height: 50dvh; } .home-view-toolbar { padding: 5px; gap: 3px; } .home-view-toolbar button { font-size: 12px; padding: 7px 8px; min-height: 42px; } .home-view-toolbar > div { gap: 0; } .home-view-actions button { gap: 4px; padding-inline: 6px; } .home-view-actions svg { width: 14px; } .home-canvas-caption { left: 8px; right: 8px; bottom: 8px; gap: 5px; } .home-canvas-caption span { font-size: 10px; padding: 4px 5px; } .home-canvas-foot { gap: 6px; padding: 4px 8px; } .home-canvas-foot p { font-size: 11px; max-width: 24ch; } .home-canvas-foot button { font-size: 11px; padding-inline: 6px; } .home-lighting-note { font-size: 10px; } .home-task-panel { padding: 12px 16px 28px; } .home-task-panel [role="tab"] { padding-inline: 6px; font-size: 12px; } .home-comparison-banner { flex-direction: column; align-items: start; } .home-graphics-fallback > div { padding: 14px; inset: auto 10px 45px; } .home-graphics-fallback h2 { font-size: 17px; } }
 @media (max-width: 600px) { .home-library-heading { flex-wrap: wrap; gap: 16px; } }
 @media (prefers-reduced-motion: reduce) { .home-product *, .home-product *::before, .home-product *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+.home-quick-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.home-quick-actions button { min-height: 44px; }
+.house-plan[data-dragging="true"] { cursor: grabbing; touch-action: none; }
+.home-style-kits, .home-goal-chips { margin: 0 0 14px; }
+.home-style-kits h3, .home-goal-chips h3 { margin: 0 0 4px; font-size: 0.95rem; }
+.home-style-kits > div, .home-goal-chips > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.home-style-kits button, .home-goal-chips button { min-height: 44px; }
+.home-goal-chips button { border: 1px solid #dce2e7; border-radius: 999px; padding: 0 14px; font-weight: 500; }
+.home-goal-chips button[aria-pressed="true"] { background: #fff3f4; border-color: #c52031; color: #a91929; }
+.home-inline-link { text-decoration: underline; text-underline-offset: 2px; }
+.home-try-3d { position: absolute; inset: 0; } .home-try-3d[hidden] { display: none; }
+.home-tour-bar { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 12px; background: rgba(255, 255, 255, 0.96); border: 1px solid #dce2e7; border-radius: 12px; box-shadow: 0 8px 24px rgba(16, 43, 63, 0.14); }
+.home-tour-bar p { display: grid; margin: 0; }
+.home-tour-bar p span { color: #586673; font-size: 13px; }
+.home-tour-bar > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.home-tour-bar button { min-height: 44px; min-width: 44px; }
+.home-tour-bar label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #586673; }
+.home-tour-bar select { min-height: 44px; border: 1px solid #dce2e7; border-radius: 8px; padding: 0 8px; background: #fff; color: #20303d; }

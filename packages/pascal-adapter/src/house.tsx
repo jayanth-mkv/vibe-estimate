@@ -8,6 +8,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Box3, Box3Helper, Color, Euler, Material, Mesh, PerspectiveCamera, Raycaster, Vector2, Vector3, type Object3D, type PointLight } from 'three';
 import { catalog, type HouseDocument } from '@vibeestimate/scene-schema';
+import { homeTour } from '@vibeestimate/scene-core';
 import { houseLightColor, houseRotation, houseToPascal } from './house-convert';
 
 type Mirror = ReturnType<typeof houseToPascal>;
@@ -27,7 +28,10 @@ export type HouseRendererReport = {
 export type HouseViewerProps = {
   document: HouseDocument; mode: HouseMode; roomId?: string | null; reset: number; lighting: HouseLighting; selectedIds: readonly string[];
   onSelect: (canonicalId: string, surface?: 'floor' | 'front' | 'back' | 'body') => void; onReady: (report: HouseRendererReport) => void; onFailure: (message?: string) => void;
+  /** Home Tour playback. The route comes from scene-core; this only plays it. */
+  tour?: HouseTourControl | null;
 };
+export type HouseTourControl = { playing: boolean; speed: number; seekRoom: number; seekKey: number; onRoom: (index: number) => void; onEnd: () => void };
 declare global {
   interface Window {
     __house?: { inspect: () => HouseRendererReport; loseContext: () => void };
@@ -123,7 +127,43 @@ function HouseLights({ document }: { document: HouseDocument }) {
   })}</>;
 }
 
-function HouseRuntime({ mirror, document, mode, roomId, reset, lighting, selectedIds, onSelect, onReady, onFailure }: HouseViewerProps & { mirror: Mirror }) {
+const ease = (t: number) => t * t * (3 - 2 * t);
+function TourCamera({ document, tour }: { document: HouseDocument; tour: HouseTourControl }) {
+  const { camera, invalidate } = useThree();
+  const route = useMemo(() => homeTour(document), [document]);
+  const clock = useRef({ time: 0, room: -1, ended: false });
+  const control = useRef(tour);
+  useEffect(() => { control.current = tour; }, [tour]);
+  // Starts of each keyframe on the 1x timeline.
+  const starts = useMemo(() => { let total = 0; return route.keyframes.map(frame => (total += frame.seconds)); }, [route]);
+  useEffect(() => {
+    // A negative seek starts at the entrance; otherwise jump to that room's first view.
+    const room = tour.seekRoom < 0 ? undefined : route.rooms[Math.min(tour.seekRoom, route.rooms.length - 1)];
+    clock.current = { time: room ? starts[room.start]! : 0, room: -1, ended: false };
+    invalidate();
+  }, [tour.seekKey, tour.seekRoom, route, starts, invalidate]);
+  const look = useRef(new Vector3());
+  useFrame((_, delta) => {
+    const { playing, speed, onRoom, onEnd } = control.current, state = clock.current, frames = route.keyframes;
+    if (!frames.length) return;
+    if (playing && !state.ended) state.time += Math.min(delta, 0.1) * speed;
+    const end = starts.at(-1)!;
+    if (state.time >= end && !state.ended) { state.time = end; state.ended = true; onEnd(); }
+    let index = starts.findIndex(start => start >= state.time); if (index < 0) index = frames.length - 1;
+    const to = frames[index]!, from = frames[Math.max(0, index - 1)]!;
+    const span = to.seconds || 1, t = index === 0 ? 1 : ease(Math.min(1, Math.max(0, 1 - (starts[index]! - state.time) / span)));
+    camera.position.set((from.position[0] + (to.position[0] - from.position[0]) * t) / 1000, (from.position[1] + (to.position[1] - from.position[1]) * t) / 1000, (from.position[2] + (to.position[2] - from.position[2]) * t) / 1000);
+    look.current.set((from.look[0] + (to.look[0] - from.look[0]) * t) / 1000, (from.look[1] + (to.look[1] - from.look[1]) * t) / 1000, (from.look[2] + (to.look[2] - from.look[2]) * t) / 1000);
+    camera.lookAt(look.current);
+    let room = -1;
+    for (let i = 0; i < route.rooms.length; i++) if (starts[route.rooms[i]!.start]! <= state.time + 1e-6) room = i;
+    if (room !== state.room) { state.room = room; onRoom(room); }
+    if (playing && !state.ended) invalidate();
+  });
+  return null;
+}
+
+function HouseRuntime({ mirror, document, mode, roomId, reset, lighting, selectedIds, onSelect, onReady, onFailure, tour }: HouseViewerProps & { mirror: Mirror }) {
   const { camera, gl, scene, size, invalidate } = useThree();
   const frames = useRef(0), lastReported = useRef<HouseDocument | null>(null), stableFrames = useRef(0);
   const latest = useRef({ mirror, document, lighting, selectedIds, onSelect, onReady, onFailure });
@@ -302,7 +342,7 @@ function HouseRuntime({ mirror, document, mode, roomId, reset, lighting, selecte
   });
 
   return <>
-    <OrbitControls key={`${mode}-${selectedRoom ?? 'all'}-${reset}`} makeDefault target={target} enablePan={mode === 'overview'} minDistance={mode === 'inside' ? .2 : 2} maxDistance={90} maxPolarAngle={Math.PI / 2 - .001} enableDamping={false} />
+    {tour ? <TourCamera document={document} tour={tour} /> : <OrbitControls key={`${mode}-${selectedRoom ?? 'all'}-${reset}`} makeDefault target={target} enablePan={mode === 'overview'} minDistance={mode === 'inside' ? .2 : 2} maxDistance={90} maxPolarAngle={Math.PI / 2 - .001} enableDamping={false} />}
     <HouseLights document={document} />
   </>;
 }
@@ -340,3 +380,4 @@ export function HouseViewer(props: HouseViewerProps) {
     <HouseRuntime {...props} document={state.document} mirror={state.mirror} />
   </Viewer></HouseBoundary>;
 }
+
