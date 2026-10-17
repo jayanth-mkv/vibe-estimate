@@ -8,7 +8,7 @@ if (!evidence || !fs.existsSync(evidence) || baseURL !== 'http://127.0.0.1:3100'
 const live = process.env.V1_PROVIDER === 'gemini';
 const legacy = process.env.V1_LEGACY === '1';
 if (live && legacy) throw new Error('Legacy fixture checks cannot run with live inference.');
-const stories = live ? ['**/v1/live.spec.ts'] : ['**/v1/journeys.spec.ts', '**/v1/recovery.spec.ts', '**/v1/deletion.spec.ts', '**/v1/placement.spec.ts', '**/v1/onboarding.spec.ts', '**/v1/tour.spec.ts'];
+const stories = live ? ['**/v1/live.spec.ts'] : ['**/v1/journeys.spec.ts', '**/v1/recovery.spec.ts', '**/v1/deletion.spec.ts', '**/v1/placement.spec.ts', '**/v1/onboarding.spec.ts', '**/v1/tour.spec.ts', '**/v1/plan-upload.spec.ts'];
 export default defineConfig({
   testDir: '..', fullyParallel: false, workers: 1, retries: 0,
   timeout: 180_000, expect: { timeout: 60_000 },
